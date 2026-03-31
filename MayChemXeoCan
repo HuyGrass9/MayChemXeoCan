@@ -5,7 +5,7 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV9") or CoreGui:FindFirstChild("OmniGoldenV9")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV10") or CoreGui:FindFirstChild("OmniGoldenV10")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
@@ -25,7 +25,7 @@ local ShipTarget = Vector3.new(920.27, 125.30, 32844.54)
 local SafeReturn = Vector3.new(2293.10, 27.13, 910.90)
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniGoldenV9"
+UI.Name = "OmniGoldenV10"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
@@ -46,7 +46,7 @@ Stroke.Thickness = 1.8
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "ABSOLUTE GOLDEN: OFF"
+Btn.Text = "SMOOTH GOLDEN: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 10
@@ -59,13 +59,20 @@ local function AbsoluteGoldenSnipe()
             if string.find(name, "golden") and string.find(name, "egg") then
                 local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                if hrp and targetPart then
+                if hrp and targetPart and targetPart.Parent then
                     local dist = (hrp.Position - targetPart.Position).Magnitude
-                    local tInfo = TweenInfo.new(dist / 600, Enum.EasingStyle.Linear)
+                    local tInfo = TweenInfo.new(dist / 500, Enum.EasingStyle.Linear)
                     local tween = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
                     tween:Play()
-                    tween.Completed:Wait()
-                    task.wait(0.1)
+                    local timeout = 0
+                    while getgenv().AutoEggUltra and targetPart and targetPart.Parent and timeout < 20 do
+                        local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                        if not currentHrp then break end
+                        if (currentHrp.Position - targetPart.Position).Magnitude < 15 then break end
+                        task.wait(0.1)
+                        timeout = timeout + 1
+                    end
+                    if tween then tween:Cancel() end
                 end
             end
         end
@@ -101,11 +108,31 @@ local function BypassTween(targetPos)
     if not hrp then return end
     local dist = (hrp.Position - targetPos).Magnitude
     if dist < 30 then return end
+    
     getgenv().IsTweening = true
-    local tInfo = TweenInfo.new(dist / 330, Enum.EasingStyle.Linear)
+    
+    local bv = hrp:FindFirstChild("OmniBV")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "OmniBV"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
+    end
+    
+    local tInfo = TweenInfo.new(dist / 320, Enum.EasingStyle.Linear)
     currentTween = TweenService:Create(hrp, tInfo, {CFrame = CFrame.new(targetPos)})
     currentTween:Play()
-    currentTween.Completed:Wait()
+    
+    while getgenv().IsTweening and getgenv().AutoEggUltra do
+        local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if not currentHrp then break end
+        if (currentHrp.Position - targetPos).Magnitude < 40 then break end
+        task.wait(0.1)
+    end
+    
+    if currentTween then currentTween:Cancel() end
+    if bv then bv:Destroy() end
     getgenv().IsTweening = false
 end
 
@@ -129,24 +156,23 @@ RunService.Stepped:Connect(function()
         for _, v in pairs(LP.Character:GetDescendants()) do
             if v:IsA("BasePart") then v.CanCollide = false end
         end
-        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-        end
     end
 end)
 
 Btn.MouseButton1Click:Connect(function()
     getgenv().AutoEggUltra = not getgenv().AutoEggUltra
     if getgenv().AutoEggUltra then
-        Btn.Text = "ABSOLUTE GOLDEN: ON"
+        Btn.Text = "SMOOTH GOLDEN: ON"
         Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
     else
-        Btn.Text = "ABSOLUTE GOLDEN: OFF"
+        Btn.Text = "SMOOTH GOLDEN: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
+        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            local bv = LP.Character.HumanoidRootPart:FindFirstChild("OmniBV")
+            if bv then bv:Destroy() end
+        end
     end
 end)
 
