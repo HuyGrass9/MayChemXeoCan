@@ -3,18 +3,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
-
-pcall(function()
-    local mainGui = LP.PlayerGui:WaitForChild("Main", 5)
-    if mainGui and mainGui:FindFirstChild("ChooseTeam") then
-        ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("SetTeam", "Marines")
-        mainGui.ChooseTeam.Visible = false
-    end
-end)
 
 local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCanUI") or CoreGui:FindFirstChild("MayChemXeoCanUI")
 if oldUI then oldUI:Destroy() end
@@ -67,24 +56,7 @@ Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 10
 Btn.Parent = Main
 
-local function HopServer()
-    pcall(function()
-        local Api = "https://games.roblox.com/v1/games/" .. tostring(game.PlaceId) .. "/servers/Public?sortOrder=Desc&limit=100"
-        local res = game:HttpGet(Api)
-        local data = HttpService:JSONDecode(res).data
-        if data then
-            for _, v in pairs(data) do
-                if v.playing < v.maxPlayers - 2 and v.id ~= game.JobId then
-                    TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, LP)
-                    task.wait(1)
-                end
-            end
-        end
-    end)
-end
-
 local function SnipeGoldenForce()
-    local foundEgg = false
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("Model") or v:IsA("BasePart") then
             local name = string.lower(v.Name)
@@ -92,7 +64,6 @@ local function SnipeGoldenForce()
                 local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and targetPart and targetPart.Parent then
-                    foundEgg = true
                     local dist = (hrp.Position - targetPart.Position).Magnitude
                     local tInfo = TweenInfo.new(dist / 400, Enum.EasingStyle.Linear)
                     local tw = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
@@ -110,11 +81,9 @@ local function SnipeGoldenForce()
             end
         end
     end
-    return foundEgg
 end
 
 local function HitAndRunShip()
-    local foundInShip = false
     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         if currentTween then currentTween:Cancel() end
@@ -132,7 +101,7 @@ local function HitAndRunShip()
         
         local timer = 0
         while timer < 4 and getgenv().MayChemXeoCan_Auto do
-            if SnipeGoldenForce() then foundInShip = true end
+            SnipeGoldenForce()
             task.wait(0.5)
             timer = timer + 0.5
         end
@@ -147,7 +116,6 @@ local function HitAndRunShip()
             end
         end
     end
-    return foundInShip
 end
 
 local function BypassTween(targetPos)
@@ -227,8 +195,6 @@ task.spawn(function()
     while true do
         if getgenv().MayChemXeoCan_Auto and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
             local remainingPoints = {}
-            local eggFoundInLoop = false
-            
             for _, p in ipairs(TweenPoints) do
                 table.insert(remainingPoints, p)
             end
@@ -244,9 +210,7 @@ task.spawn(function()
                     
                     local timer = 0
                     while timer < 4 and getgenv().MayChemXeoCan_Auto do
-                        if SnipeGoldenForce() then
-                            eggFoundInLoop = true
-                        end
+                        SnipeGoldenForce()
                         task.wait(0.5)
                         timer = timer + 0.5
                     end
@@ -254,16 +218,7 @@ task.spawn(function()
             end
             
             if getgenv().MayChemXeoCan_Auto then
-                if HitAndRunShip() then
-                    eggFoundInLoop = true
-                end
-            end
-            
-            if not eggFoundInLoop and getgenv().MayChemXeoCan_Auto then
-                Btn.Text = "MAY CHEM HOPPING..."
-                Btn.TextColor3 = Color3.fromRGB(150, 0, 255)
-                HopServer()
-                task.wait(5)
+                HitAndRunShip()
             end
         end
         task.wait(1)
