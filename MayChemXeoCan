@@ -3,18 +3,32 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
-local VIM = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniPortalV16") or CoreGui:FindFirstChild("OmniPortalV16")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV17") or CoreGui:FindFirstChild("OmniEggV17")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
+getgenv().IsTweening = false
 local currentTween = nil
-local TargetIndices = {1, 2, 4, 6, 8, 9, 10, 12, 13, 17}
+
+local TweenPoints = {
+    Vector3.new(-3800, 20, -5300),
+    Vector3.new(1030, 140, -4850),
+    Vector3.new(-2200, 70, -2500),
+    Vector3.new(3897.67, 13.59, -3543.17),
+    Vector3.new(6721.07, 294.63, -6970.51),
+    Vector3.new(4800, 20, 2850),
+    Vector3.new(-382, 73, 298),
+    Vector3.new(-3186.04, 298.91, -10584.57),
+    Vector3.new(-5698.84, 126.27, -734.21)
+}
+
+local ShipTarget = Vector3.new(920.27, 125.30, 32844.54)
+local SafeReturn = Vector3.new(2293.10, 27.13, 910.90)
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniPortalV16"
+UI.Name = "OmniEggV17"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
@@ -29,83 +43,17 @@ Main.Parent = UI
 
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 4)
 local Stroke = Instance.new("UIStroke", Main)
-Stroke.Color = Color3.fromRGB(150, 0, 255)
+Stroke.Color = Color3.fromRGB(0, 255, 170)
 Stroke.Thickness = 1.8
 
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "PORTAL CHUNK: OFF"
+Btn.Text = "PERFECT ROUTE: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 10
 Btn.Parent = Main
-
-local function GetPortalButtons()
-    local mainGui = LP.PlayerGui:WaitForChild("Main")
-    local buttons = {}
-    
-    for _, v in pairs(mainGui:GetDescendants()) do
-        if v:IsA("ImageButton") and v.Visible and v.AbsoluteSize.X > 30 then
-            local hasLabel = false
-            for _, child in pairs(v:GetChildren()) do
-                if child:IsA("TextLabel") and child.Text ~= "" then
-                    hasLabel = true
-                    break
-                end
-            end
-            
-            if hasLabel and not string.find(string.lower(v.Name), "close") then
-                table.insert(buttons, v)
-            end
-        end
-    end
-    
-    table.sort(buttons, function(a, b)
-        if math.abs(a.AbsolutePosition.Y - b.AbsolutePosition.Y) > 20 then
-            return a.AbsolutePosition.Y < b.AbsolutePosition.Y
-        else
-            return a.AbsolutePosition.X < b.AbsolutePosition.X
-        end
-    end)
-    
-    return buttons
-end
-
-local function ForceClickButton(btn)
-    local clicked = false
-    if getconnections then
-        pcall(function()
-            for _, conn in pairs(getconnections(btn.Activated)) do
-                conn:Function()
-                clicked = true
-            end
-            if not clicked then
-                for _, conn in pairs(getconnections(btn.MouseButton1Click)) do
-                    conn:Function()
-                    clicked = true
-                end
-            end
-            if not clicked then
-                for _, conn in pairs(getconnections(btn.TouchTap)) do
-                    conn:Function()
-                    clicked = true
-                end
-            end
-        end)
-    end
-    if not clicked then
-        local absPos = btn.AbsolutePosition
-        local absSize = btn.AbsoluteSize
-        local centerX = absPos.X + (absSize.X / 2)
-        local centerY = absPos.Y + (absSize.Y / 2) + 36
-        VIM:SendTouchTapEvent(centerX, centerY, false, game)
-        task.wait(0.1)
-        VIM:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
-        task.wait(0.1)
-        VIM:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
-    end
-end
 
 local function SnipeAllEggs()
     for _, v in pairs(Workspace:GetDescendants()) do
@@ -116,37 +64,110 @@ local function SnipeAllEggs()
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and targetPart and targetPart.Parent then
                     local dist = (hrp.Position - targetPart.Position).Magnitude
-                    if dist < 2000 then
-                        local tInfo = TweenInfo.new(dist / 400, Enum.EasingStyle.Linear)
-                        local tw = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
-                        tw:Play()
-                        local timeout = 0
-                        while getgenv().AutoEggUltra and targetPart and targetPart.Parent and timeout < 15 do
-                            if (hrp.Position - targetPart.Position).Magnitude < 10 then break end
-                            task.wait(0.1)
-                            timeout = timeout + 1
-                        end
-                        if tw then tw:Cancel() end
+                    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
+                    local tw = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
+                    tw:Play()
+                    local timeout = 0
+                    while getgenv().AutoEggUltra and targetPart and targetPart.Parent and timeout < 20 do
+                        local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                        if not currentHrp then break end
+                        if (currentHrp.Position - targetPart.Position).Magnitude < 15 then break end
+                        task.wait(0.1)
+                        timeout = timeout + 1
                     end
+                    if tw then tw:Cancel() end
                 end
             end
         end
     end
 end
 
-local function SmoothMoveAway()
+local function HitAndRunShip()
     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
-        local targetCFrame = hrp.CFrame * CFrame.new(0, 40, 50)
-        local tInfo = TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-        local tw = TweenService:Create(hrp, tInfo, {CFrame = targetCFrame})
-        tw:Play()
-        tw.Completed:Wait()
+        if currentTween then currentTween:Cancel() end
+        getgenv().IsTweening = false
+        
+        local plat = Instance.new("Part")
+        plat.Size = Vector3.new(200, 2, 200)
+        plat.CFrame = CFrame.new(ShipTarget - Vector3.new(0, 5, 0))
+        plat.Anchored = true
+        plat.Transparency = 1
+        plat.Parent = Workspace
+        
+        hrp.CFrame = CFrame.new(ShipTarget)
+        task.wait(0.5)
+        
+        local timer = 0
+        while timer < 5 and getgenv().AutoEggUltra do
+            hrp.CFrame = CFrame.new(ShipTarget)
+            SnipeAllEggs()
+            task.wait(1)
+            timer = timer + 1
+        end
+        
+        plat:Destroy()
+        
+        if getgenv().AutoEggUltra then
+            local returnHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if returnHrp then
+                returnHrp.CFrame = CFrame.new(SafeReturn)
+                task.wait(1.5)
+            end
+        end
     end
 end
 
+local function BypassTween(targetPos)
+    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local dist = (hrp.Position - targetPos).Magnitude
+    if dist < 30 then return end
+    
+    getgenv().IsTweening = true
+    
+    local bv = hrp:FindFirstChild("OmniBV")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "OmniBV"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
+    end
+    
+    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
+    currentTween = TweenService:Create(hrp, tInfo, {CFrame = CFrame.new(targetPos)})
+    currentTween:Play()
+    
+    while getgenv().IsTweening and getgenv().AutoEggUltra do
+        local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if not currentHrp then break end
+        if (currentHrp.Position - targetPos).Magnitude < 40 then break end
+        task.wait(0.1)
+    end
+    
+    if currentTween then currentTween:Cancel() end
+    if bv then bv:Destroy() end
+    getgenv().IsTweening = false
+end
+
+local function GetClosestPoint(currentPos, pointList)
+    local closest = nil
+    local minDist = math.huge
+    local bestIndex = -1
+    for i, pos in ipairs(pointList) do
+        local dist = (currentPos - pos).Magnitude
+        if dist < minDist then
+            minDist = dist
+            closest = pos
+            bestIndex = i
+        end
+    end
+    return closest, bestIndex
+end
+
 RunService.Stepped:Connect(function()
-    if LP.Character and getgenv().AutoEggUltra then
+    if getgenv().IsTweening and LP.Character then
         for _, v in pairs(LP.Character:GetDescendants()) do
             if v:IsA("BasePart") then v.CanCollide = false end
         end
@@ -156,56 +177,48 @@ end)
 Btn.MouseButton1Click:Connect(function()
     getgenv().AutoEggUltra = not getgenv().AutoEggUltra
     if getgenv().AutoEggUltra then
-        Btn.Text = "PORTAL CHUNK: ON"
-        Btn.TextColor3 = Color3.fromRGB(150, 0, 255)
+        Btn.Text = "PERFECT ROUTE: ON"
+        Btn.TextColor3 = Color3.fromRGB(0, 255, 170)
     else
-        Btn.Text = "PORTAL CHUNK: OFF"
+        Btn.Text = "PERFECT ROUTE: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
+        if currentTween then currentTween:Cancel() end
+        getgenv().IsTweening = false
+        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            local bv = LP.Character.HumanoidRootPart:FindFirstChild("OmniBV")
+            if bv then bv:Destroy() end
+        end
     end
 end)
 
 task.spawn(function()
     while true do
         if getgenv().AutoEggUltra and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-            local tool = LP.Backpack:FindFirstChild("Portal-Portal") or LP.Character:FindFirstChild("Portal-Portal")
-            if tool then
-                for _, idx in ipairs(TargetIndices) do
-                    if not getgenv().AutoEggUltra then break end
+            local remainingPoints = {}
+            for _, p in ipairs(TweenPoints) do
+                table.insert(remainingPoints, p)
+            end
+            
+            while #remainingPoints > 0 and getgenv().AutoEggUltra do
+                local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then break end
+                
+                local targetPos, index = GetClosestPoint(hrp.Position, remainingPoints)
+                if targetPos then
+                    table.remove(remainingPoints, index)
+                    BypassTween(targetPos + Vector3.new(0, 45, 0))
                     
-                    if tool.Parent ~= LP.Character then
-                        LP.Character.Humanoid:EquipTool(tool)
-                        task.wait(0.5)
-                    end
-                    
-                    VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                    task.wait(0.2)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                    
-                    task.wait(1.5)
-                    local buttons = GetPortalButtons()
-                    if buttons and buttons[idx] then
-                        ForceClickButton(buttons[idx])
-                        task.wait(2.5)
-                        
-                        if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-                            LP.Character.Humanoid:UnequipTools()
-                        end
-                        
-                        SmoothMoveAway()
-                        
-                        local t = 0
-                        while t < 6 and getgenv().AutoEggUltra do
-                            SnipeAllEggs()
-                            task.wait(1)
-                            t = t + 1
-                        end
-                    else
-                        VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                        task.wait(0.2)
-                        VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                    local t = 0
+                    while t < 5 and getgenv().AutoEggUltra do
+                        SnipeAllEggs()
                         task.wait(1)
+                        t = t + 1
                     end
                 end
+            end
+            
+            if getgenv().AutoEggUltra then
+                HitAndRunShip()
             end
         end
         task.wait(1)
