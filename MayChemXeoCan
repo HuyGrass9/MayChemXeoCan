@@ -5,38 +5,33 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV4") or CoreGui:FindFirstChild("OmniGoldenV4")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV9") or CoreGui:FindFirstChild("OmniGoldenV9")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
 getgenv().IsTweening = false
 local currentTween = nil
 
-local Sea2UltimatePoints = {
-    Vector3.new(-382, 73, 298), -- Cafe (Kingdom of Rose)
-    Vector3.new(-3794, 23, -5312), -- Dark Arena
-    Vector3.new(-425, 73, 1836),
-    Vector3.new(-479, 332, 532),
-    Vector3.new(-2380, 72, -3130),
-    Vector3.new(-5400, 48, -750),
-    Vector3.new(1030, 140, -4850),
-    Vector3.new(-5350, 15, -5100),
-    Vector3.new(-6050, 15, -4900),
-    Vector3.new(5900, 25, -6300),
-    Vector3.new(-3000, 15, -10000),
-    Vector3.new(3700, 15, -1000),
-    Vector3.new(4700, 15, 2900),
-    Vector3.new(-2200, 70, -2500)
+local TweenPoints = {
+    Vector3.new(3897.67, 13.59, -3543.17),
+    Vector3.new(-5698.84, 126.27, -734.21),
+    Vector3.new(-3186.04, 298.91, -10584.57),
+    Vector3.new(855.27, 121.82, 1209.73),
+    Vector3.new(6721.07, 294.63, -6970.51),
+    Vector3.new(-5635.95, 42.40, -5197.75)
 }
 
+local ShipTarget = Vector3.new(920.27, 125.30, 32844.54)
+local SafeReturn = Vector3.new(2293.10, 27.13, 910.90)
+
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniGoldenV4"
+UI.Name = "OmniGoldenV9"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 140, 0, 35)
-Main.Position = UDim2.new(0.5, -70, 0, 15)
+Main.Size = UDim2.new(0, 150, 0, 35)
+Main.Position = UDim2.new(0.5, -75, 0, 15)
 Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -51,13 +46,13 @@ Stroke.Thickness = 1.8
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "ULTRA GOLDEN: OFF"
+Btn.Text = "ABSOLUTE GOLDEN: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 10
 Btn.Parent = Main
 
-local function SnipeGoldenForce()
+local function AbsoluteGoldenSnipe()
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("Model") or v:IsA("BasePart") then
             local name = string.lower(v.Name)
@@ -66,14 +61,38 @@ local function SnipeGoldenForce()
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and targetPart then
                     local dist = (hrp.Position - targetPart.Position).Magnitude
-                    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
+                    local tInfo = TweenInfo.new(dist / 600, Enum.EasingStyle.Linear)
                     local tween = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
                     tween:Play()
                     tween.Completed:Wait()
-                    task.wait(0.3)
+                    task.wait(0.1)
                 end
             end
         end
+    end
+end
+
+local function InstantTeleport(targetPos)
+    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if currentTween then currentTween:Cancel() end
+        getgenv().IsTweening = false
+        hrp.CFrame = CFrame.new(targetPos)
+        task.wait(0.3)
+    end
+end
+
+local function HitAndRunShip()
+    InstantTeleport(ShipTarget)
+    local timer = 0
+    while timer < 5 and getgenv().AutoEggUltra do
+        AbsoluteGoldenSnipe()
+        task.wait(1)
+        timer = timer + 1
+    end
+    if getgenv().AutoEggUltra then
+        InstantTeleport(SafeReturn)
+        task.wait(1)
     end
 end
 
@@ -88,6 +107,21 @@ local function BypassTween(targetPos)
     currentTween:Play()
     currentTween.Completed:Wait()
     getgenv().IsTweening = false
+end
+
+local function GetClosestPoint(currentPos, pointList)
+    local closest = nil
+    local minDist = math.huge
+    local bestIndex = -1
+    for i, pos in ipairs(pointList) do
+        local dist = (currentPos - pos).Magnitude
+        if dist < minDist then
+            minDist = dist
+            closest = pos
+            bestIndex = i
+        end
+    end
+    return closest, bestIndex
 end
 
 RunService.Stepped:Connect(function()
@@ -106,10 +140,10 @@ end)
 Btn.MouseButton1Click:Connect(function()
     getgenv().AutoEggUltra = not getgenv().AutoEggUltra
     if getgenv().AutoEggUltra then
-        Btn.Text = "ULTRA GOLDEN: ON"
+        Btn.Text = "ABSOLUTE GOLDEN: ON"
         Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
     else
-        Btn.Text = "ULTRA GOLDEN: OFF"
+        Btn.Text = "ABSOLUTE GOLDEN: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
@@ -118,14 +152,32 @@ end)
 
 task.spawn(function()
     while true do
-        if getgenv().AutoEggUltra then
-            for _, pos in ipairs(Sea2UltimatePoints) do
-                if not getgenv().AutoEggUltra then break end
-                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                    BypassTween(pos + Vector3.new(0, 55, 0))
-                    SnipeGoldenForce()
-                    task.wait(2)
+        if getgenv().AutoEggUltra and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            local remainingPoints = {}
+            for _, p in ipairs(TweenPoints) do
+                table.insert(remainingPoints, p)
+            end
+            
+            while #remainingPoints > 0 and getgenv().AutoEggUltra do
+                local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then break end
+                
+                local targetPos, index = GetClosestPoint(hrp.Position, remainingPoints)
+                if targetPos then
+                    table.remove(remainingPoints, index)
+                    BypassTween(targetPos + Vector3.new(0, 40, 0))
+                    
+                    local t = 0
+                    while t < 5 and getgenv().AutoEggUltra do
+                        AbsoluteGoldenSnipe()
+                        task.wait(1)
+                        t = t + 1
+                    end
                 end
+            end
+            
+            if getgenv().AutoEggUltra then
+                HitAndRunShip()
             end
         end
         task.wait(1)
