@@ -5,7 +5,7 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV10") or CoreGui:FindFirstChild("OmniGoldenV10")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV11") or CoreGui:FindFirstChild("OmniGoldenV11")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
@@ -25,7 +25,7 @@ local ShipTarget = Vector3.new(920.27, 125.30, 32844.54)
 local SafeReturn = Vector3.new(2293.10, 27.13, 910.90)
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniGoldenV10"
+UI.Name = "OmniGoldenV11"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
@@ -46,11 +46,44 @@ Stroke.Thickness = 1.8
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "SMOOTH GOLDEN: OFF"
+Btn.Text = "OMNI V11: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
-Btn.TextSize = 10
+Btn.TextSize = 11
 Btn.Parent = Main
+
+local function ManageESP()
+    if getgenv().AutoEggUltra then
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("Model") or v:IsA("BasePart") then
+                local name = string.lower(v.Name)
+                if string.find(name, "egg") and not string.find(name, "legg") then
+                    local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
+                    if targetPart and not targetPart:FindFirstChild("OmniESP") then
+                        local hl = Instance.new("Highlight")
+                        hl.Name = "OmniESP"
+                        hl.FillTransparency = 0.4
+                        hl.OutlineTransparency = 0
+                        if string.find(name, "golden") then
+                            hl.FillColor = Color3.fromRGB(255, 215, 0)
+                            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        else
+                            hl.FillColor = Color3.fromRGB(0, 255, 170)
+                            hl.OutlineColor = Color3.fromRGB(0, 0, 0)
+                        end
+                        hl.Parent = targetPart
+                    end
+                end
+            end
+        end
+    else
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("Highlight") and v.Name == "OmniESP" then
+                v:Destroy()
+            end
+        end
+    end
+end
 
 local function AbsoluteGoldenSnipe()
     for _, v in pairs(Workspace:GetDescendants()) do
@@ -61,7 +94,7 @@ local function AbsoluteGoldenSnipe()
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and targetPart and targetPart.Parent then
                     local dist = (hrp.Position - targetPart.Position).Magnitude
-                    local tInfo = TweenInfo.new(dist / 500, Enum.EasingStyle.Linear)
+                    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
                     local tween = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
                     tween:Play()
                     local timeout = 0
@@ -79,27 +112,39 @@ local function AbsoluteGoldenSnipe()
     end
 end
 
-local function InstantTeleport(targetPos)
+local function HitAndRunShip()
     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
-        hrp.CFrame = CFrame.new(targetPos)
-        task.wait(0.3)
-    end
-end
-
-local function HitAndRunShip()
-    InstantTeleport(ShipTarget)
-    local timer = 0
-    while timer < 5 and getgenv().AutoEggUltra do
-        AbsoluteGoldenSnipe()
-        task.wait(1)
-        timer = timer + 1
-    end
-    if getgenv().AutoEggUltra then
-        InstantTeleport(SafeReturn)
-        task.wait(1)
+        
+        local plat = Instance.new("Part")
+        plat.Size = Vector3.new(200, 2, 200)
+        plat.CFrame = CFrame.new(ShipTarget - Vector3.new(0, 5, 0))
+        plat.Anchored = true
+        plat.Transparency = 1
+        plat.Parent = Workspace
+        
+        hrp.CFrame = CFrame.new(ShipTarget)
+        task.wait(0.5)
+        
+        local timer = 0
+        while timer < 5 and getgenv().AutoEggUltra do
+            hrp.CFrame = CFrame.new(ShipTarget)
+            AbsoluteGoldenSnipe()
+            task.wait(1)
+            timer = timer + 1
+        end
+        
+        plat:Destroy()
+        
+        if getgenv().AutoEggUltra then
+            local returnHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if returnHrp then
+                returnHrp.CFrame = CFrame.new(SafeReturn)
+                task.wait(1)
+            end
+        end
     end
 end
 
@@ -120,7 +165,7 @@ local function BypassTween(targetPos)
         bv.Parent = hrp
     end
     
-    local tInfo = TweenInfo.new(dist / 320, Enum.EasingStyle.Linear)
+    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
     currentTween = TweenService:Create(hrp, tInfo, {CFrame = CFrame.new(targetPos)})
     currentTween:Play()
     
@@ -162,17 +207,24 @@ end)
 Btn.MouseButton1Click:Connect(function()
     getgenv().AutoEggUltra = not getgenv().AutoEggUltra
     if getgenv().AutoEggUltra then
-        Btn.Text = "SMOOTH GOLDEN: ON"
+        Btn.Text = "OMNI V11: ON"
         Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
     else
-        Btn.Text = "SMOOTH GOLDEN: OFF"
+        Btn.Text = "OMNI V11: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
+        ManageESP()
         if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
             local bv = LP.Character.HumanoidRootPart:FindFirstChild("OmniBV")
             if bv then bv:Destroy() end
         end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.5) do
+        ManageESP()
     end
 end)
 
