@@ -5,12 +5,21 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV20") or CoreGui:FindFirstChild("OmniEggV20")
+pcall(function()
+    local mainGui = LP.PlayerGui:WaitForChild("Main", 5)
+    if mainGui and mainGui:FindFirstChild("ChooseTeam") then
+        ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("SetTeam", "Marines")
+        mainGui.ChooseTeam.Visible = false
+    end
+end)
+
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV21") or CoreGui:FindFirstChild("OmniEggV21")
 if oldUI then oldUI:Destroy() end
 
-getgenv().AutoEggUltra = false
+getgenv().AutoEggUltra = true
 getgenv().IsTweening = false
 local currentTween = nil
 
@@ -31,7 +40,7 @@ local ShipTarget = Vector3.new(923.21, 125.30, 32852.83)
 local SafeReturn = Vector3.new(2284.92, 15.39, 905.49)
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniEggV20"
+UI.Name = "OmniEggV21"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
@@ -52,8 +61,8 @@ Stroke.Thickness = 1.8
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "AUTO HOP GOLD: OFF"
-Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
+Btn.Text = "AUTO HOP GOLD: ON"
+Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
 Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 10
 Btn.Parent = Main
