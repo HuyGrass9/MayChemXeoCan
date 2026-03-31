@@ -6,7 +6,7 @@ local Workspace = game:GetService("Workspace")
 local VIM = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniPortalV15") or CoreGui:FindFirstChild("OmniPortalV15")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniPortalV16") or CoreGui:FindFirstChild("OmniPortalV16")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
@@ -14,7 +14,7 @@ local currentTween = nil
 local TargetIndices = {1, 2, 4, 6, 8, 9, 10, 12, 13, 17}
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniPortalV15"
+UI.Name = "OmniPortalV16"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
@@ -43,33 +43,32 @@ Btn.Parent = Main
 
 local function GetPortalButtons()
     local mainGui = LP.PlayerGui:WaitForChild("Main")
-    local portalFrame = nil
-    for _, v in pairs(mainGui:GetDescendants()) do
-        if v:IsA("TextLabel") and v.Visible then
-            local txt = string.lower(v.Text)
-            if string.find(txt, "cổng dịch chuyển") or string.find(txt, "portal") then
-                portalFrame = v.Parent
-                break
-            end
-        end
-    end
     local buttons = {}
-    if portalFrame then
-        for _, v in pairs(portalFrame:GetDescendants()) do
-            if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible and v.AbsoluteSize.X > 30 then
-                if not string.find(string.lower(v.Name), "close") then
-                    table.insert(buttons, v)
+    
+    for _, v in pairs(mainGui:GetDescendants()) do
+        if v:IsA("ImageButton") and v.Visible and v.AbsoluteSize.X > 30 then
+            local hasLabel = false
+            for _, child in pairs(v:GetChildren()) do
+                if child:IsA("TextLabel") and child.Text ~= "" then
+                    hasLabel = true
+                    break
                 end
             end
-        end
-        table.sort(buttons, function(a, b)
-            if math.abs(a.AbsolutePosition.Y - b.AbsolutePosition.Y) > 15 then
-                return a.AbsolutePosition.Y < b.AbsolutePosition.Y
-            else
-                return a.AbsolutePosition.X < b.AbsolutePosition.X
+            
+            if hasLabel and not string.find(string.lower(v.Name), "close") then
+                table.insert(buttons, v)
             end
-        end)
+        end
     end
+    
+    table.sort(buttons, function(a, b)
+        if math.abs(a.AbsolutePosition.Y - b.AbsolutePosition.Y) > 20 then
+            return a.AbsolutePosition.Y < b.AbsolutePosition.Y
+        else
+            return a.AbsolutePosition.X < b.AbsolutePosition.X
+        end
+    end)
+    
     return buttons
 end
 
@@ -77,18 +76,34 @@ local function ForceClickButton(btn)
     local clicked = false
     if getconnections then
         pcall(function()
-            for _, conn in pairs(getconnections(btn.MouseButton1Click)) do
+            for _, conn in pairs(getconnections(btn.Activated)) do
                 conn:Function()
                 clicked = true
+            end
+            if not clicked then
+                for _, conn in pairs(getconnections(btn.MouseButton1Click)) do
+                    conn:Function()
+                    clicked = true
+                end
+            end
+            if not clicked then
+                for _, conn in pairs(getconnections(btn.TouchTap)) do
+                    conn:Function()
+                    clicked = true
+                end
             end
         end)
     end
     if not clicked then
         local absPos = btn.AbsolutePosition
         local absSize = btn.AbsoluteSize
-        VIM:SendMouseButtonEvent(absPos.X + absSize.X/2, absPos.Y + absSize.Y/2 + 36, 0, true, game, 1)
+        local centerX = absPos.X + (absSize.X / 2)
+        local centerY = absPos.Y + (absSize.Y / 2) + 36
+        VIM:SendTouchTapEvent(centerX, centerY, false, game)
         task.wait(0.1)
-        VIM:SendMouseButtonEvent(absPos.X + absSize.X/2, absPos.Y + absSize.Y/2 + 36, 0, false, game, 1)
+        VIM:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
+        task.wait(0.1)
+        VIM:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
     end
 end
 
