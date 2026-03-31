@@ -5,14 +5,16 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenSea2") or CoreGui:FindFirstChild("OmniGoldenSea2")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV4") or CoreGui:FindFirstChild("OmniGoldenV4")
 if oldUI then oldUI:Destroy() end
 
-getgenv().AutoEggSea2 = false
+getgenv().AutoEggUltra = false
 getgenv().IsTweening = false
 local currentTween = nil
 
-local Sea2EggSpawns = {
+local Sea2UltimatePoints = {
+    Vector3.new(-382, 73, 298), -- Cafe (Kingdom of Rose)
+    Vector3.new(-3794, 23, -5312), -- Dark Arena
     Vector3.new(-425, 73, 1836),
     Vector3.new(-479, 332, 532),
     Vector3.new(-2380, 72, -3130),
@@ -28,14 +30,14 @@ local Sea2EggSpawns = {
 }
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniGoldenSea2"
+UI.Name = "OmniGoldenV4"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 150, 0, 40)
-Main.Position = UDim2.new(0.5, -75, 0, 20)
-Main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+Main.Size = UDim2.new(0, 140, 0, 35)
+Main.Position = UDim2.new(0.5, -70, 0, 15)
+Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
 Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
@@ -43,32 +45,33 @@ Main.Parent = UI
 
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 4)
 local Stroke = Instance.new("UIStroke", Main)
-Stroke.Color = Color3.fromRGB(255, 200, 0)
-Stroke.Thickness = 1.5
+Stroke.Color = Color3.fromRGB(255, 215, 0)
+Stroke.Thickness = 1.8
 
 local Btn = Instance.new("TextButton")
-Btn.Size = UDim2.new(1, -10, 1, -10)
-Btn.Position = UDim2.new(0, 5, 0, 5)
+Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "SEA 2 GOLDEN: OFF"
+Btn.Text = "ULTRA GOLDEN: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
-Btn.TextSize = 11
+Btn.TextSize = 10
 Btn.Parent = Main
 
-local function SnipeGoldenOnly()
+local function SnipeGoldenForce()
     for _, v in pairs(Workspace:GetDescendants()) do
-        local name = string.lower(v.Name)
-        if string.find(name, "golden") and string.find(name, "egg") then
-            local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or (v:IsA("BasePart") and v or nil)
-            local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-            if hrp and targetPart then
-                local dist = (hrp.Position - targetPart.Position).Magnitude
-                local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
-                local tween = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
-                tween:Play()
-                tween.Completed:Wait()
-                task.wait(0.5)
+        if v:IsA("Model") or v:IsA("BasePart") then
+            local name = string.lower(v.Name)
+            if string.find(name, "golden") and string.find(name, "egg") then
+                local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
+                local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and targetPart then
+                    local dist = (hrp.Position - targetPart.Position).Magnitude
+                    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
+                    local tween = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
+                    tween:Play()
+                    tween.Completed:Wait()
+                    task.wait(0.3)
+                end
             end
         end
     end
@@ -78,10 +81,10 @@ local function BypassTween(targetPos)
     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     local dist = (hrp.Position - targetPos).Magnitude
-    if dist < 50 then return end
+    if dist < 30 then return end
     getgenv().IsTweening = true
-    local tweenInfo = TweenInfo.new(dist / 320, Enum.EasingStyle.Linear)
-    currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    local tInfo = TweenInfo.new(dist / 330, Enum.EasingStyle.Linear)
+    currentTween = TweenService:Create(hrp, tInfo, {CFrame = CFrame.new(targetPos)})
     currentTween:Play()
     currentTween.Completed:Wait()
     getgenv().IsTweening = false
@@ -101,12 +104,12 @@ RunService.Stepped:Connect(function()
 end)
 
 Btn.MouseButton1Click:Connect(function()
-    getgenv().AutoEggSea2 = not getgenv().AutoEggSea2
-    if getgenv().AutoEggSea2 then
-        Btn.Text = "SEA 2 GOLDEN: ON"
+    getgenv().AutoEggUltra = not getgenv().AutoEggUltra
+    if getgenv().AutoEggUltra then
+        Btn.Text = "ULTRA GOLDEN: ON"
         Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
     else
-        Btn.Text = "SEA 2 GOLDEN: OFF"
+        Btn.Text = "ULTRA GOLDEN: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
@@ -115,12 +118,12 @@ end)
 
 task.spawn(function()
     while true do
-        if getgenv().AutoEggSea2 then
-            for _, pos in ipairs(Sea2EggSpawns) do
-                if not getgenv().AutoEggSea2 then break end
+        if getgenv().AutoEggUltra then
+            for _, pos in ipairs(Sea2UltimatePoints) do
+                if not getgenv().AutoEggUltra then break end
                 if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                    BypassTween(pos + Vector3.new(0, 60, 0))
-                    SnipeGoldenOnly()
+                    BypassTween(pos + Vector3.new(0, 55, 0))
+                    SnipeGoldenForce()
                     task.wait(2)
                 end
             end
