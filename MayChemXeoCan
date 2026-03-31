@@ -3,9 +3,11 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV19") or CoreGui:FindFirstChild("OmniEggV19")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV20") or CoreGui:FindFirstChild("OmniEggV20")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
@@ -29,13 +31,13 @@ local ShipTarget = Vector3.new(923.21, 125.30, 32852.83)
 local SafeReturn = Vector3.new(2284.92, 15.39, 905.49)
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniEggV19"
+UI.Name = "OmniEggV20"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 150, 0, 35)
-Main.Position = UDim2.new(0.5, -75, 0, 15)
+Main.Size = UDim2.new(0, 160, 0, 35)
+Main.Position = UDim2.new(0.5, -80, 0, 15)
 Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -50,13 +52,30 @@ Stroke.Thickness = 1.8
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "GOLDEN GOD: OFF"
+Btn.Text = "AUTO HOP GOLD: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 10
 Btn.Parent = Main
 
+local function RegionHopServer()
+    local Api = "https://games.roblox.com/v1/games/" .. tostring(game.PlaceId) .. "/servers/Public?sortOrder=Desc&limit=100"
+    pcall(function()
+        local req = (request or http_request or (syn and syn.request))({Url = Api, Method = "GET"})
+        if req and req.StatusCode == 200 then
+            local data = HttpService:JSONDecode(req.Body).data
+            for _, v in pairs(data) do
+                if v.playing < v.maxPlayers - 1 and v.id ~= game.JobId then
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, LP)
+                    task.wait(2)
+                end
+            end
+        end
+    end)
+end
+
 local function SnipeGoldenForce()
+    local foundEgg = false
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("Model") or v:IsA("BasePart") then
             local name = string.lower(v.Name)
@@ -64,6 +83,7 @@ local function SnipeGoldenForce()
                 local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and targetPart and targetPart.Parent then
+                    foundEgg = true
                     local dist = (hrp.Position - targetPart.Position).Magnitude
                     local tInfo = TweenInfo.new(dist / 400, Enum.EasingStyle.Linear)
                     local tw = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
@@ -81,9 +101,11 @@ local function SnipeGoldenForce()
             end
         end
     end
+    return foundEgg
 end
 
 local function HitAndRunShip()
+    local foundInShip = false
     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         if currentTween then currentTween:Cancel() end
@@ -101,7 +123,7 @@ local function HitAndRunShip()
         
         local timer = 0
         while timer < 4 and getgenv().AutoEggUltra do
-            SnipeGoldenForce()
+            if SnipeGoldenForce() then foundInShip = true end
             task.wait(0.5)
             timer = timer + 0.5
         end
@@ -116,6 +138,7 @@ local function HitAndRunShip()
             end
         end
     end
+    return foundInShip
 end
 
 local function BypassTween(targetPos)
@@ -177,10 +200,10 @@ end)
 Btn.MouseButton1Click:Connect(function()
     getgenv().AutoEggUltra = not getgenv().AutoEggUltra
     if getgenv().AutoEggUltra then
-        Btn.Text = "GOLDEN GOD: ON"
+        Btn.Text = "AUTO HOP GOLD: ON"
         Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
     else
-        Btn.Text = "GOLDEN GOD: OFF"
+        Btn.Text = "AUTO HOP GOLD: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
@@ -195,6 +218,8 @@ task.spawn(function()
     while true do
         if getgenv().AutoEggUltra and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
             local remainingPoints = {}
+            local eggFoundInLoop = false
+            
             for _, p in ipairs(TweenPoints) do
                 table.insert(remainingPoints, p)
             end
@@ -210,7 +235,9 @@ task.spawn(function()
                     
                     local timer = 0
                     while timer < 4 and getgenv().AutoEggUltra do
-                        SnipeGoldenForce()
+                        if SnipeGoldenForce() then
+                            eggFoundInLoop = true
+                        end
                         task.wait(0.5)
                         timer = timer + 0.5
                     end
@@ -218,7 +245,16 @@ task.spawn(function()
             end
             
             if getgenv().AutoEggUltra then
-                HitAndRunShip()
+                if HitAndRunShip() then
+                    eggFoundInLoop = true
+                end
+            end
+            
+            if not eggFoundInLoop and getgenv().AutoEggUltra then
+                Btn.Text = "HOPPING SERVER..."
+                Btn.TextColor3 = Color3.fromRGB(150, 0, 255)
+                RegionHopServer()
+                task.wait(5)
             end
         end
         task.wait(1)
