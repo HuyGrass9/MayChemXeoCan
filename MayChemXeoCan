@@ -5,7 +5,7 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV17") or CoreGui:FindFirstChild("OmniEggV17")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV19") or CoreGui:FindFirstChild("OmniEggV19")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
@@ -13,22 +13,23 @@ getgenv().IsTweening = false
 local currentTween = nil
 
 local TweenPoints = {
-    Vector3.new(-3800, 20, -5300),
-    Vector3.new(1030, 140, -4850),
-    Vector3.new(-2200, 70, -2500),
-    Vector3.new(3897.67, 13.59, -3543.17),
-    Vector3.new(6721.07, 294.63, -6970.51),
-    Vector3.new(4800, 20, 2850),
-    Vector3.new(-382, 73, 298),
-    Vector3.new(-3186.04, 298.91, -10584.57),
-    Vector3.new(-5698.84, 126.27, -734.21)
+    Vector3.new(3844.10, 14.89, -3479.50),
+    Vector3.new(-3160.95, 298.91, -10516.68),
+    Vector3.new(-5627.17, 98.71, -5061.74),
+    Vector3.new(990.75, 429.66, -5156.78),
+    Vector3.new(-1836.64, 46.04, 1364.83),
+    Vector3.new(-5715.80, 126.27, -731.73),
+    Vector3.new(-355.07, 373.70, 700.55),
+    Vector3.new(6749.66, 294.63, -6962.42),
+    Vector3.new(-369.34, 149.46, 290.84),
+    Vector3.new(793.39, 122.09, 1050.24)
 }
 
-local ShipTarget = Vector3.new(920.27, 125.30, 32844.54)
-local SafeReturn = Vector3.new(2293.10, 27.13, 910.90)
+local ShipTarget = Vector3.new(923.21, 125.30, 32852.83)
+local SafeReturn = Vector3.new(2284.92, 15.39, 905.49)
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniEggV17"
+UI.Name = "OmniEggV19"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
@@ -43,35 +44,35 @@ Main.Parent = UI
 
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 4)
 local Stroke = Instance.new("UIStroke", Main)
-Stroke.Color = Color3.fromRGB(0, 255, 170)
+Stroke.Color = Color3.fromRGB(255, 215, 0)
 Stroke.Thickness = 1.8
 
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "PERFECT ROUTE: OFF"
+Btn.Text = "GOLDEN GOD: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 10
 Btn.Parent = Main
 
-local function SnipeAllEggs()
+local function SnipeGoldenForce()
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("Model") or v:IsA("BasePart") then
             local name = string.lower(v.Name)
-            if string.find(name, "egg") and not string.find(name, "legg") then
+            if string.find(name, "golden") and string.find(name, "egg") then
                 local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and targetPart and targetPart.Parent then
                     local dist = (hrp.Position - targetPart.Position).Magnitude
-                    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
+                    local tInfo = TweenInfo.new(dist / 400, Enum.EasingStyle.Linear)
                     local tw = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
                     tw:Play()
                     local timeout = 0
-                    while getgenv().AutoEggUltra and targetPart and targetPart.Parent and timeout < 20 do
+                    while getgenv().AutoEggUltra and targetPart and targetPart.Parent and timeout < 25 do
                         local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                         if not currentHrp then break end
-                        if (currentHrp.Position - targetPart.Position).Magnitude < 15 then break end
+                        if (currentHrp.Position - targetPart.Position).Magnitude < 10 then break end
                         task.wait(0.1)
                         timeout = timeout + 1
                     end
@@ -89,8 +90,8 @@ local function HitAndRunShip()
         getgenv().IsTweening = false
         
         local plat = Instance.new("Part")
-        plat.Size = Vector3.new(200, 2, 200)
-        plat.CFrame = CFrame.new(ShipTarget - Vector3.new(0, 5, 0))
+        plat.Size = Vector3.new(300, 2, 300)
+        plat.CFrame = CFrame.new(ShipTarget - Vector3.new(0, 6, 0))
         plat.Anchored = true
         plat.Transparency = 1
         plat.Parent = Workspace
@@ -99,11 +100,10 @@ local function HitAndRunShip()
         task.wait(0.5)
         
         local timer = 0
-        while timer < 5 and getgenv().AutoEggUltra do
-            hrp.CFrame = CFrame.new(ShipTarget)
-            SnipeAllEggs()
-            task.wait(1)
-            timer = timer + 1
+        while timer < 4 and getgenv().AutoEggUltra do
+            SnipeGoldenForce()
+            task.wait(0.5)
+            timer = timer + 0.5
         end
         
         plat:Destroy()
@@ -177,10 +177,10 @@ end)
 Btn.MouseButton1Click:Connect(function()
     getgenv().AutoEggUltra = not getgenv().AutoEggUltra
     if getgenv().AutoEggUltra then
-        Btn.Text = "PERFECT ROUTE: ON"
-        Btn.TextColor3 = Color3.fromRGB(0, 255, 170)
+        Btn.Text = "GOLDEN GOD: ON"
+        Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
     else
-        Btn.Text = "PERFECT ROUTE: OFF"
+        Btn.Text = "GOLDEN GOD: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
@@ -208,11 +208,11 @@ task.spawn(function()
                     table.remove(remainingPoints, index)
                     BypassTween(targetPos + Vector3.new(0, 45, 0))
                     
-                    local t = 0
-                    while t < 5 and getgenv().AutoEggUltra do
-                        SnipeAllEggs()
-                        task.wait(1)
-                        t = t + 1
+                    local timer = 0
+                    while timer < 4 and getgenv().AutoEggUltra do
+                        SnipeGoldenForce()
+                        task.wait(0.5)
+                        timer = timer + 0.5
                     end
                 end
             end
