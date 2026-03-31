@@ -5,7 +5,7 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniGoldenV11") or CoreGui:FindFirstChild("OmniGoldenV11")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("OmniEggV12") or CoreGui:FindFirstChild("OmniEggV12")
 if oldUI then oldUI:Destroy() end
 
 getgenv().AutoEggUltra = false
@@ -25,7 +25,7 @@ local ShipTarget = Vector3.new(920.27, 125.30, 32844.54)
 local SafeReturn = Vector3.new(2293.10, 27.13, 910.90)
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "OmniGoldenV11"
+UI.Name = "OmniEggV12"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
@@ -40,56 +40,23 @@ Main.Parent = UI
 
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 4)
 local Stroke = Instance.new("UIStroke", Main)
-Stroke.Color = Color3.fromRGB(255, 215, 0)
+Stroke.Color = Color3.fromRGB(0, 255, 170)
 Stroke.Thickness = 1.8
 
 local Btn = Instance.new("TextButton")
 Btn.Size = UDim2.new(1, 0, 1, 0)
 Btn.BackgroundTransparency = 1
-Btn.Text = "OMNI V11: OFF"
+Btn.Text = "OMNI V12: OFF"
 Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
 Btn.Font = Enum.Font.GothamBlack
 Btn.TextSize = 11
 Btn.Parent = Main
 
-local function ManageESP()
-    if getgenv().AutoEggUltra then
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("Model") or v:IsA("BasePart") then
-                local name = string.lower(v.Name)
-                if string.find(name, "egg") and not string.find(name, "legg") then
-                    local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
-                    if targetPart and not targetPart:FindFirstChild("OmniESP") then
-                        local hl = Instance.new("Highlight")
-                        hl.Name = "OmniESP"
-                        hl.FillTransparency = 0.4
-                        hl.OutlineTransparency = 0
-                        if string.find(name, "golden") then
-                            hl.FillColor = Color3.fromRGB(255, 215, 0)
-                            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        else
-                            hl.FillColor = Color3.fromRGB(0, 255, 170)
-                            hl.OutlineColor = Color3.fromRGB(0, 0, 0)
-                        end
-                        hl.Parent = targetPart
-                    end
-                end
-            end
-        end
-    else
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("Highlight") and v.Name == "OmniESP" then
-                v:Destroy()
-            end
-        end
-    end
-end
-
-local function AbsoluteGoldenSnipe()
+local function SnipeAllEggs()
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("Model") or v:IsA("BasePart") then
             local name = string.lower(v.Name)
-            if string.find(name, "golden") and string.find(name, "egg") then
+            if string.find(name, "egg") and not string.find(name, "legg") then
                 local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
                 local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and targetPart and targetPart.Parent then
@@ -131,7 +98,7 @@ local function HitAndRunShip()
         local timer = 0
         while timer < 5 and getgenv().AutoEggUltra do
             hrp.CFrame = CFrame.new(ShipTarget)
-            AbsoluteGoldenSnipe()
+            SnipeAllEggs()
             task.wait(1)
             timer = timer + 1
         end
@@ -207,24 +174,17 @@ end)
 Btn.MouseButton1Click:Connect(function()
     getgenv().AutoEggUltra = not getgenv().AutoEggUltra
     if getgenv().AutoEggUltra then
-        Btn.Text = "OMNI V11: ON"
-        Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
+        Btn.Text = "OMNI V12: ON"
+        Btn.TextColor3 = Color3.fromRGB(0, 255, 170)
     else
-        Btn.Text = "OMNI V11: OFF"
+        Btn.Text = "OMNI V12: OFF"
         Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
         if currentTween then currentTween:Cancel() end
         getgenv().IsTweening = false
-        ManageESP()
         if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
             local bv = LP.Character.HumanoidRootPart:FindFirstChild("OmniBV")
             if bv then bv:Destroy() end
         end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        ManageESP()
     end
 end)
 
@@ -247,7 +207,7 @@ task.spawn(function()
                     
                     local t = 0
                     while t < 5 and getgenv().AutoEggUltra do
-                        AbsoluteGoldenSnipe()
+                        SnipeAllEggs()
                         task.wait(1)
                         t = t + 1
                     end
