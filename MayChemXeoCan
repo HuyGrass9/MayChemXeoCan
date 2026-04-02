@@ -1,5 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VIM = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
 pcall(function()
@@ -19,7 +21,7 @@ local function MayChemXeoCan_UltimatePvP(character)
                 end
             elseif string.find(name, "busy") or string.find(name, "cant") then
                 task.spawn(function()
-                    task.wait(0.1)
+                    task.wait(0.02)
                     if v.Parent and v:IsA("BoolValue") then
                         v.Value = false
                     end
@@ -40,8 +42,8 @@ end)
 RunService.RenderStepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
-        if hum and hum.WalkSpeed < 16 and hum.WalkSpeed > 0 then
-            hum.WalkSpeed = 16
+        if hum and hum.WalkSpeed < 35 and hum.WalkSpeed > 0 then
+            hum.WalkSpeed = 35
         end
         
         for _, v in pairs(LP.Character:GetChildren()) do
@@ -49,5 +51,63 @@ RunService.RenderStepped:Connect(function()
                 v.Value = false
             end
         end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.5) do
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = plr.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(12, 12, 12)
+                hrp.Transparency = 0.8
+                hrp.CanCollide = false
+            end
+        end
+    end
+end)
+
+local function ExecuteYoruMacro()
+    if LP.Character and LP.Character:FindFirstChild("Dark Blade") then
+        task.wait(0.05)
+        VIM:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.X then
+        ExecuteYoruMacro()
+    end
+end)
+
+task.spawn(function()
+    while task.wait(2) do
+        pcall(function()
+            local mainGui = LP.PlayerGui:FindFirstChild("Main")
+            if mainGui then
+                for _, v in pairs(mainGui:GetDescendants()) do
+                    if v:IsA("TextButton") or v:IsA("ImageButton") then
+                        local isXButton = false
+                        if v.Name == "X" then isXButton = true end
+                        if v:IsA("TextLabel") and v.Text == "X" then isXButton = true end
+                        local txtLabel = v:FindFirstChildOfClass("TextLabel")
+                        if txtLabel and txtLabel.Text == "X" then isXButton = true end
+                        
+                        if isXButton and not v:FindFirstChild("MayChemMacroAttached") then
+                            local tag = Instance.new("BoolValue")
+                            tag.Name = "MayChemMacroAttached"
+                            tag.Parent = v
+                            
+                            v.MouseButton1Click:Connect(ExecuteYoruMacro)
+                            if v.TouchTap then
+                                v.TouchTap:Connect(ExecuteYoruMacro)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
     end
 end)
