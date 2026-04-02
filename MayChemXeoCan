@@ -10,17 +10,36 @@ pcall(function()
     end
 end)
 
-local function MayChemXeoCan_Core(character)
+local function MayChemXeoCan_IsHolding(char)
+    if not char then return false end
+    if char:FindFirstChild("Charging") or char:FindFirstChild("Holding") or char:FindFirstChild("UsingSkill") then 
+        return true 
+    end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool and (tool:FindFirstChild("Charging") or tool:FindFirstChild("Holding")) then
+        return true
+    end
+    return false
+end
+
+local function MayChemXeoCan_PerfectCore(character)
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
-            if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "stun") then
+            
+            if string.find(name, "stun") then
+                v:Destroy()
+                
+            elseif string.find(name, "busy") or string.find(name, "cant") then
                 task.spawn(function()
-                    while v and v.Parent do
-                        if v:IsA("BoolValue") then
-                            v.Value = false
-                        end
+                    task.wait(0.045)
+                    
+                    while character and character.Parent and MayChemXeoCan_IsHolding(character) do
                         task.wait(0.01)
+                    end
+                    
+                    if v and v.Parent and v:IsA("BoolValue") then
+                        v.Value = false
                     end
                 end)
             end
@@ -28,13 +47,12 @@ local function MayChemXeoCan_Core(character)
     end)
 end
 
-if LP.Character then MayChemXeoCan_Core(LP.Character) end
-LP.CharacterAdded:Connect(MayChemXeoCan_Core)
+if LP.Character then MayChemXeoCan_PerfectCore(LP.Character) end
+LP.CharacterAdded:Connect(MayChemXeoCan_PerfectCore)
 
 RunService.RenderStepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
-        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
         
         if hum then
             if hum.WalkSpeed < 32 and hum.WalkSpeed > 0 then
@@ -46,8 +64,8 @@ RunService.RenderStepped:Connect(function()
         end
         
         for _, v in pairs(LP.Character:GetChildren()) do
-            if v:IsA("BoolValue") and (string.find(string.lower(v.Name), "stun") or string.find(string.lower(v.Name), "busy")) then
-                v.Value = false
+            if string.find(string.lower(v.Name), "stun") then
+                v:Destroy()
             end
         end
         
@@ -58,14 +76,24 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-local settings = UserInputService
-settings.MouseDeltaSensitivity = 1.2
+local MayChemXeoCan_Settings = UserInputService
+MayChemXeoCan_Settings.MouseDeltaSensitivity = 1.2
 
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(0.5) do
         pcall(function()
             if LP.Character and LP.Character:FindFirstChild("Humanoid") then
                 LP.Character.Humanoid.AutoRotate = true
+            end
+            
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = plr.Character.HumanoidRootPart
+                    hrp.Size = Vector3.new(14, 14, 14)
+                    hrp.Transparency = 1
+                    hrp.CanCollide = false
+                    hrp.Massless = true
+                end
             end
         end)
     end
