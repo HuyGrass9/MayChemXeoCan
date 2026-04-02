@@ -28,7 +28,12 @@ local function MayChemXeoCan_PerfectCore(character)
             local name = string.lower(v.Name)
             
             if string.find(name, "stun") then
-                v:Destroy()
+                task.spawn(function()
+                    task.wait(0.01)
+                    if v and v.Parent and v:IsA("BoolValue") then
+                        v.Value = false
+                    end
+                end)
                 
             elseif string.find(name, "busy") or string.find(name, "cant") then
                 task.spawn(function()
@@ -64,8 +69,8 @@ RunService.RenderStepped:Connect(function()
         end
         
         for _, v in pairs(LP.Character:GetChildren()) do
-            if string.find(string.lower(v.Name), "stun") then
-                v:Destroy()
+            if v:IsA("BoolValue") and string.find(string.lower(v.Name), "stun") and v.Value == true then
+                v.Value = false
             end
         end
         
