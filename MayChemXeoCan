@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local VIM = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
 pcall(function()
@@ -9,6 +8,8 @@ pcall(function()
         setfpscap(120)
     end
 end)
+
+getgenv().MayChem_IsAiming = false
 
 local function MayChemXeoCan_UltimatePvP(character)
     character.ChildAdded:Connect(function(v)
@@ -39,9 +40,42 @@ LP.CharacterAdded:Connect(function(newChar)
     MayChemXeoCan_UltimatePvP(newChar)
 end)
 
+local function GetNearestTarget()
+    local dist = math.huge
+    local target = nil
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local mag = (hrp.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+                if mag < 150 and mag < dist then
+                    dist = mag
+                    target = plr.Character.HumanoidRootPart
+                end
+            end
+        end
+    end
+    return target
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        getgenv().MayChem_IsAiming = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        getgenv().MayChem_IsAiming = false
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
+        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+        
         if hum and hum.WalkSpeed < 35 and hum.WalkSpeed > 0 then
             hum.WalkSpeed = 35
         end
@@ -51,92 +85,13 @@ RunService.RenderStepped:Connect(function()
                 v.Value = false
             end
         end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = plr.Character.HumanoidRootPart
-                hrp.Size = Vector3.new(20, 20, 20)
-                hrp.Transparency = 0.8
-                hrp.CanCollide = false
-                hrp.Massless = true
+        
+        if getgenv().MayChem_IsAiming and hrp then
+            local targetHrp = GetNearestTarget()
+            if targetHrp then
+                local lookPos = Vector3.new(targetHrp.Position.X, hrp.Position.Y, targetHrp.Position.Z)
+                hrp.CFrame = CFrame.new(hrp.Position, lookPos)
             end
         end
-    end
-end)
-
-local function GetMobileSkillButton(keyName)
-    local main = LP.PlayerGui:FindFirstChild("Main")
-    if main then
-        for _, v in pairs(main:GetDescendants()) do
-            if v:IsA("TextLabel") and (v.Text == keyName or string.find(v.Text, "^" .. keyName)) then
-                local parent = v.Parent
-                while parent and parent ~= main do
-                    if parent:IsA("ImageButton") or parent:IsA("TextButton") then
-                        return parent
-                    end
-                    parent = parent.Parent
-                end
-            end
-        end
-    end
-    return nil
-end
-
-local function AutoCastZ()
-    local zBtn = GetMobileSkillButton("Z")
-    if zBtn then
-        pcall(function()
-            if getconnections then
-                for _, conn in pairs(getconnections(zBtn.Activated)) do conn:Function() end
-                for _, conn in pairs(getconnections(zBtn.MouseButton1Click)) do conn:Function() end
-                for _, conn in pairs(getconnections(zBtn.TouchTap)) do conn:Function() end
-            end
-        end)
-        
-        local absPos = zBtn.AbsolutePosition
-        local absSize = zBtn.AbsoluteSize
-        local centerX = absPos.X + (absSize.X / 2)
-        local centerY = absPos.Y + (absSize.Y / 2) + 36
-        
-        VIM:SendTouchTapEvent(centerX, centerY, false, game)
-        task.wait(0.05)
-        VIM:SendTouchTapEvent(centerX, centerY, true, game)
-    end
-    
-    VIM:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
-    task.wait(0.05)
-    VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
-end
-
-task.spawn(function()
-    while task.wait(1) do
-        pcall(function()
-            local xBtn = GetMobileSkillButton("X")
-            if xBtn and not xBtn:FindFirstChild("MayChemMacroX") then
-                local tag = Instance.new("BoolValue")
-                tag.Name = "MayChemMacroX"
-                tag.Parent = xBtn
-                
-                local function OnXTriggered()
-                    local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
-                    if tool and (tool.Name == "Dark Blade" or string.find(tool.Name, "Yoru")) then
-                        task.spawn(function()
-                            task.wait(0.12)
-                            AutoCastZ()
-                        end)
-                    end
-                end
-                
-                xBtn.Activated:Connect(OnXTriggered)
-                xBtn.MouseButton1Click:Connect(OnXTriggered)
-                if xBtn.TouchTap then
-                    xBtn.TouchTap:Connect(OnXTriggered)
-                end
-            end
-        end)
     end
 end)
