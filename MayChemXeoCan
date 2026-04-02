@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
 pcall(function()
@@ -9,22 +10,17 @@ pcall(function()
     end
 end)
 
-getgenv().MayChem_IsAiming = false
-
-local function MayChemXeoCan_UltimatePvP(character)
+local function MayChemXeoCan_Core(character)
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
-            if string.find(name, "stun") then
-                RunService.Heartbeat:Wait()
-                if v.Parent and v:IsA("BoolValue") then
-                    v.Value = false
-                end
-            elseif string.find(name, "busy") or string.find(name, "cant") then
+            if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "stun") then
                 task.spawn(function()
-                    task.wait(0.02)
-                    if v.Parent and v:IsA("BoolValue") then
-                        v.Value = false
+                    while v and v.Parent do
+                        if v:IsA("BoolValue") then
+                            v.Value = false
+                        end
+                        task.wait(0.01)
                     end
                 end)
             end
@@ -32,66 +28,45 @@ local function MayChemXeoCan_UltimatePvP(character)
     end)
 end
 
-if LP.Character then
-    MayChemXeoCan_UltimatePvP(LP.Character)
-end
-
-LP.CharacterAdded:Connect(function(newChar)
-    MayChemXeoCan_UltimatePvP(newChar)
-end)
-
-local function GetNearestTarget()
-    local dist = math.huge
-    local target = nil
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-            local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local mag = (hrp.Position - plr.Character.HumanoidRootPart.Position).Magnitude
-                if mag < 150 and mag < dist then
-                    dist = mag
-                    target = plr.Character.HumanoidRootPart
-                end
-            end
-        end
-    end
-    return target
-end
-
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        getgenv().MayChem_IsAiming = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gp)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        getgenv().MayChem_IsAiming = false
-    end
-end)
+if LP.Character then MayChemXeoCan_Core(LP.Character) end
+LP.CharacterAdded:Connect(MayChemXeoCan_Core)
 
 RunService.RenderStepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
         local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
         
-        if hum and hum.WalkSpeed < 35 and hum.WalkSpeed > 0 then
-            hum.WalkSpeed = 35
+        if hum then
+            if hum.WalkSpeed < 32 and hum.WalkSpeed > 0 then
+                hum.WalkSpeed = 32
+            end
+            if hum.JumpPower < 65 then
+                hum.JumpPower = 65
+            end
         end
         
         for _, v in pairs(LP.Character:GetChildren()) do
-            if v:IsA("BoolValue") and string.find(string.lower(v.Name), "stun") and v.Value == true then
+            if v:IsA("BoolValue") and (string.find(string.lower(v.Name), "stun") or string.find(string.lower(v.Name), "busy")) then
                 v.Value = false
             end
         end
         
-        if getgenv().MayChem_IsAiming and hrp then
-            local targetHrp = GetNearestTarget()
-            if targetHrp then
-                local lookPos = Vector3.new(targetHrp.Position.X, hrp.Position.Y, targetHrp.Position.Z)
-                hrp.CFrame = CFrame.new(hrp.Position, lookPos)
-            end
+        local cam = Workspace.CurrentCamera
+        if cam then
+            cam.FieldOfView = 80
         end
+    end
+end)
+
+local settings = UserInputService
+settings.MouseDeltaSensitivity = 1.2
+
+task.spawn(function()
+    while task.wait(1) do
+        pcall(function()
+            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+                LP.Character.Humanoid.AutoRotate = true
+            end
+        end)
     end
 end)
