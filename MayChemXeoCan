@@ -8,36 +8,19 @@ pcall(function()
     end
 end)
 
-local function MayChemXeoCan_IsHolding(char)
-    if not char then return false end
-    if char:FindFirstChild("Charging") then return true end
-    if char:FindFirstChild("Holding") then return true end
-    if char:FindFirstChild("UsingSkill") then return true end
-    
-    local tool = char:FindFirstChildOfClass("Tool")
-    if tool then
-        if tool:FindFirstChild("Charging") or tool:FindFirstChild("Holding") then
-            return true
-        end
-    end
-    return false
-end
-
-local function MayChemXeoCan_PerfectPvP(character)
+local function MayChemXeoCan_UltimatePvP(character)
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
-            if string.find(name, "busy") or string.find(name, "stun") or string.find(name, "cant") then
+            if string.find(name, "stun") then
+                RunService.Heartbeat:Wait()
+                if v.Parent and v:IsA("BoolValue") then
+                    v.Value = false
+                end
+            elseif string.find(name, "busy") or string.find(name, "cant") then
                 task.spawn(function()
-                    task.wait(0.05)
-                    
-                    while character and character.Parent and v and v.Parent and MayChemXeoCan_IsHolding(character) do
-                        task.wait(0.01)
-                    end
-                    
-                    task.wait(0.05)
-                    
-                    if v and v.Parent and v:IsA("BoolValue") then
+                    task.wait(0.1)
+                    if v.Parent and v:IsA("BoolValue") then
                         v.Value = false
                     end
                 end)
@@ -47,19 +30,23 @@ local function MayChemXeoCan_PerfectPvP(character)
 end
 
 if LP.Character then
-    MayChemXeoCan_PerfectPvP(LP.Character)
+    MayChemXeoCan_UltimatePvP(LP.Character)
 end
 
 LP.CharacterAdded:Connect(function(newChar)
-    MayChemXeoCan_PerfectPvP(newChar)
+    MayChemXeoCan_UltimatePvP(newChar)
 end)
 
-RunService.Stepped:Connect(function()
+RunService.RenderStepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
         if hum and hum.WalkSpeed < 16 and hum.WalkSpeed > 0 then
-            if not MayChemXeoCan_IsHolding(LP.Character) then
-                hum.WalkSpeed = 16
+            hum.WalkSpeed = 16
+        end
+        
+        for _, v in pairs(LP.Character:GetChildren()) do
+            if v:IsA("BoolValue") and string.find(string.lower(v.Name), "stun") and v.Value == true then
+                v.Value = false
             end
         end
     end
