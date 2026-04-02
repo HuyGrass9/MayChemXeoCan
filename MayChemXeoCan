@@ -1,18 +1,25 @@
 local Players = game:GetService("Players")
 local Stats = game:GetService("Stats")
+local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
+
+pcall(function()
+    if setfpscap then
+        setfpscap(120)
+    end
+end)
 
 local function GetOptimalDelay()
     local ping = 50
     pcall(function()
         ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
     end)
-    return math.clamp(0.02 + (ping / 1000) * 0.15, 0.02, 0.08)
+    return math.clamp(0.015 + (ping / 1000) * 0.1, 0.015, 0.07)
 end
 
 local function MayChemXeoCan_IsHolding(char)
     if not char then return false end
-    local holdTags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power"}
+    local holdTags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power", "Action"}
     
     for _, tag in ipairs(holdTags) do
         if char:FindFirstChild(tag) then return true end
@@ -28,8 +35,6 @@ local function MayChemXeoCan_IsHolding(char)
 end
 
 local function MayChemXeoCan_GodMacro(character)
-    local hum = character:WaitForChild("Humanoid", 5)
-    
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
@@ -40,24 +45,11 @@ local function MayChemXeoCan_GodMacro(character)
                     task.wait(delay)
                     
                     while character and character.Parent and MayChemXeoCan_IsHolding(character) do
-                        task.wait(0.01)
+                        RunService.Heartbeat:Wait()
                     end
                     
                     if v and v.Parent and v:IsA("BoolValue") then
                         v.Value = false
-                    end
-                    
-                    if hum and hum.WalkSpeed < 16 then
-                        local isStunned = false
-                        for _, tag in pairs(character:GetChildren()) do
-                            if tag:IsA("BoolValue") and string.find(string.lower(tag.Name), "stun") and tag.Value == true then
-                                isStunned = true
-                                break
-                            end
-                        end
-                        if not isStunned then
-                            hum.WalkSpeed = 16
-                        end
                     end
                 end)
             end
@@ -67,3 +59,21 @@ end
 
 if LP.Character then MayChemXeoCan_GodMacro(LP.Character) end
 LP.CharacterAdded:Connect(MayChemXeoCan_GodMacro)
+
+RunService.RenderStepped:Connect(function()
+    if LP.Character then
+        local hum = LP.Character:FindFirstChild("Humanoid")
+        if hum and hum.WalkSpeed < 16 then
+            local isStunned = false
+            for _, tag in pairs(LP.Character:GetChildren()) do
+                if tag:IsA("BoolValue") and string.find(string.lower(tag.Name), "stun") and tag.Value == true then
+                    isStunned = true
+                    break
+                end
+            end
+            if not isStunned and not MayChemXeoCan_IsHolding(LP.Character) then
+                hum.WalkSpeed = 16
+            end
+        end
+    end
+end)
