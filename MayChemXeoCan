@@ -1,12 +1,12 @@
 local Players = game:GetService("Players")
 local Stats = game:GetService("Stats")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VIM = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
 pcall(function()
-    if setfpscap then
-        setfpscap(120)
-    end
+    if setfpscap then setfpscap(120) end
 end)
 
 local function GetOptimalDelay()
@@ -14,7 +14,7 @@ local function GetOptimalDelay()
     pcall(function()
         ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
     end)
-    return math.clamp(0.015 + (ping / 1000) * 0.1, 0.015, 0.07)
+    return math.clamp(0.015 + (ping / 1000) * 0.1, 0.015, 0.06)
 end
 
 local function MayChemXeoCan_IsHolding(char)
@@ -34,7 +34,12 @@ local function MayChemXeoCan_IsHolding(char)
     return false
 end
 
-local function MayChemXeoCan_GodMacro(character)
+local function MayChemXeoCan_ApexPvP(character)
+    if character:FindFirstChild("Humanoid") then
+        character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+    end
+
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
@@ -57,8 +62,8 @@ local function MayChemXeoCan_GodMacro(character)
     end)
 end
 
-if LP.Character then MayChemXeoCan_GodMacro(LP.Character) end
-LP.CharacterAdded:Connect(MayChemXeoCan_GodMacro)
+if LP.Character then MayChemXeoCan_ApexPvP(LP.Character) end
+LP.CharacterAdded:Connect(MayChemXeoCan_ApexPvP)
 
 RunService.RenderStepped:Connect(function()
     if LP.Character then
@@ -75,5 +80,64 @@ RunService.RenderStepped:Connect(function()
                 hum.WalkSpeed = 16
             end
         end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.5) do
+        pcall(function()
+            local touchGui = LP.PlayerGui:FindFirstChild("TouchGui")
+            if touchGui then
+                local jumpBtn = touchGui:FindFirstChild("JumpButton", true)
+                if jumpBtn and not jumpBtn:FindFirstChild("MayChemFastJump") then
+                    local tag = Instance.new("BoolValue")
+                    tag.Name = "MayChemFastJump"
+                    tag.Parent = jumpBtn
+                    
+                    jumpBtn.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+                                LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                            end
+                        end
+                    end)
+                end
+            end
+
+            local mainGui = LP.PlayerGui:FindFirstChild("Main")
+            if mainGui then
+                for _, v in pairs(mainGui:GetDescendants()) do
+                    if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("ImageButton") then
+                        local text = string.lower(v.Name)
+                        if v:IsA("TextLabel") then text = string.lower(v.Text) end
+                        
+                        local keyToPress = nil
+                        if string.find(text, "dash") then keyToPress = Enum.KeyCode.Q
+                        elseif string.find(text, "flash") or string.find(text, "soru") or string.find(text, "step") then keyToPress = Enum.KeyCode.R
+                        end
+                        
+                        if keyToPress then
+                            local btn = v
+                            if not btn:IsA("GuiButton") then btn = btn.Parent end
+                            
+                            if btn and btn:IsA("GuiButton") and not btn:FindFirstChild("MayChemFastTrigger") then
+                                local tag = Instance.new("BoolValue")
+                                tag.Name = "MayChemFastTrigger"
+                                tag.Parent = btn
+                                
+                                local function FireInstantly()
+                                    VIM:SendKeyEvent(true, keyToPress, false, game)
+                                    task.wait(0.01)
+                                    VIM:SendKeyEvent(false, keyToPress, false, game)
+                                end
+                                
+                                btn.MouseButton1Down:Connect(FireInstantly)
+                                if btn.TouchTap then btn.TouchTap:Connect(FireInstantly) end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
     end
 end)
