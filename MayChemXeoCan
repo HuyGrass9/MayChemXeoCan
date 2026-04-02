@@ -1,57 +1,8 @@
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
-
-local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCanPvP") or CoreGui:FindFirstChild("MayChemXeoCanPvP")
-if oldUI then oldUI:Destroy() end
-
-getgenv().MayChemXeoCan_FPS = false
-getgenv().MayChemXeoCan_FastSkill = false
-
-local UI = Instance.new("ScreenGui")
-UI.Name = "MayChemXeoCanPvP"
-UI.ResetOnSpawn = false
-UI.Parent = pcall(gethui) and gethui() or CoreGui
-
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 160, 0, 75)
-Main.Position = UDim2.new(0.5, 90, 0, 15)
-Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Draggable = true
-Main.Parent = UI
-
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 4)
-local Stroke = Instance.new("UIStroke", Main)
-Stroke.Color = Color3.fromRGB(255, 0, 80)
-Stroke.Thickness = 1.8
-
-local ListLayout = Instance.new("UIListLayout", Main)
-ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ListLayout.Padding = UDim.new(0, 5)
-ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-local function CreateBtn(name, text)
-    local Btn = Instance.new("TextButton")
-    Btn.Name = name
-    Btn.Size = UDim2.new(1, -10, 0, 30)
-    Btn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    Btn.Text = text .. ": OFF"
-    Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
-    Btn.Font = Enum.Font.GothamBlack
-    Btn.TextSize = 10
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
-    Btn.Parent = Main
-    return Btn
-end
-
-local BtnFPS = CreateBtn("BtnFPS", "MAX FPS & NO VFX")
-local BtnFastSkill = CreateBtn("BtnFastSkill", "SMOOTH SKILL MOBILE")
 
 local function OptimizeGraphics()
     Lighting.GlobalShadows = false
@@ -87,49 +38,47 @@ local function OptimizeGraphics()
 end
 
 Workspace.DescendantAdded:Connect(function(v)
-    if getgenv().MayChemXeoCan_FPS then
-        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
-            v.Material = Enum.Material.SmoothPlastic
-            v.Reflectance = 0
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-            v.Lifetime = NumberRange.new(0)
-        elseif v:IsA("Explosion") then
-            v.Visible = false
-        end
+    if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+        v.Material = Enum.Material.SmoothPlastic
+        v.Reflectance = 0
+    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+        v.Lifetime = NumberRange.new(0)
+    elseif v:IsA("Explosion") then
+        v.Visible = false
     end
 end)
 
-BtnFPS.MouseButton1Click:Connect(function()
-    getgenv().MayChemXeoCan_FPS = not getgenv().MayChemXeoCan_FPS
-    if getgenv().MayChemXeoCan_FPS then
-        BtnFPS.Text = "MAX FPS & NO VFX: ON"
-        BtnFPS.TextColor3 = Color3.fromRGB(0, 255, 170)
-        task.spawn(OptimizeGraphics)
-    else
-        BtnFPS.Text = "MAX FPS & NO VFX: OFF"
-        BtnFPS.TextColor3 = Color3.fromRGB(255, 80, 80)
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    if getgenv().MayChemXeoCan_FastSkill and LP.Character then
-        for _, v in pairs(LP.Character:GetChildren()) do
-            if v:IsA("BoolValue") and (v.Name == "Busy" or v.Name == "Stun" or v.Name == "Stunned") then
-                if v.Value == true then
-                    v.Value = false
-                end
+local function HookAntiStun(character)
+    character.ChildAdded:Connect(function(v)
+        if v:IsA("BoolValue") or v:IsA("StringValue") then
+            local name = string.lower(v.Name)
+            if string.find(name, "busy") or string.find(name, "stun") or string.find(name, "cant") then
+                task.spawn(function()
+                    task.wait(0.15)
+                    if v.Parent and v:IsA("BoolValue") then
+                        v.Value = false
+                    end
+                end)
             end
         end
+    end)
+end
+
+if LP.Character then
+    HookAntiStun(LP.Character)
+end
+
+LP.CharacterAdded:Connect(function(newChar)
+    HookAntiStun(newChar)
+end)
+
+RunService.Stepped:Connect(function()
+    if LP.Character then
+        local hum = LP.Character:FindFirstChild("Humanoid")
+        if hum and hum.WalkSpeed < 16 and hum.WalkSpeed > 0 then
+            hum.WalkSpeed = 16
+        end
     end
 end)
 
-BtnFastSkill.MouseButton1Click:Connect(function()
-    getgenv().MayChemXeoCan_FastSkill = not getgenv().MayChemXeoCan_FastSkill
-    if getgenv().MayChemXeoCan_FastSkill then
-        BtnFastSkill.Text = "SMOOTH SKILL: ON"
-        BtnFastSkill.TextColor3 = Color3.fromRGB(150, 0, 255)
-    else
-        BtnFastSkill.Text = "SMOOTH SKILL: OFF"
-        BtnFastSkill.TextColor3 = Color3.fromRGB(255, 80, 80)
-    end
-end)
+task.spawn(OptimizeGraphics)
