@@ -1,41 +1,24 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCanUI") or CoreGui:FindFirstChild("MayChemXeoCanUI")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCanPvP") or CoreGui:FindFirstChild("MayChemXeoCanPvP")
 if oldUI then oldUI:Destroy() end
 
-getgenv().MayChemXeoCan_Auto = true
-getgenv().IsTweening = false
-local currentTween = nil
-
-local TweenPoints = {
-    Vector3.new(3844.10, 14.89, -3479.50),
-    Vector3.new(-3160.95, 298.91, -10516.68),
-    Vector3.new(-5627.17, 98.71, -5061.74),
-    Vector3.new(990.75, 429.66, -5156.78),
-    Vector3.new(-1836.64, 46.04, 1364.83),
-    Vector3.new(-5715.80, 126.27, -731.73),
-    Vector3.new(-355.07, 373.70, 700.55),
-    Vector3.new(6749.66, 294.63, -6962.42),
-    Vector3.new(-369.34, 149.46, 290.84),
-    Vector3.new(793.39, 122.09, 1050.24)
-}
-
-local ShipTarget = Vector3.new(923.21, 125.30, 32852.83)
-local SafeReturn = Vector3.new(2284.92, 15.39, 905.49)
+getgenv().MayChemXeoCan_FPS = false
+getgenv().MayChemXeoCan_FastSkill = false
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "MayChemXeoCanUI"
+UI.Name = "MayChemXeoCanPvP"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 160, 0, 35)
-Main.Position = UDim2.new(0.5, -80, 0, 15)
+Main.Size = UDim2.new(0, 160, 0, 75)
+Main.Position = UDim2.new(0.5, 90, 0, 15)
 Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -44,183 +27,109 @@ Main.Parent = UI
 
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 4)
 local Stroke = Instance.new("UIStroke", Main)
-Stroke.Color = Color3.fromRGB(255, 215, 0)
+Stroke.Color = Color3.fromRGB(255, 0, 80)
 Stroke.Thickness = 1.8
 
-local Btn = Instance.new("TextButton")
-Btn.Size = UDim2.new(1, 0, 1, 0)
-Btn.BackgroundTransparency = 1
-Btn.Text = "MAYCHEMXEOCAN: ON"
-Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
-Btn.Font = Enum.Font.GothamBlack
-Btn.TextSize = 10
-Btn.Parent = Main
+local ListLayout = Instance.new("UIListLayout", Main)
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ListLayout.Padding = UDim.new(0, 5)
+ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 
-local function SnipeGoldenForce()
+local function CreateBtn(name, text)
+    local Btn = Instance.new("TextButton")
+    Btn.Name = name
+    Btn.Size = UDim2.new(1, -10, 0, 30)
+    Btn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    Btn.Text = text .. ": OFF"
+    Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
+    Btn.Font = Enum.Font.GothamBlack
+    Btn.TextSize = 10
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
+    Btn.Parent = Main
+    return Btn
+end
+
+local BtnFPS = CreateBtn("BtnFPS", "MAX FPS & NO VFX")
+local BtnFastSkill = CreateBtn("BtnFastSkill", "SMOOTH SKILL MOBILE")
+
+local function OptimizeGraphics()
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Brightness = 2
+    
+    for _, v in pairs(Lighting:GetDescendants()) do
+        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
+            v.Enabled = false
+        end
+    end
+    
+    local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 1
+    end
+    
     for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") or v:IsA("BasePart") then
-            local name = string.lower(v.Name)
-            if string.find(name, "golden") and string.find(name, "egg") then
-                local targetPart = v:IsA("Model") and (v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Part") or v.PrimaryPart) or v
-                local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                if hrp and targetPart and targetPart.Parent then
-                    local dist = (hrp.Position - targetPart.Position).Magnitude
-                    local tInfo = TweenInfo.new(dist / 400, Enum.EasingStyle.Linear)
-                    local tw = TweenService:Create(hrp, tInfo, {CFrame = targetPart.CFrame})
-                    tw:Play()
-                    local timeout = 0
-                    while getgenv().MayChemXeoCan_Auto and targetPart and targetPart.Parent and timeout < 25 do
-                        local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                        if not currentHrp then break end
-                        if (currentHrp.Position - targetPart.Position).Magnitude < 10 then break end
-                        task.wait(0.1)
-                        timeout = timeout + 1
-                    end
-                    if tw then tw:Cancel() end
-                end
-            end
+        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            v.Transparency = 1
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        elseif v:IsA("Explosion") then
+            v.Visible = false
         end
     end
 end
 
-local function HitAndRunShip()
-    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        if currentTween then currentTween:Cancel() end
-        getgenv().IsTweening = false
-        
-        local plat = Instance.new("Part")
-        plat.Size = Vector3.new(300, 2, 300)
-        plat.CFrame = CFrame.new(ShipTarget - Vector3.new(0, 6, 0))
-        plat.Anchored = true
-        plat.Transparency = 1
-        plat.Parent = Workspace
-        
-        hrp.CFrame = CFrame.new(ShipTarget)
-        task.wait(0.5)
-        
-        local timer = 0
-        while timer < 4 and getgenv().MayChemXeoCan_Auto do
-            SnipeGoldenForce()
-            task.wait(0.5)
-            timer = timer + 0.5
-        end
-        
-        plat:Destroy()
-        
-        if getgenv().MayChemXeoCan_Auto then
-            local returnHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-            if returnHrp then
-                returnHrp.CFrame = CFrame.new(SafeReturn)
-                task.wait(1.5)
-            end
-        end
-    end
-end
-
-local function BypassTween(targetPos)
-    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local dist = (hrp.Position - targetPos).Magnitude
-    if dist < 30 then return end
-    
-    getgenv().IsTweening = true
-    
-    local bv = hrp:FindFirstChild("MayChemBV")
-    if not bv then
-        bv = Instance.new("BodyVelocity")
-        bv.Name = "MayChemBV"
-        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        bv.Velocity = Vector3.new(0, 0, 0)
-        bv.Parent = hrp
-    end
-    
-    local tInfo = TweenInfo.new(dist / 350, Enum.EasingStyle.Linear)
-    currentTween = TweenService:Create(hrp, tInfo, {CFrame = CFrame.new(targetPos)})
-    currentTween:Play()
-    
-    while getgenv().IsTweening and getgenv().MayChemXeoCan_Auto do
-        local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        if not currentHrp then break end
-        if (currentHrp.Position - targetPos).Magnitude < 40 then break end
-        task.wait(0.1)
-    end
-    
-    if currentTween then currentTween:Cancel() end
-    if bv then bv:Destroy() end
-    getgenv().IsTweening = false
-end
-
-local function GetClosestPoint(currentPos, pointList)
-    local closest = nil
-    local minDist = math.huge
-    local bestIndex = -1
-    for i, pos in ipairs(pointList) do
-        local dist = (currentPos - pos).Magnitude
-        if dist < minDist then
-            minDist = dist
-            closest = pos
-            bestIndex = i
-        end
-    end
-    return closest, bestIndex
-end
-
-RunService.Stepped:Connect(function()
-    if getgenv().IsTweening and LP.Character then
-        for _, v in pairs(LP.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
+Workspace.DescendantAdded:Connect(function(v)
+    if getgenv().MayChemXeoCan_FPS then
+        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        elseif v:IsA("Explosion") then
+            v.Visible = false
         end
     end
 end)
 
-Btn.MouseButton1Click:Connect(function()
-    getgenv().MayChemXeoCan_Auto = not getgenv().MayChemXeoCan_Auto
-    if getgenv().MayChemXeoCan_Auto then
-        Btn.Text = "MAYCHEMXEOCAN: ON"
-        Btn.TextColor3 = Color3.fromRGB(255, 215, 0)
+BtnFPS.MouseButton1Click:Connect(function()
+    getgenv().MayChemXeoCan_FPS = not getgenv().MayChemXeoCan_FPS
+    if getgenv().MayChemXeoCan_FPS then
+        BtnFPS.Text = "MAX FPS & NO VFX: ON"
+        BtnFPS.TextColor3 = Color3.fromRGB(0, 255, 170)
+        task.spawn(OptimizeGraphics)
     else
-        Btn.Text = "MAYCHEMXEOCAN: OFF"
-        Btn.TextColor3 = Color3.fromRGB(255, 80, 80)
-        if currentTween then currentTween:Cancel() end
-        getgenv().IsTweening = false
-        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-            local bv = LP.Character.HumanoidRootPart:FindFirstChild("MayChemBV")
-            if bv then bv:Destroy() end
+        BtnFPS.Text = "MAX FPS & NO VFX: OFF"
+        BtnFPS.TextColor3 = Color3.fromRGB(255, 80, 80)
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if getgenv().MayChemXeoCan_FastSkill and LP.Character then
+        for _, v in pairs(LP.Character:GetChildren()) do
+            if v:IsA("BoolValue") and (v.Name == "Busy" or v.Name == "Stun" or v.Name == "Stunned") then
+                if v.Value == true then
+                    v.Value = false
+                end
+            end
         end
     end
 end)
 
-task.spawn(function()
-    while true do
-        if getgenv().MayChemXeoCan_Auto and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-            local remainingPoints = {}
-            for _, p in ipairs(TweenPoints) do
-                table.insert(remainingPoints, p)
-            end
-            
-            while #remainingPoints > 0 and getgenv().MayChemXeoCan_Auto do
-                local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
-                if not hrp then break end
-                
-                local targetPos, index = GetClosestPoint(hrp.Position, remainingPoints)
-                if targetPos then
-                    table.remove(remainingPoints, index)
-                    BypassTween(targetPos + Vector3.new(0, 45, 0))
-                    
-                    local timer = 0
-                    while timer < 4 and getgenv().MayChemXeoCan_Auto do
-                        SnipeGoldenForce()
-                        task.wait(0.5)
-                        timer = timer + 0.5
-                    end
-                end
-            end
-            
-            if getgenv().MayChemXeoCan_Auto then
-                HitAndRunShip()
-            end
-        end
-        task.wait(1)
+BtnFastSkill.MouseButton1Click:Connect(function()
+    getgenv().MayChemXeoCan_FastSkill = not getgenv().MayChemXeoCan_FastSkill
+    if getgenv().MayChemXeoCan_FastSkill then
+        BtnFastSkill.Text = "SMOOTH SKILL: ON"
+        BtnFastSkill.TextColor3 = Color3.fromRGB(150, 0, 255)
+    else
+        BtnFastSkill.Text = "SMOOTH SKILL: OFF"
+        BtnFastSkill.TextColor3 = Color3.fromRGB(255, 80, 80)
     end
 end)
