@@ -1,40 +1,43 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local VIM = game:GetService("VirtualInputManager")
+local Stats = game:GetService("Stats")
 local LP = Players.LocalPlayer
 
-pcall(function()
-    if setfpscap then
-        setfpscap(120)
-    end
-end)
+local function GetOptimalDelay()
+    local ping = 50
+    pcall(function()
+        ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+    end)
+    return math.clamp(0.02 + (ping / 1000) * 0.15, 0.02, 0.08)
+end
 
 local function MayChemXeoCan_IsHolding(char)
     if not char then return false end
-    if char:FindFirstChild("Charging") or char:FindFirstChild("Holding") or char:FindFirstChild("UsingSkill") then 
-        return true 
+    local holdTags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power"}
+    
+    for _, tag in ipairs(holdTags) do
+        if char:FindFirstChild(tag) then return true end
     end
+    
     local tool = char:FindFirstChildOfClass("Tool")
-    if tool and (tool:FindFirstChild("Charging") or tool:FindFirstChild("Holding")) then
-        return true
+    if tool then
+        for _, tag in ipairs(holdTags) do
+            if tool:FindFirstChild(tag) then return true end
+        end
     end
     return false
 end
 
-local function MayChemXeoCan_ApexCore(character)
-    if character:FindFirstChild("Humanoid") then
-        character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-    end
+local function MayChemXeoCan_GodMacro(character)
+    local hum = character:WaitForChild("Humanoid", 5)
     
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
             
-            if string.find(name, "busy") or string.find(name, "cant") then
+            if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
                 task.spawn(function()
-                    task.wait(0.04)
+                    local delay = GetOptimalDelay()
+                    task.wait(delay)
                     
                     while character and character.Parent and MayChemXeoCan_IsHolding(character) do
                         task.wait(0.01)
@@ -43,94 +46,24 @@ local function MayChemXeoCan_ApexCore(character)
                     if v and v.Parent and v:IsA("BoolValue") then
                         v.Value = false
                     end
+                    
+                    if hum and hum.WalkSpeed < 16 then
+                        local isStunned = false
+                        for _, tag in pairs(character:GetChildren()) do
+                            if tag:IsA("BoolValue") and string.find(string.lower(tag.Name), "stun") and tag.Value == true then
+                                isStunned = true
+                                break
+                            end
+                        end
+                        if not isStunned then
+                            hum.WalkSpeed = 16
+                        end
+                    end
                 end)
             end
         end
     end)
 end
 
-if LP.Character then MayChemXeoCan_ApexCore(LP.Character) end
-LP.CharacterAdded:Connect(MayChemXeoCan_ApexCore)
-
-RunService.RenderStepped:Connect(function()
-    if LP.Character then
-        local hum = LP.Character:FindFirstChild("Humanoid")
-        if hum then
-            if hum.WalkSpeed < 32 and hum.WalkSpeed > 0 then
-                hum.WalkSpeed = 32
-            end
-            if hum.JumpPower < 65 then
-                hum.JumpPower = 65
-            end
-        end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        pcall(function()
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = plr.Character.HumanoidRootPart
-                    hrp.Size = Vector3.new(15, 15, 15)
-                    hrp.Transparency = 1
-                    hrp.CanCollide = false
-                    hrp.Massless = true
-                end
-            end
-            
-            local mainGui = LP.PlayerGui:FindFirstChild("Main")
-            if mainGui then
-                for _, v in pairs(mainGui:GetDescendants()) do
-                    if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("ImageButton") then
-                        local text = string.lower(v.Name)
-                        if v:IsA("TextLabel") then text = string.lower(v.Text) end
-                        
-                        local keyToPress = nil
-                        if string.find(text, "dash") then keyToPress = Enum.KeyCode.Q
-                        elseif string.find(text, "flash") or string.find(text, "soru") or string.find(text, "step") then keyToPress = Enum.KeyCode.R
-                        end
-                        
-                        if keyToPress then
-                            local btn = v
-                            if not btn:IsA("GuiButton") then btn = btn.Parent end
-                            
-                            if btn and btn:IsA("GuiButton") and not btn:FindFirstChild("MayChemFastTrigger") then
-                                local tag = Instance.new("BoolValue")
-                                tag.Name = "MayChemFastTrigger"
-                                tag.Parent = btn
-                                
-                                local function FireInstantly()
-                                    VIM:SendKeyEvent(true, keyToPress, false, game)
-                                    task.wait(0.01)
-                                    VIM:SendKeyEvent(false, keyToPress, false, game)
-                                end
-                                
-                                btn.MouseButton1Down:Connect(FireInstantly)
-                                if btn.TouchTap then btn.TouchTap:Connect(FireInstantly) end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            local touchGui = LP.PlayerGui:FindFirstChild("TouchGui")
-            if touchGui then
-                local jumpBtn = touchGui:FindFirstChild("JumpButton", true)
-                if jumpBtn and not jumpBtn:FindFirstChild("MayChemFastJump") then
-                    local tag = Instance.new("BoolValue")
-                    tag.Name = "MayChemFastJump"
-                    tag.Parent = jumpBtn
-                    
-                    jumpBtn.InputBegan:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-                                LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                            end
-                        end
-                    end)
-                end
-            end
-        end)
-    end
-end)
+if LP.Character then MayChemXeoCan_GodMacro(LP.Character) end
+LP.CharacterAdded:Connect(MayChemXeoCan_GodMacro)
