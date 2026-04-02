@@ -1,61 +1,43 @@
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
-local function OptimizeGraphics()
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    Lighting.Brightness = 2
-    
-    for _, v in pairs(Lighting:GetDescendants()) do
-        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
-            v.Enabled = false
-        end
-    end
-    
-    local Terrain = Workspace:FindFirstChildOfClass("Terrain")
-    if Terrain then
-        Terrain.WaterWaveSize = 0
-        Terrain.WaterWaveSpeed = 0
-        Terrain.WaterReflectance = 0
-        Terrain.WaterTransparency = 1
-    end
-    
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
-            v.Material = Enum.Material.SmoothPlastic
-            v.Reflectance = 0
-        elseif v:IsA("Decal") or v:IsA("Texture") then
-            v.Transparency = 1
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-            v.Lifetime = NumberRange.new(0)
-        elseif v:IsA("Explosion") then
-            v.Visible = false
-        end
-    end
-end
-
-Workspace.DescendantAdded:Connect(function(v)
-    if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
-        v.Material = Enum.Material.SmoothPlastic
-        v.Reflectance = 0
-    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-        v.Lifetime = NumberRange.new(0)
-    elseif v:IsA("Explosion") then
-        v.Visible = false
+pcall(function()
+    if setfpscap then
+        setfpscap(120)
     end
 end)
 
-local function HookAntiStun(character)
+local function MayChemXeoCan_IsHolding(char)
+    if not char then return false end
+    if char:FindFirstChild("Charging") then return true end
+    if char:FindFirstChild("Holding") then return true end
+    if char:FindFirstChild("UsingSkill") then return true end
+    
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool then
+        if tool:FindFirstChild("Charging") or tool:FindFirstChild("Holding") then
+            return true
+        end
+    end
+    return false
+end
+
+local function MayChemXeoCan_PerfectPvP(character)
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
             if string.find(name, "busy") or string.find(name, "stun") or string.find(name, "cant") then
                 task.spawn(function()
-                    task.wait(0.15)
-                    if v.Parent and v:IsA("BoolValue") then
+                    task.wait(0.05)
+                    
+                    while character and character.Parent and v and v.Parent and MayChemXeoCan_IsHolding(character) do
+                        task.wait(0.01)
+                    end
+                    
+                    task.wait(0.05)
+                    
+                    if v and v.Parent and v:IsA("BoolValue") then
                         v.Value = false
                     end
                 end)
@@ -65,20 +47,20 @@ local function HookAntiStun(character)
 end
 
 if LP.Character then
-    HookAntiStun(LP.Character)
+    MayChemXeoCan_PerfectPvP(LP.Character)
 end
 
 LP.CharacterAdded:Connect(function(newChar)
-    HookAntiStun(newChar)
+    MayChemXeoCan_PerfectPvP(newChar)
 end)
 
 RunService.Stepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
         if hum and hum.WalkSpeed < 16 and hum.WalkSpeed > 0 then
-            hum.WalkSpeed = 16
+            if not MayChemXeoCan_IsHolding(LP.Character) then
+                hum.WalkSpeed = 16
+            end
         end
     end
 end)
-
-task.spawn(OptimizeGraphics)
