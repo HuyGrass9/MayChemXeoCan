@@ -4,21 +4,22 @@ local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Leviathan_GodTier_V10.json"
+local ConfigName = "Maru_AIEngine.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
-    ComboDelay = 0.01, 
     HitboxSize = 15,
     Hitbox = false,
-    BtnSize = 65,
+    BtnSize = 60,
     SetupMode = false,
     ShowC = true,
-    ShowC2 = true
+    ShowC2 = true,
+    AIMode = true
 }
 
 pcall(function()
@@ -32,40 +33,40 @@ local function SaveConfig()
     pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end)
 end
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("MCXC_LEVIATHAN") or CoreGui:FindFirstChild("MCXC_LEVIATHAN")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("MARU_HUB_AI") or CoreGui:FindFirstChild("MARU_HUB_AI")
 if oldUI then oldUI:Destroy() end
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "MCXC_LEVIATHAN"
+UI.Name = "MARU_HUB_AI"
 UI.ResetOnSpawn = false
+UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
-local ToggleIcon = Instance.new("TextButton")
-ToggleIcon.Size = UDim2.new(0, 50, 0, 50)
-ToggleIcon.Position = UDim2.new(0.5, -25, 0, 15)
-ToggleIcon.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-ToggleIcon.Text = "☣️"
-ToggleIcon.TextSize = 25
+local ToggleIcon = Instance.new("ImageButton")
+ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
+ToggleIcon.Position = UDim2.new(0.5, -22, 0, 10)
+ToggleIcon.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ToggleIcon.Image = "rbxassetid://10709769508"
 ToggleIcon.BorderSizePixel = 0
 ToggleIcon.Active = true
 ToggleIcon.Draggable = true
 Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(255, 0, 0)
-Instance.new("UIStroke", ToggleIcon).Thickness = 2
+Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(60, 60, 65)
 ToggleIcon.Parent = UI
 
 local function CreateActionBtn(name, yPos, color, showKey)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, Config.BtnSize, 0, Config.BtnSize)
     btn.Position = UDim2.new(0.8, 0, yPos, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-    btn.BackgroundTransparency = 0.3
+    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    btn.BackgroundTransparency = 0.2
     btn.Text = name
     btn.TextColor3 = color
     btn.Font = Enum.Font.GothamBlack
     btn.TextSize = math.clamp(Config.BtnSize * 0.4, 15, 45)
     btn.Visible = Config[showKey]
     btn.Active = true
+    btn.Selectable = false
     btn.Draggable = Config.SetupMode
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     local stroke = Instance.new("UIStroke", btn)
@@ -75,56 +76,71 @@ local function CreateActionBtn(name, yPos, color, showKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 20, 20), "ShowC")
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(20, 200, 255), "ShowC2")
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 280, 0, 360)
 Menu.Position = UDim2.new(0.1, 0, 0.5, -180)
-Menu.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
+Menu.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 Menu.BorderSizePixel = 0
 Menu.Active = true
 Menu.Visible = false
-Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 6)
+Menu.ClipsDescendants = true
+Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
 local MenuStroke = Instance.new("UIStroke", Menu)
-MenuStroke.Color = Color3.fromRGB(255, 0, 0)
-MenuStroke.Thickness = 2
+MenuStroke.Color = Color3.fromRGB(40, 40, 45)
+MenuStroke.Thickness = 1
 Menu.Parent = UI
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "LEVIATHAN ENGINE V10"
+Title.Text = " MARU AI ENGINE"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
+
+local UILine = Instance.new("Frame")
+UILine.Size = UDim2.new(1, 0, 0, 1)
+UILine.Position = UDim2.new(0, 0, 0, 40)
+UILine.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+UILine.BorderSizePixel = 0
+UILine.Parent = Menu
+
 local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, 0, 0, 30)
-TabBar.Position = UDim2.new(0, 0, 0, 35)
+TabBar.Size = UDim2.new(1, 0, 0, 35)
+TabBar.Position = UDim2.new(0, 0, 0, 41)
 TabBar.BackgroundTransparency = 1
 TabBar.Parent = Menu
-
 local TabFrames = {}
 local TabBtns = {}
+local Indicator = Instance.new("Frame")
+Indicator.Size = UDim2.new(0.5, 0, 0, 2)
+Indicator.Position = UDim2.new(0, 0, 1, -2)
+Indicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Indicator.BorderSizePixel = 0
+Indicator.Parent = TabBar
 
 local function CreateTab(name, xPos, isActive)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.5, 0, 1, 0)
     btn.Position = UDim2.new(xPos, 0, 0, 0)
-    btn.BackgroundColor3 = isActive and Color3.fromRGB(255, 20, 20) or Color3.fromRGB(20, 20, 25)
+    btn.BackgroundTransparency = 1
     btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
+    btn.TextColor3 = isActive and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+    btn.Font = Enum.Font.GothamMedium
     btn.TextSize = 12
-    btn.BorderSizePixel = 0
     btn.Parent = TabBar
     
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, -65)
-    frame.Position = UDim2.new(0, 0, 0, 65)
+    local frame = Instance.new("ScrollingFrame")
+    frame.Size = UDim2.new(1, 0, 1, -76)
+    frame.Position = UDim2.new(0, 0, 0, 76)
     frame.BackgroundTransparency = 1
     frame.Visible = isActive
+    frame.ScrollBarThickness = 2
     frame.Parent = Menu
     
     TabBtns[name] = btn
@@ -132,69 +148,70 @@ local function CreateTab(name, xPos, isActive)
     
     btn.MouseButton1Click:Connect(function()
         for k, v in pairs(TabFrames) do v.Visible = (k == name) end
-        for k, v in pairs(TabBtns) do v.BackgroundColor3 = (k == name) and Color3.fromRGB(255, 20, 20) or Color3.fromRGB(20, 20, 25) end
+        for k, v in pairs(TabBtns) do v.TextColor3 = (k == name) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150) end
+        TweenService:Create(Indicator, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(xPos, 0, 1, -2)}):Play()
     end)
     return frame
 end
 
 local TabMain = CreateTab("COMBAT", 0, true)
-local TabSet = CreateTab("CONFIG", 0.5, false)
+local TabSet = CreateTab("SETTINGS", 0.5, false)
 
-local function CreateTextInput(parent, yPos, text, configKey, color)
+local function CreateTextInput(parent, yPos, text, configKey)
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.9, 0, 0, 15)
+    lbl.Size = UDim2.new(0.9, 0, 0, 20)
     lbl.Position = UDim2.new(0.05, 0, 0, yPos)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
-    lbl.TextColor3 = color
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 13
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 12
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = parent
     
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(0.9, 0, 0, 35)
-    box.Position = UDim2.new(0.05, 0, 0, yPos + 18)
-    box.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    box.Position = UDim2.new(0.05, 0, 0, yPos + 25)
+    box.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
     box.TextColor3 = Color3.fromRGB(255, 255, 255)
     box.Font = Enum.Font.GothamBold
-    box.TextSize = 15
+    box.TextSize = 14
     box.Text = Config[configKey]
     box.ClearTextOnFocus = false
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
-    Instance.new("UIStroke", box).Color = color
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", box).Color = Color3.fromRGB(40, 40, 45)
     box.Parent = parent
     
     box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
 end
 
-CreateTextInput(TabMain, 5, "God Combo C:", "ComboC", Color3.fromRGB(255, 50, 50))
-CreateTextInput(TabMain, 65, "God Combo C2:", "ComboC2", Color3.fromRGB(50, 150, 255))
+CreateTextInput(TabMain, 5, "Primary Sequence (C)", "ComboC")
+CreateTextInput(TabMain, 75, "Secondary Sequence (C2)", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
 
 local function CreateAdvancedSlider(parent, yPos, text, min, max, configKey, isInt)
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.9, 0, 0, 15)
+    lbl.Size = UDim2.new(0.9, 0, 0, 20)
     lbl.Position = UDim2.new(0.05, 0, 0, yPos)
     lbl.BackgroundTransparency = 1
     lbl.Text = text .. ": " .. tostring(Config[configKey])
-    lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
-    lbl.Font = Enum.Font.GothamBold
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.GothamMedium
     lbl.TextSize = 12
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = parent
 
     local bg = Instance.new("Frame")
-    bg.Size = UDim2.new(0.9, 0, 0, 12)
-    bg.Position = UDim2.new(0.05, 0, 0, yPos + 18)
+    bg.Size = UDim2.new(0.9, 0, 0, 6)
+    bg.Position = UDim2.new(0.05, 0, 0, yPos + 25)
     bg.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
     bg.Parent = parent
 
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((Config[configKey] - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(255, 20, 20)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     fill.Parent = bg
 
@@ -243,47 +260,48 @@ local function CreateAdvancedSlider(parent, yPos, text, min, max, configKey, isI
     end)
 end
 
-CreateAdvancedSlider(TabMain, 125, "Skill Speed (Delay)", 0.001, 0.1, "ComboDelay", false)
-CreateAdvancedSlider(TabSet, 5, "Hitbox Expander", 5, 60, "HitboxSize", true)
-CreateAdvancedSlider(TabSet, 45, "Button Scale", 40, 120, "BtnSize", true)
+CreateAdvancedSlider(TabSet, 5, "Hitbox Size", 5, 60, "HitboxSize", true)
+CreateAdvancedSlider(TabSet, 50, "Button Scale", 40, 120, "BtnSize", true)
 
-local function CreateSmartToggle(parent, x, y, text, configKey, colorOn, cb)
+local function CreateSmartToggle(parent, x, y, text, configKey, cb)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.42, 0, 0, 35)
     btn.Position = UDim2.new(x, 0, 0, y)
-    btn.BackgroundColor3 = Config[configKey] and colorOn or Color3.fromRGB(30, 30, 35)
-    btn.Text = text .. ": " .. (Config[configKey] and "ON" or "OFF")
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBlack
-    btn.TextSize = 12
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+    btn.BackgroundColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(20, 20, 22)
+    btn.Text = text
+    btn.TextColor3 = Config[configKey] and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 11
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", btn).Color = Color3.fromRGB(40, 40, 45)
     btn.Parent = parent
     
     btn.MouseButton1Click:Connect(function()
         Config[configKey] = not Config[configKey]
-        btn.BackgroundColor3 = Config[configKey] and colorOn or Color3.fromRGB(30, 30, 35)
-        btn.Text = text .. ": " .. (Config[configKey] and "ON" or "OFF")
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(20, 20, 22)}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = Config[configKey] and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(200, 200, 200)}):Play()
         SaveConfig()
         if cb then cb(Config[configKey]) end
     end)
 end
 
-CreateSmartToggle(TabMain, 0.05, 175, "SHOW C", "ShowC", Color3.fromRGB(255, 50, 50), function(v) ExecBtnC.Visible = v end)
-CreateSmartToggle(TabMain, 0.53, 175, "SHOW C2", "ShowC2", Color3.fromRGB(50, 150, 255), function(v) ExecBtnC2.Visible = v end)
-CreateSmartToggle(TabSet, 0.05, 95, "HITBOX", "Hitbox", Color3.fromRGB(50, 200, 50))
-CreateSmartToggle(TabSet, 0.53, 95, "SETUP", "SetupMode", Color3.fromRGB(255, 150, 0), function(v)
+CreateSmartToggle(TabMain, 0.05, 145, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
+CreateSmartToggle(TabMain, 0.53, 145, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
+CreateSmartToggle(TabMain, 0.05, 190, "AI SYNC", "AIMode")
+CreateSmartToggle(TabSet, 0.05, 95, "HITBOX", "Hitbox")
+CreateSmartToggle(TabSet, 0.53, 95, "SETUP", "SetupMode", function(v)
     ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v
 end)
 
 local HideBtn = Instance.new("TextButton")
 HideBtn.Size = UDim2.new(0.9, 0, 0, 35)
 HideBtn.Position = UDim2.new(0.05, 0, 0, 140)
-HideBtn.BackgroundColor3 = Color3.fromRGB(150, 20, 255)
-HideBtn.Text = "HIDE MENU"
+HideBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+HideBtn.Text = "CLOSE INTERFACE"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HideBtn.Font = Enum.Font.GothamBlack
-HideBtn.TextSize = 14
-Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 4)
+HideBtn.Font = Enum.Font.GothamBold
+HideBtn.TextSize = 12
+Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
@@ -306,43 +324,66 @@ local function GetActiveWeapon()
     return nil
 end
 
+local function SmartAIEquip(slot)
+    if not LP.Character or not LP.Character:FindFirstChild("Humanoid") then return end
+    local tMap = {["1"]="melee", ["2"]="fruit", ["3"]="sword", ["4"]="gun"}
+    local target = tMap[slot]
+    if not target then return end
+
+    local current = LP.Character:FindFirstChildOfClass("Tool")
+    if current and current:FindFirstChild("ToolTip") and string.find(string.lower(current.ToolTip.Value), target) then return end
+
+    for _, tool in ipairs(LP.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool:FindFirstChild("ToolTip") and string.find(string.lower(tool.ToolTip.Value), target) then
+            LP.Character.Humanoid:EquipTool(tool)
+            local timeout = tick()
+            while not LP.Character:FindFirstChild(tool.Name) and tick() - timeout < 0.3 do RunService.Heartbeat:Wait() end
+            UltraFastWait(0.05)
+            return
+        end
+    end
+end
+
+local function HasBusyTag(char)
+    local tags = {"busy", "cant", "stun", "nodash", "nojump", "usingskill"}
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BoolValue") and v.Value == true then
+            local n = string.lower(v.Name)
+            for _, tag in ipairs(tags) do
+                if string.find(n, tag) then return true end
+            end
+        end
+    end
+    return false
+end
+
 local function CoreExecute(comboStr, stroke, colorOff)
     stroke.Color = Color3.fromRGB(255, 255, 255)
     task.spawn(function()
         local str = string.upper(comboStr)
-        local cDelay = tonumber(Config.ComboDelay) or 0.01
         
         for i = 1, #str do
             local char = string.sub(str, i, i)
-            local isWeapon = false
-            local keyCode = nil
-            
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                if GetActiveWeapon() ~= char then
-                    if char == "1" then keyCode = Enum.KeyCode.One
-                    elseif char == "2" then keyCode = Enum.KeyCode.Two
-                    elseif char == "3" then keyCode = Enum.KeyCode.Three
-                    elseif char == "4" then keyCode = Enum.KeyCode.Four
-                    end
-                    isWeapon = true
-                end
+                SmartAIEquip(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
-                keyCode = Enum.KeyCode[char]
-            end
-            
-            if keyCode then
-                VIM:SendKeyEvent(true, keyCode, false, game)
-                UltraFastWait(0.01)
-                VIM:SendKeyEvent(false, keyCode, false, game)
+                local kCode = Enum.KeyCode[char]
                 
-                if isWeapon then
-                    local timeout = tick()
-                    while GetActiveWeapon() ~= char and (tick() - timeout) < 0.8 do
+                if Config.AIMode and LP.Character then
+                    local waitStart = tick()
+                    while HasBusyTag(LP.Character) and tick() - waitStart < 1.0 do
                         RunService.Heartbeat:Wait()
                     end
-                    UltraFastWait(0.15)
+                end
+                
+                VIM:SendKeyEvent(true, kCode, false, game)
+                UltraFastWait(0.01)
+                VIM:SendKeyEvent(false, kCode, false, game)
+                
+                if Config.AIMode then
+                    UltraFastWait(0.05)
                 else
-                    UltraFastWait(cDelay)
+                    UltraFastWait(0.02)
                 end
             end
         end
@@ -357,8 +398,8 @@ ExecBtnC.InputBegan:Connect(function(input)
         if Config.SetupMode then return end
         if cLock then return end
         cLock = true
-        CoreExecute(Config.ComboC, StrokeC, Color3.fromRGB(255, 20, 20))
-        task.spawn(function() UltraFastWait(0.15); cLock = false end)
+        CoreExecute(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60))
+        task.spawn(function() UltraFastWait(0.3); cLock = false end)
     end
 end)
 
@@ -367,21 +408,20 @@ ExecBtnC2.InputBegan:Connect(function(input)
         if Config.SetupMode then return end
         if c2Lock then return end
         c2Lock = true
-        CoreExecute(Config.ComboC2, StrokeC2, Color3.fromRGB(20, 200, 255))
-        task.spawn(function() UltraFastWait(0.15); c2Lock = false end)
+        CoreExecute(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255))
+        task.spawn(function() UltraFastWait(0.3); c2Lock = false end)
     end
 end)
 
-local function ObliterateStun(char)
-    local badTags = {"busy", "cant", "stun", "nodash", "nojump", "usingskill", "stance", "active", "power"}
-    for _, v in ipairs(char:GetDescendants()) do
-        if v:IsA("BoolValue") or v:IsA("StringValue") then
+local function FastCastMacro()
+    if not LP.Character then return end
+    local badTags = {"busy", "cant", "stun", "nodash", "nojump", "usingskill"}
+    for _, v in ipairs(LP.Character:GetDescendants()) do
+        if v:IsA("BoolValue") and v.Value == true then
             local n = string.lower(v.Name)
             for _, tag in ipairs(badTags) do
                 if string.find(n, tag) then
-                    if v:IsA("BoolValue") and v.Value == true then
-                        v.Value = false
-                    end
+                    v.Value = false
                 end
             end
         end
@@ -389,11 +429,11 @@ local function ObliterateStun(char)
 end
 
 RunService.Heartbeat:Connect(function()
+    FastCastMacro()
+    
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
         if hum and hum.WalkSpeed < 35 then hum.WalkSpeed = 35 end
-        
-        ObliterateStun(LP.Character)
         
         if Config.Hitbox then
             local s = tonumber(Config.HitboxSize) or 15
@@ -411,8 +451,8 @@ RunService.Heartbeat:Connect(function()
 end)
 
 if LP.Character then
-    LP.Character.DescendantAdded:Connect(function() ObliterateStun(LP.Character) end)
+    LP.Character.DescendantAdded:Connect(FastCastMacro)
 end
 LP.CharacterAdded:Connect(function(char)
-    char.DescendantAdded:Connect(function() ObliterateStun(char) end)
+    char.DescendantAdded:Connect(FastCastMacro)
 end)
