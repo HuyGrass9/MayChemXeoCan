@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_SimpleVIM.json"
+local ConfigName = "Macro_Perfect_V16.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
@@ -78,8 +78,8 @@ local function CreateActionBtn(name, yPos, color, showKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC")
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "ShowC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 280, 0, 360)
@@ -190,8 +190,8 @@ local function CreateTextInput(parent, yPos, text, configKey)
     return box
 end
 
-CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
-CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
+getgenv().BoxComboC = CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
+getgenv().BoxComboC2 = CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
 
@@ -311,6 +311,7 @@ local function GetToolType(tool)
     if not tool or not tool:FindFirstChild("ToolTip") then return "0" end
     local v = tostring(tool.ToolTip.Value)
     local vLow = string.lower(v)
+    
     if string.find(vLow, "melee") or string.find(v, "Cận") or string.find(v, "cận") or string.find(v, "Võ") or string.find(v, "võ") then return "1" end
     if string.find(vLow, "fruit") or string.find(v, "Trái") or string.find(v, "trái") or string.find(v, "Quỷ") or string.find(v, "quỷ") then return "2" end
     if string.find(vLow, "sword") or string.find(v, "Kiếm") or string.find(v, "kiếm") or string.find(v, "Đao") or string.find(v, "đao") then return "3" end
@@ -356,7 +357,8 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
                 local curTool = LP.Character:FindFirstChildOfClass("Tool")
-                if GetToolType(curTool) ~= char then
+                
+                if not curTool or GetToolType(curTool) ~= char then
                     local kc
                     if char == "1" then kc = Enum.KeyCode.One
                     elseif char == "2" then kc = Enum.KeyCode.Two
