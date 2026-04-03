@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Final_V14.json"
+local ConfigName = "Macro_SimpleVIM.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
@@ -311,41 +311,11 @@ local function GetToolType(tool)
     if not tool or not tool:FindFirstChild("ToolTip") then return "0" end
     local v = tostring(tool.ToolTip.Value)
     local vLow = string.lower(v)
-    
     if string.find(vLow, "melee") or string.find(v, "Cận") or string.find(v, "cận") or string.find(v, "Võ") or string.find(v, "võ") then return "1" end
     if string.find(vLow, "fruit") or string.find(v, "Trái") or string.find(v, "trái") or string.find(v, "Quỷ") or string.find(v, "quỷ") then return "2" end
     if string.find(vLow, "sword") or string.find(v, "Kiếm") or string.find(v, "kiếm") or string.find(v, "Đao") or string.find(v, "đao") then return "3" end
     if string.find(vLow, "gun") or string.find(v, "Súng") or string.find(v, "súng") or string.find(v, "Pháo") or string.find(v, "pháo") then return "4" end
     return "0"
-end
-
-local function ForceEquipTool(slotStr)
-    if not LP.Character or not LP.Character:FindFirstChild("Humanoid") then return end
-    
-    local currentTool = LP.Character:FindFirstChildOfClass("Tool")
-    if currentTool and GetToolType(currentTool) == slotStr then return end
-
-    local targetTool = nil
-    if LP.Backpack then
-        for _, tool in ipairs(LP.Backpack:GetChildren()) do
-            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
-        end
-    end
-    
-    if not targetTool then
-        for _, tool in ipairs(LP.Character:GetChildren()) do
-            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
-        end
-    end
-
-    if targetTool then
-        LP.Character.Humanoid:EquipTool(targetTool)
-        local t = tick()
-        while targetTool.Parent ~= LP.Character and tick() - t < 0.4 do
-            RunService.Heartbeat:Wait()
-        end
-        task.wait(0.05)
-    end
 end
 
 local function IsSkillBusy(char)
@@ -385,7 +355,29 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                ForceEquipTool(char)
+                local curTool = LP.Character:FindFirstChildOfClass("Tool")
+                if GetToolType(curTool) ~= char then
+                    local kc
+                    if char == "1" then kc = Enum.KeyCode.One
+                    elseif char == "2" then kc = Enum.KeyCode.Two
+                    elseif char == "3" then kc = Enum.KeyCode.Three
+                    elseif char == "4" then kc = Enum.KeyCode.Four
+                    end
+                    
+                    if kc then
+                        VIM:SendKeyEvent(true, kc, false, game)
+                        task.wait(0.01)
+                        VIM:SendKeyEvent(false, kc, false, game)
+                        
+                        local w = tick()
+                        while tick() - w < 0.5 do
+                            local t = LP.Character:FindFirstChildOfClass("Tool")
+                            if t and GetToolType(t) == char then break end
+                            RunService.Heartbeat:Wait()
+                        end
+                        task.wait(0.1)
+                    end
+                end
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
                 ClearEnemyStun(LP.Character)
                 local kc = Enum.KeyCode[char]
