@@ -9,7 +9,18 @@ local LP = Players.LocalPlayer
 pcall(function() if setfpscap then setfpscap(120) end end)
 
 local ConfigName = "MayChemXeoCan_Config.json"
-local Config = {ComboStr = "1ZX2XZ", ComboDelay = 0.15, MacroDelay = 0.04, Hitbox = false, HitboxSize = 15}
+local DefaultConfig = {
+    ComboStr = "1ZX2XZ", 
+    ComboDelay = 0.1, 
+    MacroDelay = 0.04, 
+    Hitbox = false, 
+    HitboxSize = 15,
+    BtnSize = 55,
+    SetupMode = true
+}
+
+local Config = {}
+for k, v in pairs(DefaultConfig) do Config[k] = v end
 
 pcall(function()
     if isfile and isfile(ConfigName) then
@@ -44,15 +55,15 @@ Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(255, 50, 50)
 ToggleIcon.Parent = UI
 
 local ExecBtn = Instance.new("TextButton")
-ExecBtn.Size = UDim2.new(0, 55, 0, 55)
+ExecBtn.Size = UDim2.new(0, Config.BtnSize, 0, Config.BtnSize)
 ExecBtn.Position = UDim2.new(0.7, 0, 0.6, 0)
 ExecBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 ExecBtn.Text = "C"
 ExecBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 ExecBtn.Font = Enum.Font.GothamBlack
-ExecBtn.TextSize = 24
-ExecBtn.Active = true
-ExecBtn.Draggable = true
+ExecBtn.TextSize = math.clamp(Config.BtnSize * 0.4, 10, 40)
+ExecBtn.Active = Config.SetupMode
+ExecBtn.Draggable = Config.SetupMode
 Instance.new("UICorner", ExecBtn).CornerRadius = UDim.new(1, 0)
 local ExecStroke = Instance.new("UIStroke", ExecBtn)
 ExecStroke.Color = Color3.fromRGB(255, 50, 50)
@@ -60,8 +71,8 @@ ExecStroke.Thickness = 2
 ExecBtn.Parent = UI
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 220, 0, 255)
-Menu.Position = UDim2.new(0.5, -110, 0.5, -127)
+Menu.Size = UDim2.new(0, 220, 0, 360)
+Menu.Position = UDim2.new(0.5, -110, 0.5, -180)
 Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -98,7 +109,8 @@ ComboBox.FocusLost:Connect(function()
     SaveConfig()
 end)
 
-local function CreateSlider(yPos, text, min, max, configKey)
+local Sliders = {}
+local function CreateSlider(yPos, text, min, max, configKey, isInt)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.9, 0, 0, 40)
     frame.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -134,51 +146,63 @@ local function CreateSlider(yPos, text, min, max, configKey)
     btn.Text = ""
     btn.Parent = bg
 
+    local sliderData = {Update = function(val)
+        fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+        lbl.Text = text .. ": " .. tostring(val)
+    end}
+    table.insert(Sliders, sliderData)
+
     local dragging = false
     btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end
     end)
-    
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if dragging then
-                dragging = false
-                SaveConfig()
-            end
+            if dragging then dragging = false; SaveConfig() end
         end
     end)
-    
     RunService.RenderStepped:Connect(function()
         if dragging then
             local mousePos = UserInputService:GetMouseLocation().X
             local relPos = mousePos - bg.AbsolutePosition.X
             local pct = math.clamp(relPos / bg.AbsoluteSize.X, 0, 1)
-            fill.Size = UDim2.new(pct, 0, 1, 0)
-            
             local val = min + (max - min) * pct
-            if configKey == "HitboxSize" then val = math.floor(val) else val = math.floor(val * 100) / 100 end
+            if isInt then val = math.floor(val) else val = math.floor(val * 100) / 100 end
+            fill.Size = UDim2.new(pct, 0, 1, 0)
             lbl.Text = text .. ": " .. tostring(val)
             Config[configKey] = val
+            
+            if configKey == "BtnSize" then
+                ExecBtn.Size = UDim2.new(0, val, 0, val)
+                ExecBtn.TextSize = math.clamp(val * 0.4, 10, 40)
+            end
         end
     end)
 end
 
-CreateSlider(70, "Combo Delay", 0.05, 0.5, "ComboDelay")
-CreateSlider(115, "Macro Delay", 0.01, 0.1, "MacroDelay")
-CreateSlider(160, "Hitbox Size", 5, 50, "HitboxSize")
+CreateSlider(70, "Combo Delay", 0.01, 0.4, "ComboDelay", false)
+CreateSlider(115, "Macro Delay", 0.01, 0.1, "MacroDelay", false)
+CreateSlider(160, "Hitbox Size", 5, 50, "HitboxSize", true)
+CreateSlider(205, "C Button Size", 30, 100, "BtnSize", true)
 
-local HitboxBtn = Instance.new("TextButton")
-HitboxBtn.Size = UDim2.new(0.9, 0, 0, 30)
-HitboxBtn.Position = UDim2.new(0.05, 0, 0, 215)
-HitboxBtn.BackgroundColor3 = Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-HitboxBtn.Text = "HITBOX: " .. (Config.Hitbox and "ON" or "OFF")
-HitboxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HitboxBtn.Font = Enum.Font.GothamBlack
-HitboxBtn.TextSize = 13
-Instance.new("UICorner", HitboxBtn).CornerRadius = UDim.new(0, 4)
-HitboxBtn.Parent = Menu
+local function MakeSmallBtn(x, y, text, color)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.42, 0, 0, 30)
+    btn.Position = UDim2.new(x, 0, 0, y)
+    btn.BackgroundColor3 = color
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBlack
+    btn.TextSize = 12
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+    btn.Parent = Menu
+    return btn
+end
+
+local HitboxBtn = MakeSmallBtn(0.05, 250, "HITBOX: " .. (Config.Hitbox and "ON" or "OFF"), Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50))
+local SetupBtn = MakeSmallBtn(0.53, 250, "SETUP: " .. (Config.SetupMode and "ON" or "OFF"), Config.SetupMode and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50))
+local ResetBtn = MakeSmallBtn(0.05, 290, "RESET DEFAULT", Color3.fromRGB(150, 150, 150))
+local HideBtn = MakeSmallBtn(0.53, 290, "HIDE ALL UI", Color3.fromRGB(100, 50, 200))
 
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
 
@@ -186,6 +210,33 @@ HitboxBtn.MouseButton1Click:Connect(function()
     Config.Hitbox = not Config.Hitbox
     HitboxBtn.BackgroundColor3 = Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
     HitboxBtn.Text = "HITBOX: " .. (Config.Hitbox and "ON" or "OFF")
+    SaveConfig()
+end)
+
+SetupBtn.MouseButton1Click:Connect(function()
+    Config.SetupMode = not Config.SetupMode
+    SetupBtn.BackgroundColor3 = Config.SetupMode and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    SetupBtn.Text = "SETUP: " .. (Config.SetupMode and "ON" or "OFF")
+    ExecBtn.Active = Config.SetupMode
+    ExecBtn.Draggable = Config.SetupMode
+    SaveConfig()
+end)
+
+HideBtn.MouseButton1Click:Connect(function()
+    UI.Enabled = false
+end)
+
+ResetBtn.MouseButton1Click:Connect(function()
+    for k, v in pairs(DefaultConfig) do Config[k] = v end
+    ComboBox.Text = Config.ComboStr
+    HitboxBtn.BackgroundColor3 = Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    HitboxBtn.Text = "HITBOX: " .. (Config.Hitbox and "ON" or "OFF")
+    SetupBtn.BackgroundColor3 = Config.SetupMode and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    SetupBtn.Text = "SETUP: " .. (Config.SetupMode and "ON" or "OFF")
+    ExecBtn.Active = Config.SetupMode
+    ExecBtn.Draggable = Config.SetupMode
+    ExecBtn.Size = UDim2.new(0, Config.BtnSize, 0, Config.BtnSize)
+    ExecBtn.TextSize = math.clamp(Config.BtnSize * 0.4, 10, 40)
     SaveConfig()
 end)
 
@@ -206,6 +257,8 @@ end
 
 local function SmartEquip(slot)
     if not LP.Character then return false end
+    local hum = LP.Character:FindFirstChild("Humanoid")
+    if not hum then return false end
     
     local targetTooltip = ""
     if slot == "1" then targetTooltip = "melee"
@@ -221,9 +274,7 @@ local function SmartEquip(slot)
 
     for _, tool in pairs(LP.Backpack:GetChildren()) do
         if tool:IsA("Tool") and tool:FindFirstChild("ToolTip") and string.find(string.lower(tool.ToolTip.Value), targetTooltip) then
-            if currentTool then currentTool.Parent = LP.Backpack end
-            task.wait(0.01)
-            tool.Parent = LP.Character
+            hum:EquipTool(tool)
             return true 
         end
     end
@@ -238,7 +289,7 @@ ExecBtn.MouseButton1Click:Connect(function()
     
     task.spawn(function()
         local str = string.upper(Config.ComboStr)
-        local cDelay = tonumber(Config.ComboDelay) or 0.15
+        local cDelay = tonumber(Config.ComboDelay) or 0.1
         
         for i = 1, #str do
             local char = string.sub(str, i, i)
@@ -246,7 +297,7 @@ ExecBtn.MouseButton1Click:Connect(function()
             
             if char == "1" or char == "2" or char == "3" or char == "4" then
                 local switched = SmartEquip(char)
-                if switched then task.wait(0.05) end
+                if switched then task.wait(0.12) end
             elseif char == "Z" then key = Enum.KeyCode.Z
             elseif char == "X" then key = Enum.KeyCode.X
             elseif char == "C" then key = Enum.KeyCode.C
@@ -256,13 +307,12 @@ ExecBtn.MouseButton1Click:Connect(function()
             
             if key then
                 VIM:SendKeyEvent(true, key, false, game)
-                task.wait(0.01)
                 VIM:SendKeyEvent(false, key, false, game)
                 
                 task.wait(cDelay)
                 
                 local holdTimeout = tick()
-                while MayChemXeoCan_IsHolding(LP.Character) and (tick() - holdTimeout) < 2.5 do
+                while MayChemXeoCan_IsHolding(LP.Character) and (tick() - holdTimeout) < 2.0 do
                     RunService.Heartbeat:Wait()
                 end
             end
@@ -274,6 +324,9 @@ end)
 
 local function MayChemXeoCan_ApexPvP(char)
     char.ChildAdded:Connect(function(v)
+        if v:IsA("Tool") and string.find(string.lower(v.Name), "katana") then
+            UI.Enabled = true
+        end
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
             if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
