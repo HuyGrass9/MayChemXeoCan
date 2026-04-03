@@ -61,7 +61,7 @@ Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(255, 50, 50)
 ToggleIcon.Parent = UI
 
-local function CreateComboBtn(name, yPos, color, isVisible, sizeKey)
+local function CreateComboBtn(name, yPos, color, isVisibleKey, sizeKey)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, Config[sizeKey], 0, Config[sizeKey])
     btn.Position = UDim2.new(0.7, 0, yPos, 0)
@@ -73,7 +73,7 @@ local function CreateComboBtn(name, yPos, color, isVisible, sizeKey)
     btn.Active = Config.SetupMode
     btn.Selectable = false
     btn.Draggable = Config.SetupMode
-    btn.Visible = Config[isVisible]
+    btn.Visible = Config[isVisibleKey]
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     local stroke = Instance.new("UIStroke", btn)
     stroke.Color = color
@@ -141,6 +141,7 @@ local TabSettings = CreateTab("SETTINGS", 0.67, false)
 
 local SlidersData = {}
 getgenv().MCXC_ActiveSlider = nil
+getgenv().MCXC_SkillActivated = false
 
 local function CreateSlider(parentTab, yPos, text, min, max, configKey, isInt)
     local frame = Instance.new("Frame")
@@ -354,7 +355,7 @@ local function ExecuteCombo(comboString, strokeRef, colorOff)
     
     task.spawn(function()
         local str = string.upper(comboString)
-        local cDelay = tonumber(Config.ComboDelay) or 0.05
+        local cDelay = tonumber(Config.ComboDelay) or 0.02
         
         for i = 1, #str do
             local char = string.sub(str, i, i)
@@ -380,13 +381,22 @@ local function ExecuteCombo(comboString, strokeRef, colorOff)
             end
             
             if key then
-                VIM:SendKeyEvent(true, key, false, game)
-                task.wait(0.01)
-                VIM:SendKeyEvent(false, key, false, game)
-                
                 if isWeapon then
-                    task.wait(0.1)
+                    VIM:SendKeyEvent(true, key, false, game)
+                    task.wait(0.01)
+                    VIM:SendKeyEvent(false, key, false, game)
+                    task.wait(0.15)
                 else
+                    getgenv().MCXC_SkillActivated = false
+                    local spamTimeout = tick()
+                    
+                    while not getgenv().MCXC_SkillActivated and (tick() - spamTimeout) < 1.2 do
+                        VIM:SendKeyEvent(true, key, false, game)
+                        task.wait(0.01)
+                        VIM:SendKeyEvent(false, key, false, game)
+                        task.wait(0.03)
+                    end
+                    
                     task.wait(cDelay)
                 end
             end
@@ -417,16 +427,19 @@ ExecBtnC2.InputBegan:Connect(function(input)
 end)
 
 local function MayChemXeoCan_ApexPvP(char)
-    char.ChildAdded:Connect(function(v)
+    char.DescendantAdded:Connect(function(v)
         if v:IsA("Tool") and string.find(string.lower(v.Name), "katana") then UI.Enabled = true end
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
-            if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
-                task.spawn(function()
-                    local mDelay = tonumber(Config.MacroDelay) or 0.01
-                    task.wait(mDelay)
-                    if v and v.Parent and v:IsA("BoolValue") then v.Value = false end
-                end)
+            if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") or string.find(name, "usingskill") or string.find(name, "stance") or string.find(name, "active") or string.find(name, "power") or string.find(name, "action") then
+                getgenv().MCXC_SkillActivated = true
+                if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
+                    task.spawn(function()
+                        local mDelay = tonumber(Config.MacroDelay) or 0.01
+                        task.wait(mDelay)
+                        if v and v.Parent and v:IsA("BoolValue") then v.Value = false end
+                    end)
+                end
             end
         end
     end)
