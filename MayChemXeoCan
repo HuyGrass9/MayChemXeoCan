@@ -2,16 +2,15 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-pcall(function() if setfpscap then setfpscap(120) end end)
-
-local ConfigName = "Macro_Supreme_V2.json"
+local ConfigName = "Macro_TitanForce.json"
 local Config = {
-    ComboC = "3XZ1CZ2ZX", 
+    ComboC = "3XZ1X", 
     ComboC2 = "2C1XZ",
     ComboDelay = 0.05,
     ActionDelay = 0.1,
@@ -19,16 +18,17 @@ local Config = {
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
-    ShowC = true,
-    ShowC2 = true,
+    ShowC = false,
+    ShowC2 = false,
     ESP = false,
     ViewTracer = false,
     TracerR = 255,
     TracerG = 50,
     TracerB = 50,
-    CenterAim = true,
-    Crosshair = true,
-    SmartHide = false
+    GhostMode = false,
+    HideTimer = 1.5,
+    UnlockFPS = true,
+    FixLag = false
 }
 
 pcall(function()
@@ -41,6 +41,8 @@ end)
 local function SaveConfig()
     pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end)
 end
+
+pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 120 or 60) end end)
 
 getgenv().MacroHidden = false
 
@@ -58,16 +60,6 @@ UI.ResetOnSpawn = false
 UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 UI.DisplayOrder = 9999
 UI.Parent = UIParent
-
-local CrosshairFolder = Instance.new("Folder", UI)
-local chX = Instance.new("Frame", CrosshairFolder)
-chX.Size = UDim2.new(0, 16, 0, 2)
-chX.Position = UDim2.new(0.5, -8, 0.5, -1)
-chX.BorderSizePixel = 0
-local chY = Instance.new("Frame", CrosshairFolder)
-chY.Size = UDim2.new(0, 2, 0, 16)
-chY.Position = UDim2.new(0.5, -1, 0.5, -8)
-chY.BorderSizePixel = 0
 
 local ToggleIcon = Instance.new("ImageButton")
 ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
@@ -107,8 +99,8 @@ local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60),
 local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 280, 0, 400)
-Menu.Position = UDim2.new(0.1, 0, 0.5, -200)
+Menu.Size = UDim2.new(0, 280, 0, 420)
+Menu.Position = UDim2.new(0.1, 0, 0.5, -210)
 Menu.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -213,6 +205,7 @@ local function CreateTextInput(parent, yPos, text, configKey)
     box.Parent = parent
     
     box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
+    return box
 end
 
 CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
@@ -268,7 +261,7 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
             local relPos = mousePos - bg.AbsolutePosition.X
             local pct = math.clamp(relPos / bg.AbsoluteSize.X, 0, 1)
             local val = min + (max - min) * pct
-            if isInt then val = math.floor(val) else val = math.floor(val * 100) / 100 end
+            if isInt then val = math.floor(val) else val = math.floor(val * 10) / 10 end
             fill.Size = UDim2.new(pct, 0, 1, 0)
             lbl.Text = text .. ": " .. tostring(val)
             Config[configKey] = val
@@ -305,30 +298,42 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 125, "SMART HIDE", "SmartHide")
-CreateToggle(TabCombat, 0.53, 125, "CENTER AIM", "CenterAim")
-CreateToggle(TabCombat, 0.05, 170, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden and not Config.SmartHide then ExecBtnC.Visible = v end end)
-CreateToggle(TabCombat, 0.53, 170, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden and not Config.SmartHide then ExecBtnC2.Visible = v end end)
+CreateSlider(TabCombat, 145, "Action Delay (Ping Sync)", 0.05, 0.5, "ActionDelay", false)
+CreateSlider(TabCombat, 190, "Ghost Mode Timer", 0.5, 5.0, "HideTimer", false)
+CreateToggle(TabCombat, 0.05, 240, "GHOST MODE", "GhostMode")
+CreateToggle(TabCombat, 0.53, 240, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
 
 CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true)
-CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
-CreateToggle(TabVisual, 0.53, 55, "CROSSHAIR", "Crosshair", function(v) CrosshairFolder.Parent = v and UI or nil end)
-CreateToggle(TabVisual, 0.05, 100, "ESP RADAR", "ESP")
-CreateToggle(TabVisual, 0.53, 100, "VIEW TRACER", "ViewTracer")
-CreateSlider(TabVisual, 145, "Tracer Color R", 0, 255, "TracerR", true)
-CreateSlider(TabVisual, 190, "Tracer Color G", 0, 255, "TracerG", true)
-CreateSlider(TabVisual, 235, "Tracer Color B", 0, 255, "TracerB", true)
+CreateSlider(TabVisual, 50, "Tracer R", 0, 255, "TracerR", true)
+CreateSlider(TabVisual, 95, "Tracer G", 0, 255, "TracerG", true)
+CreateSlider(TabVisual, 140, "Tracer B", 0, 255, "TracerB", true)
+CreateToggle(TabVisual, 0.05, 185, "HITBOX", "Hitbox")
+CreateToggle(TabVisual, 0.53, 185, "ESP RADAR", "ESP")
+CreateToggle(TabVisual, 0.05, 230, "VIEW TRACER", "ViewTracer")
 
 CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
 CreateToggle(TabSet, 0.05, 55, "SETUP UI", "SetupMode", function(v)
     ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v
 end)
+CreateToggle(TabSet, 0.53, 55, "UNLOCK 120 FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 120 or 60) end end) end)
+
+local FixBtn = Instance.new("TextButton")
+FixBtn.Size = UDim2.new(0.42, 0, 0, 35)
+FixBtn.Position = UDim2.new(0.05, 0, 0, 100)
+FixBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
+FixBtn.Text = "FIX LAG (1 TIME)"
+FixBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+FixBtn.Font = Enum.Font.GothamBold
+FixBtn.TextSize = 10
+Instance.new("UICorner", FixBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", FixBtn).Color = Color3.fromRGB(40, 40, 45)
+FixBtn.Parent = TabSet
 
 local HideBtn = Instance.new("TextButton")
 HideBtn.Size = UDim2.new(0.42, 0, 0, 35)
-HideBtn.Position = UDim2.new(0.53, 0, 0, 55)
+HideBtn.Position = UDim2.new(0.53, 0, 0, 100)
 HideBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-HideBtn.Text = "HIDE ALL"
+HideBtn.Text = "HIDE ALL UI"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HideBtn.Font = Enum.Font.GothamBold
 HideBtn.TextSize = 11
@@ -336,8 +341,8 @@ Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
 local InstPanel = Instance.new("Frame")
-InstPanel.Size = UDim2.new(0.9, 0, 0, 180)
-InstPanel.Position = UDim2.new(0.05, 0, 0, 105)
+InstPanel.Size = UDim2.new(0.9, 0, 0, 185)
+InstPanel.Position = UDim2.new(0.05, 0, 0, 145)
 InstPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 Instance.new("UICorner", InstPanel).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", InstPanel).Color = Color3.fromRGB(60, 60, 65)
@@ -347,7 +352,7 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, -10, 1, -10)
 InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "HƯỚNG DẪN SỬ DỤNG MACRO\n\n1. SỐ (1,2,3,4): Rút vũ khí (1:Melee, 2:Trái, 3:Kiếm). AI tự nhận diện vũ khí đang cầm để TỰ BỎ QUA lệnh rút đồ nếu trùng khớp.\n\n2. CHỮ (Z,X,C,V): Skill. Nhập vào mục Sequence.\n\n3. SETUP UI: Bật để kéo nút C/C2. Kéo thanh Scale để chỉnh to nhỏ.\n\n4. SMART HIDE: Tự động khóa và ẩn nút C nếu kỹ năng chưa hồi xong."
+InstTxt.Text = "HƯỚNG DẪN SỬ DỤNG MACRO:\n\n1. SỐ (1,2,3,4): Rút vũ khí (1:Cận chiến, 2:Trái ác quỷ, 3:Kiếm). AI tự nhận diện vũ khí đang cầm để TỰ BỎ QUA lệnh rút đồ thừa.\n\n2. CHỮ (Z,X,C,V,F): Kỹ năng.\n\n3. GHOST MODE: Khi bấm nút C, nó sẽ tàng hình theo thời gian bạn chỉnh ở thanh Timer để tránh bấm nhầm khi PVP."
 InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
@@ -359,6 +364,21 @@ InstTxt.Parent = InstPanel
 HideBtn.MouseButton1Click:Connect(function()
     getgenv().MacroHidden = true
     UI.Enabled = false
+end)
+
+FixBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+                v.Material = Enum.Material.SmoothPlastic
+                if v:IsA("Texture") or v:IsA("Decal") then v:Destroy() end
+            end
+        end
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+    end)
+    FixBtn.Text = "LAG FIXED!"
+    FixBtn.TextColor3 = Color3.fromRGB(50, 255, 50)
 end)
 
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
@@ -403,37 +423,18 @@ local function ClearEnemyStun(char)
     end
 end
 
-local function GetFirstSkillKey(comboStr)
-    for i = 1, #comboStr do
-        local c = string.upper(string.sub(comboStr, i, i))
-        if c == "Z" or c == "X" or c == "C" or c == "V" or c == "F" then return c end
-    end
-    return nil
-end
-
-local function IsFirstSkillOnCooldown(key)
-    local pg = LP:FindFirstChild("PlayerGui")
-    if not pg then return false end
-    local main = pg:FindFirstChild("Main")
-    local skills = main and main:FindFirstChild("Skills") or main and main:FindFirstChild("MobileControls")
-    if skills then
-        for _, v in ipairs(skills:GetDescendants()) do
-            if v:IsA("TextLabel") and string.upper(v.Text) == string.upper(key) then
-                local p = v.Parent
-                local cd = p and p:FindFirstChild("Cooldown")
-                if cd and cd:IsA("GuiObject") and cd.Size.Y.Scale > 0 then
-                    return true
-                end
-            end
-        end
-    end
-    return false
-end
-
-local lockC, lockC2 = false, false
-
-local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
+local function ExecuteAIPacing(comboStr, stroke, baseColor, btnRef)
     stroke.Color = Color3.fromRGB(255, 255, 255)
+    
+    if Config.GhostMode and btnRef.Visible then
+        btnRef.Visible = false
+        task.delay(Config.HideTimer, function()
+            if not getgenv().MacroHidden and ((btnRef == ExecBtnC and Config.ShowC) or (btnRef == ExecBtnC2 and Config.ShowC2)) then
+                btnRef.Visible = true
+            end
+        end)
+    end
+    
     task.spawn(function()
         task.wait(0.05)
         local s = string.upper(comboStr)
@@ -445,6 +446,9 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
                 s = string.sub(s, 2)
             end
         end
+        
+        local delayBuffer = tonumber(Config.ComboDelay) or 0.05
+        local actDelay = tonumber(Config.ActionDelay) or 0.1
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
@@ -476,25 +480,13 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
                 ClearEnemyStun(LP.Character)
                 local kc = Enum.KeyCode[char]
                 
-                if Config.CenterAim then
-                    local cam = workspace.CurrentCamera
-                    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
-                    VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 0)
-                end
-                
                 VIM:SendKeyEvent(true, kc, false, game)
                 task.wait(0.01)
                 VIM:SendKeyEvent(false, kc, false, game)
                 
-                if Config.CenterAim then
-                    local cam = workspace.CurrentCamera
-                    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
-                    VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 0)
-                end
-                
                 local waitReg = tick()
                 local triggered = false
-                while tick() - waitReg < 0.4 do
+                while tick() - waitReg < 0.15 do
                     if IsSkillBusy(LP.Character) then triggered = true; break end
                     RunService.Heartbeat:Wait()
                 end
@@ -504,31 +496,34 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
                     while IsSkillBusy(LP.Character) and tick() - waitAnim < 2.5 do
                         RunService.Heartbeat:Wait()
                     end
-                    task.wait(0.05)
+                    task.wait(actDelay)
                 else
-                    break 
+                    task.wait(delayBuffer)
                 end
                 ClearEnemyStun(LP.Character)
             end
         end
         stroke.Color = baseColor
-        if isC2 then lockC2 = false else lockC = false end
+        if btnRef == ExecBtnC2 then getgenv().lockC2 = false else getgenv().lockC = false end
     end)
 end
 
+getgenv().lockC = false
+getgenv().lockC2 = false
+
 ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if Config.SetupMode or lockC or (Config.SmartHide and not ExecBtnC.Visible) then return end
-        lockC = true
-        ExecuteAIPacing(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60), false)
+        if Config.SetupMode or getgenv().lockC then return end
+        getgenv().lockC = true
+        ExecuteAIPacing(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60), ExecBtnC)
     end
 end)
 
 ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if Config.SetupMode or lockC2 or (Config.SmartHide and not ExecBtnC2.Visible) then return end
-        lockC2 = true
-        ExecuteAIPacing(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255), true)
+        if Config.SetupMode or getgenv().lockC2 then return end
+        getgenv().lockC2 = true
+        ExecuteAIPacing(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255), ExecBtnC2)
     end
 end)
 
@@ -549,28 +544,6 @@ end
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
-        if Config.Crosshair then
-            chX.BackgroundColor3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
-            chY.BackgroundColor3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
-            CrosshairFolder.Parent = UI
-        else
-            CrosshairFolder.Parent = nil
-        end
-        
-        if Config.SmartHide and not getgenv().MacroHidden then
-            if lockC then ExecBtnC.Visible = false else
-                local k1 = GetFirstSkillKey(Config.ComboC)
-                ExecBtnC.Visible = (k1 and not IsFirstSkillOnCooldown(k1)) and Config.ShowC or false
-            end
-            if lockC2 then ExecBtnC2.Visible = false else
-                local k2 = GetFirstSkillKey(Config.ComboC2)
-                ExecBtnC2.Visible = (k2 and not IsFirstSkillOnCooldown(k2)) and Config.ShowC2 or false
-            end
-        elseif not getgenv().MacroHidden then
-            ExecBtnC.Visible = Config.ShowC
-            ExecBtnC2.Visible = Config.ShowC2
-        end
-
         if LP.Character then
             ClearEnemyStun(LP.Character)
             
