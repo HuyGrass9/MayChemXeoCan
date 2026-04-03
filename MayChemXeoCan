@@ -10,12 +10,12 @@ pcall(function() if setfpscap then setfpscap(120) end end)
 
 local ConfigName = "MayChemXeoCan_Config.json"
 local DefaultConfig = {
-    ComboC = "1ZX2XZ", 
-    ComboC2 = "3XZ1C",
+    ComboC = "3XZ", 
+    ComboC2 = "1ZX2XZ",
     BtnC_Show = false,
     BtnC2_Show = false,
     DPad_Show = false,
-    ComboDelay = 0.2, 
+    ComboDelay = 0.05, 
     MacroDelay = 0.01, 
     Hitbox = false, 
     HitboxSize = 15,
@@ -24,7 +24,7 @@ local DefaultConfig = {
     SetupMode = false
 }
 
-local DefaultDelays = {ComboDelay = 0.2, MacroDelay = 0.01, HitboxSize = 15, BtnSize = 55, BtnSizeC2 = 55}
+local DefaultDelays = {ComboDelay = 0.05, MacroDelay = 0.01, HitboxSize = 15, BtnSize = 55, BtnSizeC2 = 55}
 
 local Config = {}
 for k, v in pairs(DefaultConfig) do Config[k] = v end
@@ -85,55 +85,82 @@ end
 local ExecBtnC, StrokeC = CreateComboBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "BtnC_Show", "BtnSize")
 local ExecBtnC2, StrokeC2 = CreateComboBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), "BtnC2_Show", "BtnSizeC2")
 
-local DPadContainer = Instance.new("Frame")
-DPadContainer.Size = UDim2.new(0, 150, 0, 150)
-DPadContainer.Position = UDim2.new(0, 40, 1, -200)
-DPadContainer.BackgroundTransparency = 1
-DPadContainer.Active = Config.SetupMode
-DPadContainer.Draggable = Config.SetupMode
-DPadContainer.Visible = Config.DPad_Show
-DPadContainer.Parent = UI
+local JoyBase = Instance.new("Frame")
+JoyBase.Size = UDim2.new(0, 140, 0, 140)
+JoyBase.Position = UDim2.new(0, 40, 1, -190)
+JoyBase.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+JoyBase.BackgroundTransparency = 0.5
+JoyBase.Active = Config.SetupMode
+JoyBase.Draggable = Config.SetupMode
+JoyBase.Visible = Config.DPad_Show
+Instance.new("UICorner", JoyBase).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", JoyBase).Color = Color3.fromRGB(255, 255, 255)
+JoyBase.Parent = UI
 
-local function MakeDPadBtn(name, pos, size, key)
-    local btn = Instance.new("TextButton")
-    btn.Size = size
-    btn.Position = pos
-    btn.Text = name
-    btn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    btn.BackgroundTransparency = 0.4
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 18
-    btn.Selectable = false
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-    btn.Parent = DPadContainer
+local JoyKnob = Instance.new("Frame")
+JoyKnob.Size = UDim2.new(0, 60, 0, 60)
+JoyKnob.Position = UDim2.new(0.5, 0, 0.5, 0)
+JoyKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+JoyKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+JoyKnob.BackgroundTransparency = 0.2
+Instance.new("UICorner", JoyKnob).CornerRadius = UDim.new(1, 0)
+JoyKnob.Parent = JoyBase
+
+local draggingJoy = false
+local joyKeys = {W = false, A = false, S = false, D = false}
+
+local function UpdateJoy(inputPos)
+    local center = JoyBase.AbsolutePosition + JoyBase.AbsoluteSize / 2
+    local vec = Vector2.new(inputPos.X - center.X, inputPos.Y - center.Y)
+    local maxDist = JoyBase.AbsoluteSize.X / 2
+    if vec.Magnitude > maxDist then vec = vec.Unit * maxDist end
+    JoyKnob.Position = UDim2.new(0.5, vec.X, 0.5, vec.Y)
     
-    btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if not Config.SetupMode then
-                btn.BackgroundTransparency = 0.1
-                VIM:SendKeyEvent(true, key, false, game)
-            end
-        end
-    end)
-    btn.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if not Config.SetupMode then
-                btn.BackgroundTransparency = 0.4
-                VIM:SendKeyEvent(false, key, false, game)
-            end
-        end
-    end)
+    local norm = vec / maxDist
+    local w = norm.Y < -0.3
+    local s = norm.Y > 0.3
+    local a = norm.X < -0.3
+    local d = norm.X > 0.3
+    
+    if w ~= joyKeys.W then joyKeys.W = w; VIM:SendKeyEvent(w, Enum.KeyCode.W, false, game) end
+    if s ~= joyKeys.S then joyKeys.S = s; VIM:SendKeyEvent(s, Enum.KeyCode.S, false, game) end
+    if a ~= joyKeys.A then joyKeys.A = a; VIM:SendKeyEvent(a, Enum.KeyCode.A, false, game) end
+    if d ~= joyKeys.D then joyKeys.D = d; VIM:SendKeyEvent(d, Enum.KeyCode.D, false, game) end
 end
 
-MakeDPadBtn("W", UDim2.new(0.33, 0, 0, 0), UDim2.new(0.34, 0, 0.34, 0), Enum.KeyCode.W)
-MakeDPadBtn("A", UDim2.new(0, 0, 0.33, 0), UDim2.new(0.34, 0, 0.34, 0), Enum.KeyCode.A)
-MakeDPadBtn("S", UDim2.new(0.33, 0, 0.66, 0), UDim2.new(0.34, 0, 0.34, 0), Enum.KeyCode.S)
-MakeDPadBtn("D", UDim2.new(0.66, 0, 0.33, 0), UDim2.new(0.34, 0, 0.34, 0), Enum.KeyCode.D)
+local function ResetJoy()
+    JoyKnob.Position = UDim2.new(0.5, 0, 0.5, 0)
+    for k, v in pairs(joyKeys) do
+        if v then
+            joyKeys[k] = false
+            VIM:SendKeyEvent(false, Enum.KeyCode[k], false, game)
+        end
+    end
+end
+
+JoyBase.InputBegan:Connect(function(input)
+    if not Config.SetupMode and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
+        draggingJoy = true
+        UpdateJoy(input.Position)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if draggingJoy and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        UpdateJoy(input.Position)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if draggingJoy and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
+        draggingJoy = false
+        ResetJoy()
+    end
+end)
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 260, 0, 360)
-Menu.Position = UDim2.new(0.1, 0, 0.5, -180)
+Menu.Size = UDim2.new(0, 260, 0, 320)
+Menu.Position = UDim2.new(0.1, 0, 0.5, -160)
 Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -238,12 +265,12 @@ local function CreateSlider(parentTab, yPos, text, min, max, configKey, isInt)
 
     local dragging = false
     btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             if not getgenv().MCXC_ActiveSlider then getgenv().MCXC_ActiveSlider = configKey; dragging = true end
         end
     end)
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             if dragging and getgenv().MCXC_ActiveSlider == configKey then dragging = false; getgenv().MCXC_ActiveSlider = nil; SaveConfig() end
         end
     end)
@@ -296,10 +323,7 @@ local function CreateComboInput(yPos, name, configKey, color)
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
     box.Parent = TabCombo
     
-    box.FocusLost:Connect(function()
-        Config[configKey] = box.Text
-        SaveConfig()
-    end)
+    box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
     return box
 end
 
@@ -337,13 +361,12 @@ CreateSlider(TabSettings, 120, "C2 Button Size", 30, 100, "BtnSizeC2", true)
 
 local HitboxBtn = CreateToggleBtn(TabSettings, 0.05, 175, "HITBOX", "Hitbox", Color3.fromRGB(50, 200, 50), Color3.fromRGB(200, 50, 50))
 local SetupBtn = CreateToggleBtn(TabSettings, 0.53, 175, "SETUP", "SetupMode", Color3.fromRGB(50, 200, 50), Color3.fromRGB(200, 50, 50), function(val)
-    ExecBtnC.Draggable = val
-    ExecBtnC2.Draggable = val
-    DPadContainer.Draggable = val
-    DPadContainer.Active = val
+    ExecBtnC.Draggable = val; ExecBtnC.Active = val
+    ExecBtnC2.Draggable = val; ExecBtnC2.Active = val
+    JoyBase.Draggable = val; JoyBase.Active = val
 end)
 
-local DPadToggle = CreateToggleBtn(TabSettings, 0.05, 215, "D-PAD", "DPad_Show", Color3.fromRGB(50, 200, 50), Color3.fromRGB(200, 50, 50), function(val) DPadContainer.Visible = val end)
+local DPadToggle = CreateToggleBtn(TabSettings, 0.05, 215, "JOYSTICK", "DPad_Show", Color3.fromRGB(50, 200, 50), Color3.fromRGB(200, 50, 50), function(val) JoyBase.Visible = val end)
 
 local ResetBtn = Instance.new("TextButton")
 ResetBtn.Size = UDim2.new(0.42, 0, 0, 30)
@@ -375,16 +398,6 @@ ResetBtn.MouseButton1Click:Connect(function()
     for key, func in pairs(SlidersData) do if DefaultDelays[key] ~= nil then func(Config[key]) end end
     SaveConfig()
 end)
-
-local function MayChemXeoCan_IsHolding(char)
-    if not char then return false end
-    local tags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power", "Action"}
-    for _, tag in ipairs(tags) do if char:FindFirstChild(tag) then return true end end
-    local tool = char:FindFirstChildOfClass("Tool")
-    if tool then for _, tag in ipairs(tags) do if tool:FindFirstChild(tag) then return true end end end
-    return false
-end
-
 local function GetCurrentWeapon()
     local tool = LP.Character:FindFirstChildOfClass("Tool")
     if tool and tool:FindFirstChild("ToolTip") then
@@ -402,7 +415,7 @@ local function ExecuteCombo(comboString, strokeRef, colorOff)
     
     task.spawn(function()
         local str = string.upper(comboString)
-        local cDelay = tonumber(Config.ComboDelay) or 0.2
+        local cDelay = tonumber(Config.ComboDelay) or 0.05
         
         for i = 1, #str do
             local char = string.sub(str, i, i)
@@ -439,17 +452,7 @@ local function ExecuteCombo(comboString, strokeRef, colorOff)
                     end
                     task.wait(0.15)
                 else
-                    local waitStart = tick()
-                    local detected = false
-                    while (tick() - waitStart) < cDelay do
-                        RunService.Heartbeat:Wait()
-                        if MayChemXeoCan_IsHolding(LP.Character) then
-                            detected = true
-                        end
-                        if detected and not MayChemXeoCan_IsHolding(LP.Character) then
-                            break
-                        end
-                    end
+                    task.wait(cDelay)
                 end
             end
         end
