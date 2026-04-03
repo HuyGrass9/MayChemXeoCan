@@ -206,8 +206,6 @@ end
 
 local function SmartEquip(slot)
     if not LP.Character then return false end
-    local hum = LP.Character:FindFirstChild("Humanoid")
-    if not hum then return false end
     
     local targetTooltip = ""
     if slot == "1" then targetTooltip = "melee"
@@ -223,7 +221,9 @@ local function SmartEquip(slot)
 
     for _, tool in pairs(LP.Backpack:GetChildren()) do
         if tool:IsA("Tool") and tool:FindFirstChild("ToolTip") and string.find(string.lower(tool.ToolTip.Value), targetTooltip) then
-            hum:EquipTool(tool)
+            if currentTool then currentTool.Parent = LP.Backpack end
+            task.wait(0.01)
+            tool.Parent = LP.Character
             return true 
         end
     end
@@ -246,7 +246,7 @@ ExecBtn.MouseButton1Click:Connect(function()
             
             if char == "1" or char == "2" or char == "3" or char == "4" then
                 local switched = SmartEquip(char)
-                if switched then task.wait(0.15) end
+                if switched then task.wait(0.05) end
             elseif char == "Z" then key = Enum.KeyCode.Z
             elseif char == "X" then key = Enum.KeyCode.X
             elseif char == "C" then key = Enum.KeyCode.C
@@ -256,15 +256,14 @@ ExecBtn.MouseButton1Click:Connect(function()
             
             if key then
                 VIM:SendKeyEvent(true, key, false, game)
-                task.wait(0.02)
+                task.wait(0.01)
                 VIM:SendKeyEvent(false, key, false, game)
                 
                 task.wait(cDelay)
                 
-                local safeTimeout = 0
-                while MayChemXeoCan_IsHolding(LP.Character) and safeTimeout < 20 do
-                    task.wait(0.1)
-                    safeTimeout = safeTimeout + 1
+                local holdTimeout = tick()
+                while MayChemXeoCan_IsHolding(LP.Character) and (tick() - holdTimeout) < 2.5 do
+                    RunService.Heartbeat:Wait()
                 end
             end
         end
