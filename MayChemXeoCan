@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Perfect_V17.json"
+local ConfigName = "Macro_Perfect_V18.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
@@ -106,10 +106,10 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "MACRO"
+Title.Text = "MACRO AI ENGINE"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 15
+Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
@@ -450,17 +450,18 @@ ExecBtnC2.InputBegan:Connect(function(input)
 end)
 
 local function SafeGetPlayerInfo(plr)
-    local lvl, hp, mhp = "?", 0, 0
+    local lvl, race, hp, mhp = "?", "?", 0, 0
     pcall(function()
-        if plr:FindFirstChild("Data") and plr.Data:FindFirstChild("Level") then 
-            lvl = tostring(plr.Data.Level.Value) 
+        if plr:FindFirstChild("Data") then
+            if plr.Data:FindFirstChild("Level") then lvl = tostring(plr.Data.Level.Value) end
+            if plr.Data:FindFirstChild("Race") then race = tostring(plr.Data.Race.Value) end
         end
         if plr.Character then
             local hum = plr.Character:FindFirstChild("Humanoid")
             if hum then hp = math.floor(hum.Health); mhp = math.floor(hum.MaxHealth) end
         end
     end)
-    return lvl, hp, mhp
+    return lvl, race, hp, mhp
 end
 
 RunService.Heartbeat:Connect(function()
@@ -487,7 +488,7 @@ RunService.Heartbeat:Connect(function()
                         if not espGui then
                             espGui = Instance.new("BillboardGui")
                             espGui.Name = espId
-                            espGui.Size = UDim2.new(0, 200, 0, 50)
+                            espGui.Size = UDim2.new(0, 250, 0, 75)
                             espGui.StudsOffset = Vector3.new(0, 3, 0)
                             espGui.AlwaysOnTop = true
                             local txt = Instance.new("TextLabel")
@@ -500,36 +501,37 @@ RunService.Heartbeat:Connect(function()
                             espGui.Parent = hrp
                         end
                         
-                        local lvl, hp, mhp = SafeGetPlayerInfo(plr)
+                        local lvl, race, hp, mhp = SafeGetPlayerInfo(plr)
                         local weap = "None"
                         local pTool = plr.Character:FindFirstChildOfClass("Tool")
                         if pTool then weap = pTool.Name end
                         
                         local txtNode = espGui:FindFirstChildOfClass("TextLabel")
                         if txtNode then
-                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d | W: %s", lvl, plr.Name, hp, mhp, string.sub(weap, 1, 15))
+                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d\nRace: %s | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, race, string.sub(weap, 1, 15), math.floor(dist))
                             txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
                         end
                     else
                         if espGui then espGui:Destroy() end
                     end
                     
+                    local head = plr.Character:FindFirstChild("Head") or hrp
                     local tracerId = "Tracer_" .. plr.Name
-                    local tracer = hrp:FindFirstChild(tracerId)
+                    local tracer = head:FindFirstChild(tracerId)
                     
                     if Config.ViewTracer and dist <= 1000 then
                         if not tracer then
                             tracer = Instance.new("CylinderHandleAdornment")
                             tracer.Name = tracerId
-                            tracer.Adornee = hrp
+                            tracer.Adornee = head
                             tracer.Color3 = Color3.fromRGB(255, 50, 50)
-                            tracer.Radius = 0.35 
-                            tracer.Height = 35 
+                            tracer.Radius = 0.6 
+                            tracer.Height = 50 
                             tracer.ZIndex = 5
-                            tracer.Transparency = 0.3
+                            tracer.Transparency = 0.2
                             tracer.AlwaysOnTop = true
-                            tracer.CFrame = CFrame.new(0, 0, -17.5) 
-                            tracer.Parent = hrp
+                            tracer.CFrame = CFrame.new(0, 0, -25) 
+                            tracer.Parent = head
                         end
                     else
                         if tracer then tracer:Destroy() end
