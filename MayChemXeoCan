@@ -9,12 +9,10 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Supreme_Final.json"
+local ConfigName = "Macro_ZeroDelay_V1.json"
 local Config = {
-    ComboC = "3ZX1Z", 
-    ComboC2 = "2C1XZ",
-    ComboDelay = 0.05,
-    ActionDelay = 0.1,
+    ComboC = "1Z3XZ", 
+    ComboC2 = "",
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
@@ -108,10 +106,10 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "MACRO BY MAYCHEMXEOCAN"
+Title.Text = "MACRO"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
+Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
@@ -133,7 +131,7 @@ local TabBtns = {}
 local Indicator = Instance.new("Frame")
 Indicator.Size = UDim2.new(0.33, 0, 0, 2)
 Indicator.Position = UDim2.new(0, 0, 1, -2)
-Indicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Indicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
 Indicator.BorderSizePixel = 0
 Indicator.Parent = TabBar
 
@@ -226,7 +224,7 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
 
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((Config[configKey] - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     fill.Parent = bg
 
@@ -268,9 +266,6 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
     end)
 end
 
-CreateSlider(TabCombat, 145, "Combo Delay (Fast)", 0.01, 0.2, "ComboDelay", false)
-CreateSlider(TabCombat, 190, "Action Delay (Hold)", 0.05, 0.5, "ActionDelay", false)
-
 CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true)
 CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
 
@@ -296,8 +291,8 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 240, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
-CreateToggle(TabCombat, 0.53, 240, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
+CreateToggle(TabCombat, 0.05, 145, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
+CreateToggle(TabCombat, 0.53, 145, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
 CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
 CreateToggle(TabVisual, 0.53, 55, "ESP RADAR", "ESP")
 CreateToggle(TabVisual, 0.05, 100, "VIEW TRACER", "ViewTracer")
@@ -307,7 +302,7 @@ end)
 
 local HideBtn = Instance.new("TextButton")
 HideBtn.Size = UDim2.new(0.42, 0, 0, 35)
-HideBtn.Position = UDim2.new(0.05, 0, 0, 105)
+HideBtn.Position = UDim2.new(0.53, 0, 0, 55)
 HideBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 HideBtn.Text = "HIDE ALL"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -316,30 +311,20 @@ HideBtn.TextSize = 11
 Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
-local InstBtn = Instance.new("TextButton")
-InstBtn.Size = UDim2.new(0.42, 0, 0, 35)
-InstBtn.Position = UDim2.new(0.53, 0, 0, 105)
-InstBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-InstBtn.Text = "INSTRUCT"
-InstBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-InstBtn.Font = Enum.Font.GothamBold
-InstBtn.TextSize = 11
-Instance.new("UICorner", InstBtn).CornerRadius = UDim.new(0, 6)
-InstBtn.Parent = TabSet
+local InstTxt = Instance.new("TextLabel")
+InstTxt.Size = UDim2.new(0.9, 0, 0, 80)
+InstTxt.Position = UDim2.new(0.05, 0, 0, 105)
+InstTxt.BackgroundTransparency = 1
+InstTxt.Text = "HƯỚNG DẪN:\nNhập combo (VD: 3XZ1C).\nSố = Vũ khí, Chữ = Skill.\nAI tự cắt bỏ số nếu đang cầm sẵn.\nNếu skill chưa hồi, Combo tự hủy!"
+InstTxt.TextColor3 = Color3.fromRGB(180, 180, 180)
+InstTxt.TextWrapped = true
+InstTxt.Font = Enum.Font.GothamMedium
+InstTxt.TextSize = 11
+InstTxt.Parent = TabSet
 
 HideBtn.MouseButton1Click:Connect(function()
     getgenv().MacroHidden = true
     UI.Enabled = false
-end)
-
-InstBtn.MouseButton1Click:Connect(function()
-    pcall(function()
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "HƯỚNG DẪN MACRO",
-            Text = "Nhập tổ hợp vào ô (vd: 3ZX1C).\nSố = Rút vũ khí (1:Melee, 2:Fruit, 3:Sword).\nChữ = Skill.\nAI sẽ cắt bỏ số nếu bạn đang cầm sẵn vũ khí đó!\nCode by MayChemXeoCan",
-            Duration = 10
-        })
-    end)
 end)
 
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
@@ -384,7 +369,9 @@ local function ClearEnemyStun(char)
     end
 end
 
-local function ExecuteAIPacing(comboStr, stroke, baseColor)
+local lockC, lockC2 = false, false
+
+local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
     stroke.Color = Color3.fromRGB(255, 255, 255)
     task.spawn(function()
         task.wait(0.05)
@@ -397,9 +384,6 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
                 s = string.sub(s, 2)
             end
         end
-        
-        local delayBuffer = tonumber(Config.ComboDelay) or 0.05
-        local actDelay = tonumber(Config.ActionDelay) or 0.1
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
@@ -424,7 +408,7 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
                             if t and GetToolType(t) == char then break end
                             RunService.Heartbeat:Wait()
                         end
-                        task.wait(0.05)
+                        task.wait(0.02)
                     end
                 end
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
@@ -437,7 +421,7 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
                 
                 local waitReg = tick()
                 local triggered = false
-                while tick() - waitReg < 0.15 do
+                while tick() - waitReg < 0.4 do
                     if IsSkillBusy(LP.Character) then triggered = true; break end
                     RunService.Heartbeat:Wait()
                 end
@@ -447,25 +431,23 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
                     while IsSkillBusy(LP.Character) and tick() - waitAnim < 2.5 do
                         RunService.Heartbeat:Wait()
                     end
-                    task.wait(actDelay)
+                    task.wait(0.05)
                 else
-                    task.wait(delayBuffer)
+                    break
                 end
                 ClearEnemyStun(LP.Character)
             end
         end
         stroke.Color = baseColor
+        if not isC2 then lockC = false else lockC2 = false end
     end)
 end
-
-local lockC, lockC2 = false, false
 
 ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC then return end
         lockC = true
-        ExecuteAIPacing(Config.ComboC, StrokeC, Color3.fromRGB(255, 50, 50))
-        task.spawn(function() task.wait(0.2); lockC = false end)
+        ExecuteAIPacing(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60), false)
     end
 end)
 
@@ -473,23 +455,23 @@ ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC2 then return end
         lockC2 = true
-        ExecuteAIPacing(Config.ComboC2, StrokeC2, Color3.fromRGB(50, 150, 255))
-        task.spawn(function() task.wait(0.2); lockC2 = false end)
+        ExecuteAIPacing(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255), true)
     end
 end)
 
 local function SafeGetPlayerInfo(plr)
-    local lvl, hp, mhp = "?", 0, 0
+    local lvl, race, hp, mhp = "?", "?", 0, 0
     pcall(function()
-        if plr:FindFirstChild("Data") and plr.Data:FindFirstChild("Level") then 
-            lvl = tostring(plr.Data.Level.Value) 
+        if plr:FindFirstChild("Data") then
+            if plr.Data:FindFirstChild("Level") then lvl = tostring(plr.Data.Level.Value) end
+            if plr.Data:FindFirstChild("Race") then race = tostring(plr.Data.Race.Value) end
         end
         if plr.Character then
             local hum = plr.Character:FindFirstChild("Humanoid")
             if hum then hp = math.floor(hum.Health); mhp = math.floor(hum.MaxHealth) end
         end
     end)
-    return lvl, hp, mhp
+    return lvl, race, hp, mhp
 end
 
 RunService.Heartbeat:Connect(function()
@@ -524,7 +506,7 @@ RunService.Heartbeat:Connect(function()
                         if not espGui then
                             espGui = Instance.new("BillboardGui")
                             espGui.Name = espId
-                            espGui.Size = UDim2.new(0, 200, 0, 60)
+                            espGui.Size = UDim2.new(0, 250, 0, 75)
                             espGui.StudsOffset = Vector3.new(0, 3, 0)
                             espGui.AlwaysOnTop = true
                             local txt = Instance.new("TextLabel")
@@ -537,51 +519,52 @@ RunService.Heartbeat:Connect(function()
                             espGui.Parent = root
                         end
                         
-                        local lvl, hp, mhp = SafeGetPlayerInfo(plr)
+                        local lvl, race, hp, mhp = SafeGetPlayerInfo(plr)
                         local weap = "None"
                         local pTool = plr.Character:FindFirstChildOfClass("Tool")
                         if pTool then weap = pTool.Name end
                         
                         local txtNode = espGui:FindFirstChildOfClass("TextLabel")
                         if txtNode then
-                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, string.sub(weap, 1, 15), math.floor(dist))
+                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d\nRace: %s | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, race, string.sub(weap, 1, 15), math.floor(dist))
                             txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
                         end
                     else
                         if espGui then espGui:Destroy() end
                     end
                     
+                    local head = plr.Character:FindFirstChild("Head") or root
                     local lineId = "TracerLine_" .. plr.Name
                     local arrId = "TracerArrow_" .. plr.Name
-                    local line = root:FindFirstChild(lineId)
-                    local arr = root:FindFirstChild(arrId)
+                    local line = head:FindFirstChild(lineId)
+                    local arr = head:FindFirstChild(arrId)
                     
                     if Config.ViewTracer and dist <= 1000 and not getgenv().MacroHidden then
                         if not line then
                             line = Instance.new("CylinderHandleAdornment")
                             line.Name = lineId
-                            line.Adornee = root
+                            line.Adornee = head
                             line.Color3 = Color3.fromRGB(255, 50, 50)
-                            line.Radius = 0.3
+                            line.Radius = 0.6
                             line.Height = 50
                             line.ZIndex = 5
                             line.Transparency = 0.2
                             line.AlwaysOnTop = true
                             line.CFrame = CFrame.new(0, 0, -25) 
-                            line.Parent = root
+                            line.Parent = head
                         end
                         if not arr then
                             arr = Instance.new("ConeHandleAdornment")
                             arr.Name = arrId
-                            arr.Adornee = root
+                            arr.Adornee = head
                             arr.Color3 = Color3.fromRGB(255, 50, 50)
-                            arr.Radius = 1.2
-                            arr.Height = 2.5
+                            arr.Radius = 1.8
+                            arr.Height = 3.5
                             arr.ZIndex = 5
                             arr.Transparency = 0.2
                             arr.AlwaysOnTop = true
-                            arr.CFrame = CFrame.new(0, 0, -51) 
-                            arr.Parent = root
+                            arr.CFrame = CFrame.new(0, 0, -51.5) 
+                            arr.Parent = head
                         end
                     else
                         if line then line:Destroy() end
