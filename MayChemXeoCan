@@ -9,48 +9,132 @@ pcall(function()
     if setfpscap then setfpscap(120) end
 end)
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCan_XZ") or CoreGui:FindFirstChild("MayChemXeoCan_XZ")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCan_Hub") or CoreGui:FindFirstChild("MayChemXeoCan_Hub")
 if oldUI then oldUI:Destroy() end
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "MayChemXeoCan_XZ"
+UI.Name = "MayChemXeoCan_Hub"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 50, 0, 50)
-MainFrame.Position = UDim2.new(0.7, 0, 0.5, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = UI
+getgenv().MayChemXeoCan_ComboString = "3XZ"
 
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(1, 0)
-local Stroke = Instance.new("UIStroke", MainFrame)
-Stroke.Color = Color3.fromRGB(255, 50, 50)
-Stroke.Thickness = 2
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Position = UDim2.new(0.5, -22, 0, 10)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+ToggleBtn.Text = "MCXC"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+ToggleBtn.Font = Enum.Font.GothamBlack
+ToggleBtn.TextSize = 12
+ToggleBtn.BorderSizePixel = 0
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", ToggleBtn).Color = Color3.fromRGB(255, 50, 50)
+ToggleBtn.Parent = UI
 
-local Btn = Instance.new("TextButton")
-Btn.Size = UDim2.new(1, 0, 1, 0)
-Btn.BackgroundTransparency = 1
-Btn.Text = "X+Z"
-Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Btn.Font = Enum.Font.GothamBlack
-Btn.TextSize = 14
-Btn.Parent = MainFrame
+local MenuFrame = Instance.new("Frame")
+MenuFrame.Size = UDim2.new(0, 200, 0, 110)
+MenuFrame.Position = UDim2.new(0.5, -100, 0.5, -55)
+MenuFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MenuFrame.BorderSizePixel = 0
+MenuFrame.Active = true
+MenuFrame.Draggable = true
+MenuFrame.Visible = false
+Instance.new("UICorner", MenuFrame).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", MenuFrame).Color = Color3.fromRGB(255, 50, 50)
+MenuFrame.Parent = UI
 
-Btn.MouseButton1Click:Connect(function()
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundTransparency = 1
+Title.Text = "CUSTOM COMBO"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 14
+Title.Parent = MenuFrame
+
+local InputBox = Instance.new("TextBox")
+InputBox.Size = UDim2.new(0.9, 0, 0, 30)
+InputBox.Position = UDim2.new(0.05, 0, 0, 35)
+InputBox.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+InputBox.TextColor3 = Color3.fromRGB(0, 255, 150)
+InputBox.Font = Enum.Font.GothamBold
+InputBox.TextSize = 14
+InputBox.Text = getgenv().MayChemXeoCan_ComboString
+InputBox.PlaceholderText = "Ex: 2Z3XZ1C"
+InputBox.ClearTextOnFocus = false
+Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 4)
+InputBox.Parent = MenuFrame
+
+local SaveBtn = Instance.new("TextButton")
+SaveBtn.Size = UDim2.new(0.9, 0, 0, 30)
+SaveBtn.Position = UDim2.new(0.05, 0, 0, 70)
+SaveBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+SaveBtn.Text = "SAVE COMBO"
+SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.Font = Enum.Font.GothamBlack
+SaveBtn.TextSize = 12
+Instance.new("UICorner", SaveBtn).CornerRadius = UDim.new(0, 4)
+SaveBtn.Parent = MenuFrame
+
+local ExecuteBtn = Instance.new("TextButton")
+ExecuteBtn.Size = UDim2.new(0, 55, 0, 55)
+ExecuteBtn.Position = UDim2.new(0.7, 0, 0.6, 0)
+ExecuteBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+ExecuteBtn.Text = "COMBO"
+ExecuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExecuteBtn.Font = Enum.Font.GothamBlack
+ExecuteBtn.TextSize = 12
+ExecuteBtn.Active = true
+ExecuteBtn.Draggable = true
+Instance.new("UICorner", ExecuteBtn).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", ExecuteBtn).Color = Color3.fromRGB(255, 50, 50)
+Instance.new("UIStroke", ExecuteBtn).Thickness = 2
+ExecuteBtn.Parent = UI
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    MenuFrame.Visible = not MenuFrame.Visible
+end)
+
+SaveBtn.MouseButton1Click:Connect(function()
+    local text = InputBox.Text
+    getgenv().MayChemXeoCan_ComboString = text
+    SaveBtn.Text = "SAVED!"
+    task.wait(1)
+    SaveBtn.Text = "SAVE COMBO"
+end)
+
+local isComboing = false
+ExecuteBtn.MouseButton1Click:Connect(function()
+    if isComboing then return end
+    isComboing = true
     task.spawn(function()
-        VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
-        task.wait(0.01)
-        VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
-        
-        task.wait(0.05)
-        
-        VIM:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
-        task.wait(0.01)
-        VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+        local str = string.upper(getgenv().MayChemXeoCan_ComboString)
+        for i = 1, #str do
+            local char = string.sub(str, i, i)
+            local key = nil
+            local delayTime = 0.15
+            
+            if char == "1" then key = Enum.KeyCode.One; delayTime = 0.1
+            elseif char == "2" then key = Enum.KeyCode.Two; delayTime = 0.1
+            elseif char == "3" then key = Enum.KeyCode.Three; delayTime = 0.1
+            elseif char == "4" then key = Enum.KeyCode.Four; delayTime = 0.1
+            elseif char == "5" then key = Enum.KeyCode.Five; delayTime = 0.1
+            elseif char == "Z" then key = Enum.KeyCode.Z
+            elseif char == "X" then key = Enum.KeyCode.X
+            elseif char == "C" then key = Enum.KeyCode.C
+            elseif char == "V" then key = Enum.KeyCode.V
+            elseif char == "F" then key = Enum.KeyCode.F
+            end
+            
+            if key then
+                VIM:SendKeyEvent(true, key, false, game)
+                task.wait(0.02)
+                VIM:SendKeyEvent(false, key, false, game)
+                task.wait(delayTime)
+            end
+        end
+        isComboing = false
     end)
 end)
 
