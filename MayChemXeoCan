@@ -9,9 +9,9 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_WarMind.json"
+local ConfigName = "Macro_Final_V14.json"
 local Config = {
-    ComboC = "1ZX3XZ", 
+    ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
     ComboDelay = 0.05,
     ActionDelay = 0.1,
@@ -19,8 +19,8 @@ local Config = {
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
-    ShowC = false,
-    ShowC2 = false,
+    ShowC = true,
+    ShowC2 = true,
     ESP = false
 }
 
@@ -309,39 +309,39 @@ ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible 
 HideBtn.MouseButton1Click:Connect(function() Menu.Visible = false end)
 local function GetToolType(tool)
     if not tool or not tool:FindFirstChild("ToolTip") then return "0" end
-    local v = string.lower(tostring(tool.ToolTip.Value))
-    if string.find(v, "melee") or string.find(v, "cận") or string.find(v, "võ") then return "1" end
-    if string.find(v, "fruit") or string.find(v, "trái") or string.find(v, "quỷ") then return "2" end
-    if string.find(v, "sword") or string.find(v, "kiếm") or string.find(v, "đao") then return "3" end
-    if string.find(v, "gun") or string.find(v, "súng") or string.find(v, "pháo") then return "4" end
+    local v = tostring(tool.ToolTip.Value)
+    local vLow = string.lower(v)
+    
+    if string.find(vLow, "melee") or string.find(v, "Cận") or string.find(v, "cận") or string.find(v, "Võ") or string.find(v, "võ") then return "1" end
+    if string.find(vLow, "fruit") or string.find(v, "Trái") or string.find(v, "trái") or string.find(v, "Quỷ") or string.find(v, "quỷ") then return "2" end
+    if string.find(vLow, "sword") or string.find(v, "Kiếm") or string.find(v, "kiếm") or string.find(v, "Đao") or string.find(v, "đao") then return "3" end
+    if string.find(vLow, "gun") or string.find(v, "Súng") or string.find(v, "súng") or string.find(v, "Pháo") or string.find(v, "pháo") then return "4" end
     return "0"
 end
 
-local function ForceEquipPhysical(slotStr)
-    if not LP.Character then return end
+local function ForceEquipTool(slotStr)
+    if not LP.Character or not LP.Character:FindFirstChild("Humanoid") then return end
     
     local currentTool = LP.Character:FindFirstChildOfClass("Tool")
     if currentTool and GetToolType(currentTool) == slotStr then return end
 
     local targetTool = nil
-    local tools = {}
     if LP.Backpack then
-        for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
+        for _, tool in ipairs(LP.Backpack:GetChildren()) do
+            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
+        end
     end
-    for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
-
-    for _, tool in ipairs(tools) do
-        if GetToolType(tool) == slotStr then targetTool = tool; break end
+    
+    if not targetTool then
+        for _, tool in ipairs(LP.Character:GetChildren()) do
+            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
+        end
     end
 
     if targetTool then
-        if LP.Character:FindFirstChildOfClass("Humanoid") then
-            LP.Character.Humanoid:UnequipTools()
-        end
-        task.wait(0.01)
-        targetTool.Parent = LP.Character
-        local timeout = tick()
-        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.2 do
+        LP.Character.Humanoid:EquipTool(targetTool)
+        local t = tick()
+        while targetTool.Parent ~= LP.Character and tick() - t < 0.4 do
             RunService.Heartbeat:Wait()
         end
         task.wait(0.05)
@@ -350,12 +350,11 @@ end
 
 local function IsSkillBusy(char)
     if not char then return false end
-    local busyTags = {"busy", "usingskill", "charging", "holding", "stance", "active", "power", "action"}
     for _, v in ipairs(char:GetChildren()) do
         if v:IsA("BoolValue") and v.Value == true then
             local n = string.lower(v.Name)
-            for _, tag in ipairs(busyTags) do
-                if string.find(n, tag) then return true end
+            if string.find(n, "busy") or string.find(n, "usingskill") or string.find(n, "charging") or string.find(n, "holding") or string.find(n, "power") then
+                return true
             end
         end
     end
@@ -380,13 +379,13 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
     task.spawn(function()
         task.wait(0.05)
         local s = string.upper(comboStr)
-        local kDelay = tonumber(Config.ComboDelay) or 0.05
-        local aDelay = tonumber(Config.ActionDelay) or 0.1
+        local delayBuffer = tonumber(Config.ComboDelay) or 0.05
+        local actDelay = tonumber(Config.ActionDelay) or 0.1
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                ForceEquipPhysical(char)
+                ForceEquipTool(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
                 ClearEnemyStun(LP.Character)
                 local kc = Enum.KeyCode[char]
@@ -407,9 +406,9 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
                     while IsSkillBusy(LP.Character) and tick() - waitAnim < 2.5 do
                         RunService.Heartbeat:Wait()
                     end
-                    task.wait(aDelay)
+                    task.wait(actDelay)
                 else
-                    task.wait(kDelay)
+                    task.wait(delayBuffer)
                 end
                 ClearEnemyStun(LP.Character)
             end
