@@ -9,11 +9,10 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Core.json"
+local ConfigName = "Macro_WarMind.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
-    ComboDelay = 0.05,
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
@@ -78,8 +77,8 @@ local function CreateActionBtn(name, yPos, color, showKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC")
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "ShowC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 280, 0, 380)
@@ -96,25 +95,38 @@ MenuStroke.Thickness = 1
 Menu.Parent = UI
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " MACRO"
+Title.Text = "MACRO AI PREDATOR"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 15
+Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
-local UILine = Instance.new("Frame")
-UILine.Size = UDim2.new(1, 0, 0, 1)
-UILine.Position = UDim2.new(0, 0, 0, 40)
-UILine.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-UILine.BorderSizePixel = 0
-UILine.Parent = Menu
+local StatusFrame = Instance.new("Frame")
+StatusFrame.Size = UDim2.new(0.9, 0, 0, 55)
+StatusFrame.Position = UDim2.new(0.05, 0, 0, 35)
+StatusFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
+Instance.new("UICorner", StatusFrame).CornerRadius = UDim.new(0, 4)
+Instance.new("UIStroke", StatusFrame).Color = Color3.fromRGB(40, 40, 45)
+StatusFrame.Parent = Menu
+
+local StatTxt = Instance.new("TextLabel")
+StatTxt.Size = UDim2.new(1, -10, 1, 0)
+StatTxt.Position = UDim2.new(0, 5, 0, 0)
+StatTxt.BackgroundTransparency = 1
+StatTxt.Text = "Loading Data..."
+StatTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
+StatTxt.Font = Enum.Font.GothamMedium
+StatTxt.TextSize = 10
+StatTxt.TextXAlignment = Enum.TextXAlignment.Left
+StatTxt.Parent = StatusFrame
 
 local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, 0, 0, 35)
-TabBar.Position = UDim2.new(0, 0, 0, 41)
+TabBar.Size = UDim2.new(1, 0, 0, 30)
+TabBar.Position = UDim2.new(0, 0, 0, 95)
 TabBar.BackgroundTransparency = 1
 TabBar.Parent = Menu
 local TabFrames = {}
@@ -138,8 +150,8 @@ local function CreateTab(name, xPos, isActive)
     btn.Parent = TabBar
     
     local frame = Instance.new("ScrollingFrame")
-    frame.Size = UDim2.new(1, 0, 1, -76)
-    frame.Position = UDim2.new(0, 0, 0, 76)
+    frame.Size = UDim2.new(1, 0, 1, -125)
+    frame.Position = UDim2.new(0, 0, 0, 125)
     frame.BackgroundTransparency = 1
     frame.Visible = isActive
     frame.ScrollBarThickness = 2
@@ -189,27 +201,8 @@ local function CreateTextInput(parent, yPos, text, configKey)
     return box
 end
 
-local StatusFrame = Instance.new("Frame")
-StatusFrame.Size = UDim2.new(0.9, 0, 0, 45)
-StatusFrame.Position = UDim2.new(0.05, 0, 0, 5)
-StatusFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
-Instance.new("UICorner", StatusFrame).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", StatusFrame).Color = Color3.fromRGB(40, 40, 45)
-StatusFrame.Parent = TabCombat
-
-local StatTxt = Instance.new("TextLabel")
-StatTxt.Size = UDim2.new(1, -10, 1, 0)
-StatTxt.Position = UDim2.new(0, 5, 0, 0)
-StatTxt.BackgroundTransparency = 1
-StatTxt.Text = "Loading Data..."
-StatTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
-StatTxt.Font = Enum.Font.GothamMedium
-StatTxt.TextSize = 10
-StatTxt.TextXAlignment = Enum.TextXAlignment.Left
-StatTxt.Parent = StatusFrame
-
-getgenv().BoxComboC = CreateTextInput(TabCombat, 60, "Sequence C:", "ComboC")
-getgenv().BoxComboC2 = CreateTextInput(TabCombat, 130, "Sequence C2:", "ComboC2")
+getgenv().BoxComboC = CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
+getgenv().BoxComboC2 = CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
 
@@ -276,8 +269,7 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
     end)
 end
 
-CreateSlider(TabCombat, 200, "Base Key Delay", 0.01, 0.2, "ComboDelay", false)
-CreateSlider(TabVisual, 5, "Hitbox Expander", 5, 60, "HitboxSize", true)
+CreateSlider(TabVisual, 5, "Hitbox Expander", 5, 30, "HitboxSize", true)
 CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
 
 local function CreateToggle(parent, x, y, text, configKey, cb)
@@ -302,8 +294,8 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 245, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
-CreateToggle(TabCombat, 0.53, 245, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
+CreateToggle(TabCombat, 0.05, 145, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
+CreateToggle(TabCombat, 0.53, 145, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
 CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
 CreateToggle(TabVisual, 0.53, 55, "ESP RADAR", "ESP")
 CreateToggle(TabSet, 0.05, 55, "AUTO CONFIG", "AutoConfig")
@@ -351,28 +343,30 @@ local function GetWeaponData()
     return melee, fruit, sword
 end
 
-local function ForceEquipPhysical(slotStr)
+local function DirectEquip(slotStr)
     if not LP.Character or not LP.Character:FindFirstChild("Humanoid") then return end
     
     local current = LP.Character:FindFirstChildOfClass("Tool")
     if current and GetToolType(current) == slotStr then return end
 
-    local tools = {}
-    if LP.Backpack then for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end end
-    for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
-
     local targetTool = nil
-    for _, tool in ipairs(tools) do
-        if GetToolType(tool) == slotStr then
-            targetTool = tool
-            break
+    if LP.Backpack then
+        for _, tool in ipairs(LP.Backpack:GetChildren()) do
+            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
+        end
+    end
+    if not targetTool then
+        for _, tool in ipairs(LP.Character:GetChildren()) do
+            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
         end
     end
 
     if targetTool then
-        LP.Character.Humanoid:EquipTool(targetTool)
+        LP.Character.Humanoid:UnequipTools()
+        task.wait(0.01)
+        targetTool.Parent = LP.Character
         local timeout = tick()
-        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.4 do RunService.Heartbeat:Wait() end
+        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.3 do RunService.Heartbeat:Wait() end
         task.wait(0.05)
     end
 end
@@ -408,12 +402,11 @@ local function FireAICombo(str, stroke, baseColor)
     stroke.Color = Color3.fromRGB(255, 255, 255)
     task.spawn(function()
         local s = string.upper(str)
-        local kDelay = tonumber(Config.ComboDelay) or 0.05
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                ForceEquipPhysical(char)
+                DirectEquip(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
                 ForceClearStun(LP.Character)
                 local kc = Enum.KeyCode[char]
@@ -431,12 +424,12 @@ local function FireAICombo(str, stroke, baseColor)
                 
                 if triggered then
                     local waitAnim = tick()
-                    while IsBusy(LP.Character) and tick() - waitAnim < 1.0 do
+                    while IsBusy(LP.Character) and tick() - waitAnim < 1.5 do
                         RunService.Heartbeat:Wait()
                     end
                 end
                 
-                task.wait(kDelay)
+                task.wait(0.01)
                 ForceClearStun(LP.Character)
             end
         end
@@ -451,7 +444,7 @@ ExecBtnC.InputBegan:Connect(function(input)
         if Config.SetupMode or lockC then return end
         lockC = true
         FireAICombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 50, 50))
-        task.spawn(function() task.wait(0.3); lockC = false end)
+        task.spawn(function() task.wait(0.2); lockC = false end)
     end
 end)
 
@@ -460,7 +453,7 @@ ExecBtnC2.InputBegan:Connect(function(input)
         if Config.SetupMode or lockC2 then return end
         lockC2 = true
         FireAICombo(Config.ComboC2, StrokeC2, Color3.fromRGB(50, 150, 255))
-        task.spawn(function() task.wait(0.3); lockC2 = false end)
+        task.spawn(function() task.wait(0.2); lockC2 = false end)
     end
 end)
 
@@ -517,12 +510,6 @@ RunService.Heartbeat:Connect(function()
                         hrp.Size = Vector3.new(hs, hs, hs)
                         hrp.Transparency = 0.7
                         hrp.CanCollide = false
-                        local torso = plr.Character:FindFirstChild("UpperTorso") or plr.Character:FindFirstChild("Torso")
-                        if torso then
-                            torso.Size = Vector3.new(hs, hs, hs)
-                            torso.Transparency = 0.7
-                            torso.CanCollide = false
-                        end
                     end
                     
                     local espId = "ESP_" .. plr.Name
