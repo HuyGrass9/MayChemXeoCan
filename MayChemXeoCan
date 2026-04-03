@@ -1,125 +1,152 @@
 local Players = game:GetService("Players")
-local Stats = game:GetService("Stats")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local LP = Players.LocalPlayer
 
-pcall(function()
-    if setfpscap then setfpscap(120) end
-end)
+pcall(function() if setfpscap then setfpscap(120) end end)
 
-local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCan_Hub") or CoreGui:FindFirstChild("MayChemXeoCan_Hub")
+local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCan_Pro") or CoreGui:FindFirstChild("MayChemXeoCan_Pro")
 if oldUI then oldUI:Destroy() end
 
 local UI = Instance.new("ScreenGui")
-UI.Name = "MayChemXeoCan_Hub"
+UI.Name = "MayChemXeoCan_Pro"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
 
-getgenv().MayChemXeoCan_ComboString = "3XZ"
+getgenv().MCXC_ComboStr = getgenv().MCXC_ComboStr or "3XZ"
+getgenv().MCXC_ComboDelay = getgenv().MCXC_ComboDelay or "0.2"
+getgenv().MCXC_MacroDelay = getgenv().MCXC_MacroDelay or "0.04"
+getgenv().MCXC_Hitbox = getgenv().MCXC_Hitbox or false
 
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-ToggleBtn.Position = UDim2.new(0.5, -22, 0, 10)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-ToggleBtn.Text = "MCXC"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
-ToggleBtn.Font = Enum.Font.GothamBlack
-ToggleBtn.TextSize = 12
-ToggleBtn.BorderSizePixel = 0
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", ToggleBtn).Color = Color3.fromRGB(255, 50, 50)
-ToggleBtn.Parent = UI
+local ToggleIcon = Instance.new("TextButton")
+ToggleIcon.Size = UDim2.new(0, 40, 0, 40)
+ToggleIcon.Position = UDim2.new(0.5, -20, 0, 10)
+ToggleIcon.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+ToggleIcon.Text = "⚙️"
+ToggleIcon.TextSize = 20
+ToggleIcon.BorderSizePixel = 0
+ToggleIcon.Active = true
+ToggleIcon.Draggable = true
+Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(255, 50, 50)
+ToggleIcon.Parent = UI
 
-local MenuFrame = Instance.new("Frame")
-MenuFrame.Size = UDim2.new(0, 200, 0, 110)
-MenuFrame.Position = UDim2.new(0.5, -100, 0.5, -55)
-MenuFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-MenuFrame.BorderSizePixel = 0
-MenuFrame.Active = true
-MenuFrame.Draggable = true
-MenuFrame.Visible = false
-Instance.new("UICorner", MenuFrame).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", MenuFrame).Color = Color3.fromRGB(255, 50, 50)
-MenuFrame.Parent = UI
+local ExecBtn = Instance.new("TextButton")
+ExecBtn.Size = UDim2.new(0, 55, 0, 55)
+ExecBtn.Position = UDim2.new(0.7, 0, 0.6, 0)
+ExecBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+ExecBtn.Text = "C"
+ExecBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+ExecBtn.Font = Enum.Font.GothamBlack
+ExecBtn.TextSize = 24
+ExecBtn.Active = true
+ExecBtn.Draggable = true
+Instance.new("UICorner", ExecBtn).CornerRadius = UDim.new(1, 0)
+local ExecStroke = Instance.new("UIStroke", ExecBtn)
+ExecStroke.Color = Color3.fromRGB(255, 50, 50)
+ExecStroke.Thickness = 2
+ExecBtn.Parent = UI
+
+local Menu = Instance.new("Frame")
+Menu.Size = UDim2.new(0, 220, 0, 210)
+Menu.Position = UDim2.new(0.5, -110, 0.5, -105)
+Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Menu.BorderSizePixel = 0
+Menu.Active = true
+Menu.Draggable = true
+Menu.Visible = false
+Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", Menu).Color = Color3.fromRGB(255, 50, 50)
+Menu.Parent = UI
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundTransparency = 1
-Title.Text = "CUSTOM COMBO"
+Title.Text = "MAYCHEMXEOCAN HUB"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBlack
 Title.TextSize = 14
-Title.Parent = MenuFrame
+Title.Parent = Menu
 
-local InputBox = Instance.new("TextBox")
-InputBox.Size = UDim2.new(0.9, 0, 0, 30)
-InputBox.Position = UDim2.new(0.05, 0, 0, 35)
-InputBox.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-InputBox.TextColor3 = Color3.fromRGB(0, 255, 150)
-InputBox.Font = Enum.Font.GothamBold
-InputBox.TextSize = 14
-InputBox.Text = getgenv().MayChemXeoCan_ComboString
-InputBox.PlaceholderText = "Ex: 2Z3XZ1C"
-InputBox.ClearTextOnFocus = false
-Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 4)
-InputBox.Parent = MenuFrame
+local function MakeBox(yPos, placeholder, defaultVal, isNum)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(0.9, 0, 0, 30)
+    box.Position = UDim2.new(0.05, 0, 0, yPos)
+    box.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    box.TextColor3 = Color3.fromRGB(0, 255, 150)
+    box.Font = Enum.Font.GothamBold
+    box.TextSize = 14
+    box.Text = defaultVal
+    box.PlaceholderText = placeholder
+    box.ClearTextOnFocus = false
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+    box.Parent = Menu
+    return box
+end
+
+local ComboBox = MakeBox(35, "Combo (Ex: 2Z3XZ)", getgenv().MCXC_ComboStr, false)
+local CmbDelayBox = MakeBox(70, "Combo Delay (Ex: 0.15)", getgenv().MCXC_ComboDelay, true)
+local MacDelayBox = MakeBox(105, "Macro Delay (Ex: 0.04)", getgenv().MCXC_MacroDelay, true)
+
+local HitboxBtn = Instance.new("TextButton")
+HitboxBtn.Size = UDim2.new(0.9, 0, 0, 30)
+HitboxBtn.Position = UDim2.new(0.05, 0, 0, 140)
+HitboxBtn.BackgroundColor3 = getgenv().MCXC_Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+HitboxBtn.Text = "HITBOX: " .. (getgenv().MCXC_Hitbox and "ON" or "OFF")
+HitboxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+HitboxBtn.Font = Enum.Font.GothamBlack
+HitboxBtn.TextSize = 13
+Instance.new("UICorner", HitboxBtn).CornerRadius = UDim.new(0, 4)
+HitboxBtn.Parent = Menu
 
 local SaveBtn = Instance.new("TextButton")
 SaveBtn.Size = UDim2.new(0.9, 0, 0, 30)
-SaveBtn.Position = UDim2.new(0.05, 0, 0, 70)
-SaveBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-SaveBtn.Text = "SAVE COMBO"
-SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.Position = UDim2.new(0.05, 0, 0, 175)
+SaveBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.Text = "APPLY & SAVE"
+SaveBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 SaveBtn.Font = Enum.Font.GothamBlack
-SaveBtn.TextSize = 12
+SaveBtn.TextSize = 13
 Instance.new("UICorner", SaveBtn).CornerRadius = UDim.new(0, 4)
-SaveBtn.Parent = MenuFrame
+SaveBtn.Parent = Menu
 
-local ExecuteBtn = Instance.new("TextButton")
-ExecuteBtn.Size = UDim2.new(0, 55, 0, 55)
-ExecuteBtn.Position = UDim2.new(0.7, 0, 0.6, 0)
-ExecuteBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-ExecuteBtn.Text = "COMBO"
-ExecuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ExecuteBtn.Font = Enum.Font.GothamBlack
-ExecuteBtn.TextSize = 12
-ExecuteBtn.Active = true
-ExecuteBtn.Draggable = true
-Instance.new("UICorner", ExecuteBtn).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", ExecuteBtn).Color = Color3.fromRGB(255, 50, 50)
-Instance.new("UIStroke", ExecuteBtn).Thickness = 2
-ExecuteBtn.Parent = UI
+ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
 
-ToggleBtn.MouseButton1Click:Connect(function()
-    MenuFrame.Visible = not MenuFrame.Visible
+HitboxBtn.MouseButton1Click:Connect(function()
+    getgenv().MCXC_Hitbox = not getgenv().MCXC_Hitbox
+    HitboxBtn.BackgroundColor3 = getgenv().MCXC_Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    HitboxBtn.Text = "HITBOX: " .. (getgenv().MCXC_Hitbox and "ON" or "OFF")
 end)
 
 SaveBtn.MouseButton1Click:Connect(function()
-    local text = InputBox.Text
-    getgenv().MayChemXeoCan_ComboString = text
+    getgenv().MCXC_ComboStr = ComboBox.Text
+    getgenv().MCXC_ComboDelay = CmbDelayBox.Text
+    getgenv().MCXC_MacroDelay = MacDelayBox.Text
     SaveBtn.Text = "SAVED!"
-    task.wait(1)
-    SaveBtn.Text = "SAVE COMBO"
+    task.wait(0.5)
+    SaveBtn.Text = "APPLY & SAVE"
 end)
 
 local isComboing = false
-ExecuteBtn.MouseButton1Click:Connect(function()
+ExecBtn.MouseButton1Click:Connect(function()
     if isComboing then return end
     isComboing = true
+    ExecStroke.Color = Color3.fromRGB(0, 255, 100)
     task.spawn(function()
-        local str = string.upper(getgenv().MayChemXeoCan_ComboString)
+        local str = string.upper(getgenv().MCXC_ComboStr)
+        local cDelay = tonumber(getgenv().MCXC_ComboDelay) or 0.2
+        
         for i = 1, #str do
             local char = string.sub(str, i, i)
             local key = nil
-            local delayTime = 0.15
+            local customWait = cDelay
             
-            if char == "1" then key = Enum.KeyCode.One; delayTime = 0.1
-            elseif char == "2" then key = Enum.KeyCode.Two; delayTime = 0.1
-            elseif char == "3" then key = Enum.KeyCode.Three; delayTime = 0.1
-            elseif char == "4" then key = Enum.KeyCode.Four; delayTime = 0.1
-            elseif char == "5" then key = Enum.KeyCode.Five; delayTime = 0.1
+            if char == "1" then key = Enum.KeyCode.One; customWait = 0.1
+            elseif char == "2" then key = Enum.KeyCode.Two; customWait = 0.1
+            elseif char == "3" then key = Enum.KeyCode.Three; customWait = 0.1
+            elseif char == "4" then key = Enum.KeyCode.Four; customWait = 0.1
+            elseif char == "5" then key = Enum.KeyCode.Five; customWait = 0.1
             elseif char == "Z" then key = Enum.KeyCode.Z
             elseif char == "X" then key = Enum.KeyCode.X
             elseif char == "C" then key = Enum.KeyCode.C
@@ -131,43 +158,38 @@ ExecuteBtn.MouseButton1Click:Connect(function()
                 VIM:SendKeyEvent(true, key, false, game)
                 task.wait(0.02)
                 VIM:SendKeyEvent(false, key, false, game)
-                task.wait(delayTime)
+                task.wait(customWait)
             end
         end
         isComboing = false
+        ExecStroke.Color = Color3.fromRGB(255, 50, 50)
     end)
 end)
 
-local function GetOptimalDelay()
-    local ping = 50
-    pcall(function() ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() end)
-    return math.clamp(0.015 + (ping / 1000) * 0.1, 0.015, 0.05)
-end
-
 local function MayChemXeoCan_IsHolding(char)
     if not char then return false end
-    local holdTags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power", "Action"}
-    for _, tag in ipairs(holdTags) do
+    local tags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power", "Action"}
+    for _, tag in ipairs(tags) do
         if char:FindFirstChild(tag) then return true end
     end
     local tool = char:FindFirstChildOfClass("Tool")
     if tool then
-        for _, tag in ipairs(holdTags) do
+        for _, tag in ipairs(tags) do
             if tool:FindFirstChild(tag) then return true end
         end
     end
     return false
 end
 
-local function MayChemXeoCan_ApexPvP(character)
-    character.ChildAdded:Connect(function(v)
+local function MayChemXeoCan_ApexPvP(char)
+    char.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
             if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
                 task.spawn(function()
-                    local delay = GetOptimalDelay()
-                    task.wait(delay)
-                    while character and character.Parent and MayChemXeoCan_IsHolding(character) do
+                    local mDelay = tonumber(getgenv().MCXC_MacroDelay) or 0.04
+                    task.wait(mDelay)
+                    while char and char.Parent and MayChemXeoCan_IsHolding(char) do
                         RunService.Heartbeat:Wait()
                     end
                     if v and v.Parent and v:IsA("BoolValue") then
@@ -189,13 +211,30 @@ RunService.RenderStepped:Connect(function()
             local isStunned = false
             for _, tag in pairs(LP.Character:GetChildren()) do
                 if tag:IsA("BoolValue") and string.find(string.lower(tag.Name), "stun") and tag.Value == true then
-                    isStunned = true
-                    break
+                    isStunned = true; break
                 end
             end
             if not isStunned and not MayChemXeoCan_IsHolding(LP.Character) then
                 hum.WalkSpeed = 35
             end
         end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.5) do
+        pcall(function()
+            if getgenv().MCXC_Hitbox then
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = plr.Character.HumanoidRootPart
+                        hrp.Size = Vector3.new(15, 15, 15)
+                        hrp.Transparency = 1
+                        hrp.CanCollide = false
+                        hrp.Massless = true
+                    end
+                end
+            end
+        end)
     end
 end)
