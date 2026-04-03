@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Perfect_V18.json"
+local ConfigName = "Macro_Supreme_Final.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
@@ -35,6 +35,8 @@ end)
 local function SaveConfig()
     pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end)
 end
+
+getgenv().MacroHidden = false
 
 local UIParent = nil
 pcall(function() UIParent = gethui() end)
@@ -106,10 +108,10 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "MACRO AI ENGINE"
+Title.Text = "MACRO BY MAYCHEMXEOCAN"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
+Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
@@ -125,6 +127,7 @@ TabBar.Size = UDim2.new(1, 0, 0, 35)
 TabBar.Position = UDim2.new(0, 0, 0, 41)
 TabBar.BackgroundTransparency = 1
 TabBar.Parent = Menu
+
 local TabFrames = {}
 local TabBtns = {}
 local Indicator = Instance.new("Frame")
@@ -293,8 +296,8 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 240, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
-CreateToggle(TabCombat, 0.53, 240, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
+CreateToggle(TabCombat, 0.05, 240, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
+CreateToggle(TabCombat, 0.53, 240, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
 CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
 CreateToggle(TabVisual, 0.53, 55, "ESP RADAR", "ESP")
 CreateToggle(TabVisual, 0.05, 100, "VIEW TRACER", "ViewTracer")
@@ -303,18 +306,44 @@ CreateToggle(TabSet, 0.05, 55, "SETUP UI", "SetupMode", function(v)
 end)
 
 local HideBtn = Instance.new("TextButton")
-HideBtn.Size = UDim2.new(0.9, 0, 0, 35)
+HideBtn.Size = UDim2.new(0.42, 0, 0, 35)
 HideBtn.Position = UDim2.new(0.05, 0, 0, 105)
 HideBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-HideBtn.Text = "HIDE MENU"
+HideBtn.Text = "HIDE ALL"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HideBtn.Font = Enum.Font.GothamBold
-HideBtn.TextSize = 12
+HideBtn.TextSize = 11
 Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
+local InstBtn = Instance.new("TextButton")
+InstBtn.Size = UDim2.new(0.42, 0, 0, 35)
+InstBtn.Position = UDim2.new(0.53, 0, 0, 105)
+InstBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+InstBtn.Text = "INSTRUCT"
+InstBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+InstBtn.Font = Enum.Font.GothamBold
+InstBtn.TextSize = 11
+Instance.new("UICorner", InstBtn).CornerRadius = UDim.new(0, 6)
+InstBtn.Parent = TabSet
+
+HideBtn.MouseButton1Click:Connect(function()
+    getgenv().MacroHidden = true
+    UI.Enabled = false
+end)
+
+InstBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "HƯỚNG DẪN MACRO",
+            Text = "Nhập tổ hợp vào ô (vd: 3ZX1C).\nSố = Rút vũ khí (1:Melee, 2:Fruit, 3:Sword).\nChữ = Skill.\nAI sẽ cắt bỏ số nếu bạn đang cầm sẵn vũ khí đó!\nCode by MayChemXeoCan",
+            Duration = 10
+        })
+    end)
+end)
+
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
-HideBtn.MouseButton1Click:Connect(function() Menu.Visible = false end)
+
 local function GetToolType(tool)
     if not tool then return "0" end
     local n = string.lower(tool.Name)
@@ -450,18 +479,17 @@ ExecBtnC2.InputBegan:Connect(function(input)
 end)
 
 local function SafeGetPlayerInfo(plr)
-    local lvl, race, hp, mhp = "?", "?", 0, 0
+    local lvl, hp, mhp = "?", 0, 0
     pcall(function()
-        if plr:FindFirstChild("Data") then
-            if plr.Data:FindFirstChild("Level") then lvl = tostring(plr.Data.Level.Value) end
-            if plr.Data:FindFirstChild("Race") then race = tostring(plr.Data.Race.Value) end
+        if plr:FindFirstChild("Data") and plr.Data:FindFirstChild("Level") then 
+            lvl = tostring(plr.Data.Level.Value) 
         end
         if plr.Character then
             local hum = plr.Character:FindFirstChild("Humanoid")
             if hum then hp = math.floor(hum.Health); mhp = math.floor(hum.MaxHealth) end
         end
     end)
-    return lvl, race, hp, mhp
+    return lvl, hp, mhp
 end
 
 RunService.Heartbeat:Connect(function()
@@ -469,26 +497,34 @@ RunService.Heartbeat:Connect(function()
         if LP.Character then
             ClearEnemyStun(LP.Character)
             
+            if getgenv().MacroHidden then
+                local cT = LP.Character:FindFirstChildOfClass("Tool")
+                if cT and string.find(string.lower(cT.Name), "katana") then
+                    getgenv().MacroHidden = false
+                    UI.Enabled = true
+                end
+            end
+            
             for _, plr in ipairs(Players:GetPlayers()) do
                 if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = plr.Character.HumanoidRootPart
-                    local dist = (hrp.Position - LP.Character.HumanoidRootPart.Position).Magnitude
+                    local root = plr.Character.HumanoidRootPart
+                    local dist = (root.Position - LP.Character.HumanoidRootPart.Position).Magnitude
                     
-                    if Config.Hitbox then
+                    if Config.Hitbox and not getgenv().MacroHidden then
                         local hs = tonumber(Config.HitboxSize) or 15
-                        hrp.Size = Vector3.new(hs, hs, hs)
-                        hrp.Transparency = 0.8
-                        hrp.CanCollide = false
+                        root.Size = Vector3.new(hs, hs, hs)
+                        root.Transparency = 0.8
+                        root.CanCollide = false
                     end
                     
                     local espId = "ESP_" .. plr.Name
-                    local espGui = hrp:FindFirstChild(espId)
+                    local espGui = root:FindFirstChild(espId)
                     
-                    if Config.ESP and dist <= 1000 then
+                    if Config.ESP and dist <= 1000 and not getgenv().MacroHidden then
                         if not espGui then
                             espGui = Instance.new("BillboardGui")
                             espGui.Name = espId
-                            espGui.Size = UDim2.new(0, 250, 0, 75)
+                            espGui.Size = UDim2.new(0, 200, 0, 60)
                             espGui.StudsOffset = Vector3.new(0, 3, 0)
                             espGui.AlwaysOnTop = true
                             local txt = Instance.new("TextLabel")
@@ -498,43 +534,58 @@ RunService.Heartbeat:Connect(function()
                             txt.TextSize = 11
                             txt.TextStrokeTransparency = 0
                             txt.Parent = espGui
-                            espGui.Parent = hrp
+                            espGui.Parent = root
                         end
                         
-                        local lvl, race, hp, mhp = SafeGetPlayerInfo(plr)
+                        local lvl, hp, mhp = SafeGetPlayerInfo(plr)
                         local weap = "None"
                         local pTool = plr.Character:FindFirstChildOfClass("Tool")
                         if pTool then weap = pTool.Name end
                         
                         local txtNode = espGui:FindFirstChildOfClass("TextLabel")
                         if txtNode then
-                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d\nRace: %s | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, race, string.sub(weap, 1, 15), math.floor(dist))
+                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, string.sub(weap, 1, 15), math.floor(dist))
                             txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
                         end
                     else
                         if espGui then espGui:Destroy() end
                     end
                     
-                    local head = plr.Character:FindFirstChild("Head") or hrp
-                    local tracerId = "Tracer_" .. plr.Name
-                    local tracer = head:FindFirstChild(tracerId)
+                    local lineId = "TracerLine_" .. plr.Name
+                    local arrId = "TracerArrow_" .. plr.Name
+                    local line = root:FindFirstChild(lineId)
+                    local arr = root:FindFirstChild(arrId)
                     
-                    if Config.ViewTracer and dist <= 1000 then
-                        if not tracer then
-                            tracer = Instance.new("CylinderHandleAdornment")
-                            tracer.Name = tracerId
-                            tracer.Adornee = head
-                            tracer.Color3 = Color3.fromRGB(255, 50, 50)
-                            tracer.Radius = 0.6 
-                            tracer.Height = 50 
-                            tracer.ZIndex = 5
-                            tracer.Transparency = 0.2
-                            tracer.AlwaysOnTop = true
-                            tracer.CFrame = CFrame.new(0, 0, -25) 
-                            tracer.Parent = head
+                    if Config.ViewTracer and dist <= 1000 and not getgenv().MacroHidden then
+                        if not line then
+                            line = Instance.new("CylinderHandleAdornment")
+                            line.Name = lineId
+                            line.Adornee = root
+                            line.Color3 = Color3.fromRGB(255, 50, 50)
+                            line.Radius = 0.3
+                            line.Height = 50
+                            line.ZIndex = 5
+                            line.Transparency = 0.2
+                            line.AlwaysOnTop = true
+                            line.CFrame = CFrame.new(0, 0, -25) 
+                            line.Parent = root
+                        end
+                        if not arr then
+                            arr = Instance.new("ConeHandleAdornment")
+                            arr.Name = arrId
+                            arr.Adornee = root
+                            arr.Color3 = Color3.fromRGB(255, 50, 50)
+                            arr.Radius = 1.2
+                            arr.Height = 2.5
+                            arr.ZIndex = 5
+                            arr.Transparency = 0.2
+                            arr.AlwaysOnTop = true
+                            arr.CFrame = CFrame.new(0, 0, -51) 
+                            arr.Parent = root
                         end
                     else
-                        if tracer then tracer:Destroy() end
+                        if line then line:Destroy() end
+                        if arr then arr:Destroy() end
                     end
                 end
             end
