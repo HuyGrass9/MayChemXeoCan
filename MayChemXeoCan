@@ -1,30 +1,71 @@
 local Players = game:GetService("Players")
 local Stats = game:GetService("Stats")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local VIM = game:GetService("VirtualInputManager")
+local CoreGui = game:GetService("CoreGui")
 local LP = Players.LocalPlayer
 
 pcall(function()
     if setfpscap then setfpscap(120) end
 end)
 
+local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCan_XZ") or CoreGui:FindFirstChild("MayChemXeoCan_XZ")
+if oldUI then oldUI:Destroy() end
+
+local UI = Instance.new("ScreenGui")
+UI.Name = "MayChemXeoCan_XZ"
+UI.ResetOnSpawn = false
+UI.Parent = pcall(gethui) and gethui() or CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 50, 0, 50)
+MainFrame.Position = UDim2.new(0.7, 0, 0.5, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = UI
+
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(1, 0)
+local Stroke = Instance.new("UIStroke", MainFrame)
+Stroke.Color = Color3.fromRGB(255, 50, 50)
+Stroke.Thickness = 2
+
+local Btn = Instance.new("TextButton")
+Btn.Size = UDim2.new(1, 0, 1, 0)
+Btn.BackgroundTransparency = 1
+Btn.Text = "X+Z"
+Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn.Font = Enum.Font.GothamBlack
+Btn.TextSize = 14
+Btn.Parent = MainFrame
+
+Btn.MouseButton1Click:Connect(function()
+    task.spawn(function()
+        VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+        task.wait(0.01)
+        VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+        
+        task.wait(0.05)
+        
+        VIM:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+        task.wait(0.01)
+        VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+    end)
+end)
+
 local function GetOptimalDelay()
     local ping = 50
-    pcall(function()
-        ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-    end)
-    return math.clamp(0.015 + (ping / 1000) * 0.1, 0.015, 0.06)
+    pcall(function() ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() end)
+    return math.clamp(0.015 + (ping / 1000) * 0.1, 0.015, 0.05)
 end
 
 local function MayChemXeoCan_IsHolding(char)
     if not char then return false end
     local holdTags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power", "Action"}
-    
     for _, tag in ipairs(holdTags) do
         if char:FindFirstChild(tag) then return true end
     end
-    
     local tool = char:FindFirstChildOfClass("Tool")
     if tool then
         for _, tag in ipairs(holdTags) do
@@ -35,24 +76,16 @@ local function MayChemXeoCan_IsHolding(char)
 end
 
 local function MayChemXeoCan_ApexPvP(character)
-    if character:FindFirstChild("Humanoid") then
-        character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-    end
-
     character.ChildAdded:Connect(function(v)
         if v:IsA("BoolValue") or v:IsA("StringValue") then
             local name = string.lower(v.Name)
-            
             if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
                 task.spawn(function()
                     local delay = GetOptimalDelay()
                     task.wait(delay)
-                    
                     while character and character.Parent and MayChemXeoCan_IsHolding(character) do
                         RunService.Heartbeat:Wait()
                     end
-                    
                     if v and v.Parent and v:IsA("BoolValue") then
                         v.Value = false
                     end
@@ -68,7 +101,7 @@ LP.CharacterAdded:Connect(MayChemXeoCan_ApexPvP)
 RunService.RenderStepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
-        if hum and hum.WalkSpeed < 16 then
+        if hum and hum.WalkSpeed < 35 then
             local isStunned = false
             for _, tag in pairs(LP.Character:GetChildren()) do
                 if tag:IsA("BoolValue") and string.find(string.lower(tag.Name), "stun") and tag.Value == true then
@@ -77,67 +110,8 @@ RunService.RenderStepped:Connect(function()
                 end
             end
             if not isStunned and not MayChemXeoCan_IsHolding(LP.Character) then
-                hum.WalkSpeed = 16
+                hum.WalkSpeed = 35
             end
         end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        pcall(function()
-            local touchGui = LP.PlayerGui:FindFirstChild("TouchGui")
-            if touchGui then
-                local jumpBtn = touchGui:FindFirstChild("JumpButton", true)
-                if jumpBtn and not jumpBtn:FindFirstChild("MayChemFastJump") then
-                    local tag = Instance.new("BoolValue")
-                    tag.Name = "MayChemFastJump"
-                    tag.Parent = jumpBtn
-                    
-                    jumpBtn.InputBegan:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-                                LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                            end
-                        end
-                    end)
-                end
-            end
-
-            local mainGui = LP.PlayerGui:FindFirstChild("Main")
-            if mainGui then
-                for _, v in pairs(mainGui:GetDescendants()) do
-                    if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("ImageButton") then
-                        local text = string.lower(v.Name)
-                        if v:IsA("TextLabel") then text = string.lower(v.Text) end
-                        
-                        local keyToPress = nil
-                        if string.find(text, "dash") then keyToPress = Enum.KeyCode.Q
-                        elseif string.find(text, "flash") or string.find(text, "soru") or string.find(text, "step") then keyToPress = Enum.KeyCode.R
-                        end
-                        
-                        if keyToPress then
-                            local btn = v
-                            if not btn:IsA("GuiButton") then btn = btn.Parent end
-                            
-                            if btn and btn:IsA("GuiButton") and not btn:FindFirstChild("MayChemFastTrigger") then
-                                local tag = Instance.new("BoolValue")
-                                tag.Name = "MayChemFastTrigger"
-                                tag.Parent = btn
-                                
-                                local function FireInstantly()
-                                    VIM:SendKeyEvent(true, keyToPress, false, game)
-                                    task.wait(0.01)
-                                    VIM:SendKeyEvent(false, keyToPress, false, game)
-                                end
-                                
-                                btn.MouseButton1Down:Connect(FireInstantly)
-                                if btn.TouchTap then btn.TouchTap:Connect(FireInstantly) end
-                            end
-                        end
-                    end
-                end
-            end
-        end)
     end
 end)
