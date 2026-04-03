@@ -11,7 +11,7 @@ pcall(function() if setfpscap then setfpscap(120) end end)
 local ConfigName = "MayChemXeoCan_Config.json"
 local DefaultConfig = {
     ComboStr = "1ZX2XZ", 
-    ComboDelay = 0.1, 
+    ComboDelay = 0.05, 
     MacroDelay = 0.04, 
     Hitbox = false, 
     HitboxSize = 15,
@@ -72,11 +72,11 @@ ExecBtn.Parent = UI
 
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 220, 0, 360)
-Menu.Position = UDim2.new(0.5, -110, 0.5, -180)
+Menu.Position = UDim2.new(0.1, 0, 0.5, -180)
 Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Menu.BorderSizePixel = 0
 Menu.Active = true
-Menu.Draggable = true
+Menu.Draggable = false
 Menu.Visible = false
 Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
 Instance.new("UIStroke", Menu).Color = Color3.fromRGB(255, 50, 50)
@@ -109,7 +109,6 @@ ComboBox.FocusLost:Connect(function()
     SaveConfig()
 end)
 
-local Sliders = {}
 local function CreateSlider(yPos, text, min, max, configKey, isInt)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.9, 0, 0, 40)
@@ -145,12 +144,6 @@ local function CreateSlider(yPos, text, min, max, configKey, isInt)
     btn.BackgroundTransparency = 1
     btn.Text = ""
     btn.Parent = bg
-
-    local sliderData = {Update = function(val)
-        fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
-        lbl.Text = text .. ": " .. tostring(val)
-    end}
-    table.insert(Sliders, sliderData)
 
     local dragging = false
     btn.InputBegan:Connect(function(input)
@@ -257,8 +250,6 @@ end
 
 local function SmartEquip(slot)
     if not LP.Character then return false end
-    local hum = LP.Character:FindFirstChild("Humanoid")
-    if not hum then return false end
     
     local targetTooltip = ""
     if slot == "1" then targetTooltip = "melee"
@@ -274,7 +265,9 @@ local function SmartEquip(slot)
 
     for _, tool in pairs(LP.Backpack:GetChildren()) do
         if tool:IsA("Tool") and tool:FindFirstChild("ToolTip") and string.find(string.lower(tool.ToolTip.Value), targetTooltip) then
-            hum:EquipTool(tool)
+            if currentTool then currentTool.Parent = LP.Backpack end
+            task.wait(0.01)
+            tool.Parent = LP.Character
             return true 
         end
     end
@@ -289,7 +282,7 @@ ExecBtn.MouseButton1Click:Connect(function()
     
     task.spawn(function()
         local str = string.upper(Config.ComboStr)
-        local cDelay = tonumber(Config.ComboDelay) or 0.1
+        local cDelay = tonumber(Config.ComboDelay) or 0.05
         
         for i = 1, #str do
             local char = string.sub(str, i, i)
@@ -297,7 +290,7 @@ ExecBtn.MouseButton1Click:Connect(function()
             
             if char == "1" or char == "2" or char == "3" or char == "4" then
                 local switched = SmartEquip(char)
-                if switched then task.wait(0.12) end
+                if switched then task.wait(0.05) end
             elseif char == "Z" then key = Enum.KeyCode.Z
             elseif char == "X" then key = Enum.KeyCode.X
             elseif char == "C" then key = Enum.KeyCode.C
@@ -307,6 +300,7 @@ ExecBtn.MouseButton1Click:Connect(function()
             
             if key then
                 VIM:SendKeyEvent(true, key, false, game)
+                task.wait(0.02)
                 VIM:SendKeyEvent(false, key, false, game)
                 
                 task.wait(cDelay)
