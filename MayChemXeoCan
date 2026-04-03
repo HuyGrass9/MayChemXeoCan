@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 pcall(function() if setfpscap then setfpscap(120) end end)
 
 local ConfigName = "MayChemXeoCan_Config.json"
-local Config = {ComboStr = "1ZX2XZ", ComboDelay = 0.15, MacroDelay = 0.04, Hitbox = false}
+local Config = {ComboStr = "1ZX2XZ", ComboDelay = 0.15, MacroDelay = 0.04, Hitbox = false, HitboxSize = 15}
 
 pcall(function()
     if isfile and isfile(ConfigName) then
@@ -21,8 +21,6 @@ end)
 local function SaveConfig()
     pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end)
 end
-
-getgenv().MCXC_Hitbox = Config.Hitbox
 
 local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCan_Pro") or CoreGui:FindFirstChild("MayChemXeoCan_Pro")
 if oldUI then oldUI:Destroy() end
@@ -62,8 +60,8 @@ ExecStroke.Thickness = 2
 ExecBtn.Parent = UI
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 220, 0, 220)
-Menu.Position = UDim2.new(0.5, -110, 0.5, -110)
+Menu.Size = UDim2.new(0, 220, 0, 255)
+Menu.Position = UDim2.new(0.5, -110, 0.5, -127)
 Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -100,7 +98,7 @@ ComboBox.FocusLost:Connect(function()
     SaveConfig()
 end)
 
-local function CreateSlider(yPos, text, min, max, currentVal, configKey)
+local function CreateSlider(yPos, text, min, max, configKey)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.9, 0, 0, 40)
     frame.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -110,7 +108,7 @@ local function CreateSlider(yPos, text, min, max, currentVal, configKey)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, 0, 0, 15)
     lbl.BackgroundTransparency = 1
-    lbl.Text = text .. ": " .. tostring(currentVal)
+    lbl.Text = text .. ": " .. tostring(Config[configKey])
     lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 12
@@ -125,7 +123,7 @@ local function CreateSlider(yPos, text, min, max, currentVal, configKey)
     bg.Parent = frame
 
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new((currentVal - min) / (max - min), 0, 1, 0)
+    fill.Size = UDim2.new((Config[configKey] - min) / (max - min), 0, 1, 0)
     fill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     fill.Parent = bg
@@ -160,19 +158,20 @@ local function CreateSlider(yPos, text, min, max, currentVal, configKey)
             fill.Size = UDim2.new(pct, 0, 1, 0)
             
             local val = min + (max - min) * pct
-            val = math.floor(val * 100) / 100
+            if configKey == "HitboxSize" then val = math.floor(val) else val = math.floor(val * 100) / 100 end
             lbl.Text = text .. ": " .. tostring(val)
             Config[configKey] = val
         end
     end)
 end
 
-CreateSlider(75, "Combo Delay", 0.05, 0.5, Config.ComboDelay, "ComboDelay")
-CreateSlider(120, "Macro Delay", 0.01, 0.1, Config.MacroDelay, "MacroDelay")
+CreateSlider(70, "Combo Delay", 0.05, 0.5, "ComboDelay")
+CreateSlider(115, "Macro Delay", 0.01, 0.1, "MacroDelay")
+CreateSlider(160, "Hitbox Size", 5, 50, "HitboxSize")
 
 local HitboxBtn = Instance.new("TextButton")
 HitboxBtn.Size = UDim2.new(0.9, 0, 0, 30)
-HitboxBtn.Position = UDim2.new(0.05, 0, 0, 175)
+HitboxBtn.Position = UDim2.new(0.05, 0, 0, 215)
 HitboxBtn.BackgroundColor3 = Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
 HitboxBtn.Text = "HITBOX: " .. (Config.Hitbox and "ON" or "OFF")
 HitboxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -185,54 +184,9 @@ ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible 
 
 HitboxBtn.MouseButton1Click:Connect(function()
     Config.Hitbox = not Config.Hitbox
-    getgenv().MCXC_Hitbox = Config.Hitbox
     HitboxBtn.BackgroundColor3 = Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
     HitboxBtn.Text = "HITBOX: " .. (Config.Hitbox and "ON" or "OFF")
     SaveConfig()
-end)
-
-local isComboing = false
-ExecBtn.MouseButton1Click:Connect(function()
-    if isComboing then return end
-    isComboing = true
-    ExecStroke.Color = Color3.fromRGB(0, 255, 100)
-    
-    task.spawn(function()
-        local str = string.upper(Config.ComboStr)
-        local cDelay = tonumber(Config.ComboDelay) or 0.15
-        
-        for i = 1, #str do
-            local char = string.sub(str, i, i)
-            local key = nil
-            local isWeaponSwitch = false
-            
-            if char == "1" then key = Enum.KeyCode.One; isWeaponSwitch = true
-            elseif char == "2" then key = Enum.KeyCode.Two; isWeaponSwitch = true
-            elseif char == "3" then key = Enum.KeyCode.Three; isWeaponSwitch = true
-            elseif char == "4" then key = Enum.KeyCode.Four; isWeaponSwitch = true
-            elseif char == "5" then key = Enum.KeyCode.Five; isWeaponSwitch = true
-            elseif char == "Z" then key = Enum.KeyCode.Z
-            elseif char == "X" then key = Enum.KeyCode.X
-            elseif char == "C" then key = Enum.KeyCode.C
-            elseif char == "V" then key = Enum.KeyCode.V
-            elseif char == "F" then key = Enum.KeyCode.F
-            end
-            
-            if key then
-                VIM:SendKeyEvent(true, key, false, game)
-                task.wait(0.02)
-                VIM:SendKeyEvent(false, key, false, game)
-                
-                if isWeaponSwitch then
-                    task.wait(0.15) 
-                else
-                    task.wait(cDelay)
-                end
-            end
-        end
-        isComboing = false
-        ExecStroke.Color = Color3.fromRGB(255, 50, 50)
-    end)
 end)
 
 local function MayChemXeoCan_IsHolding(char)
@@ -249,6 +203,75 @@ local function MayChemXeoCan_IsHolding(char)
     end
     return false
 end
+
+local function SmartEquip(slot)
+    if not LP.Character then return false end
+    local hum = LP.Character:FindFirstChild("Humanoid")
+    if not hum then return false end
+    
+    local targetTooltip = ""
+    if slot == "1" then targetTooltip = "melee"
+    elseif slot == "2" then targetTooltip = "blox fruit"
+    elseif slot == "3" then targetTooltip = "sword"
+    elseif slot == "4" then targetTooltip = "gun"
+    else return false end
+
+    local currentTool = LP.Character:FindFirstChildOfClass("Tool")
+    if currentTool and currentTool:FindFirstChild("ToolTip") and string.find(string.lower(currentTool.ToolTip.Value), targetTooltip) then
+        return false 
+    end
+
+    for _, tool in pairs(LP.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool:FindFirstChild("ToolTip") and string.find(string.lower(tool.ToolTip.Value), targetTooltip) then
+            hum:EquipTool(tool)
+            return true 
+        end
+    end
+    return false
+end
+
+local isComboing = false
+ExecBtn.MouseButton1Click:Connect(function()
+    if isComboing then return end
+    isComboing = true
+    ExecStroke.Color = Color3.fromRGB(0, 255, 100)
+    
+    task.spawn(function()
+        local str = string.upper(Config.ComboStr)
+        local cDelay = tonumber(Config.ComboDelay) or 0.15
+        
+        for i = 1, #str do
+            local char = string.sub(str, i, i)
+            local key = nil
+            
+            if char == "1" or char == "2" or char == "3" or char == "4" then
+                local switched = SmartEquip(char)
+                if switched then task.wait(0.15) end
+            elseif char == "Z" then key = Enum.KeyCode.Z
+            elseif char == "X" then key = Enum.KeyCode.X
+            elseif char == "C" then key = Enum.KeyCode.C
+            elseif char == "V" then key = Enum.KeyCode.V
+            elseif char == "F" then key = Enum.KeyCode.F
+            end
+            
+            if key then
+                VIM:SendKeyEvent(true, key, false, game)
+                task.wait(0.02)
+                VIM:SendKeyEvent(false, key, false, game)
+                
+                task.wait(cDelay)
+                
+                local safeTimeout = 0
+                while MayChemXeoCan_IsHolding(LP.Character) and safeTimeout < 20 do
+                    task.wait(0.1)
+                    safeTimeout = safeTimeout + 1
+                end
+            end
+        end
+        isComboing = false
+        ExecStroke.Color = Color3.fromRGB(255, 50, 50)
+    end)
+end)
 
 local function MayChemXeoCan_ApexPvP(char)
     char.ChildAdded:Connect(function(v)
@@ -293,11 +316,12 @@ end)
 task.spawn(function()
     while task.wait(0.5) do
         pcall(function()
-            if getgenv().MCXC_Hitbox then
+            if Config.Hitbox then
+                local hSize = tonumber(Config.HitboxSize) or 15
                 for _, plr in ipairs(Players:GetPlayers()) do
                     if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
                         local hrp = plr.Character.HumanoidRootPart
-                        hrp.Size = Vector3.new(15, 15, 15)
+                        hrp.Size = Vector3.new(hSize, hSize, hSize)
                         hrp.Transparency = 1
                         hrp.CanCollide = false
                         hrp.Massless = true
