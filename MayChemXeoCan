@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Supreme_V1.json"
+local ConfigName = "Macro_Perfect_V17.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
@@ -19,8 +19,8 @@ local Config = {
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
-    ShowC = true,
-    ShowC2 = true,
+    ShowC = false,
+    ShowC2 = false,
     ESP = false,
     ViewTracer = false
 }
@@ -52,15 +52,15 @@ UI.DisplayOrder = 9999
 UI.Parent = UIParent
 
 local ToggleIcon = Instance.new("ImageButton")
-ToggleIcon.Size = UDim2.new(0, 50, 0, 50)
-ToggleIcon.Position = UDim2.new(0.5, -25, 0, 10)
+ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
+ToggleIcon.Position = UDim2.new(0.5, -22, 0, 10)
 ToggleIcon.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 ToggleIcon.Image = "rbxassetid://10709769508"
 ToggleIcon.BorderSizePixel = 0
 ToggleIcon.Active = true
 ToggleIcon.Draggable = true
 Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(255, 50, 50)
+Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(40, 40, 45)
 ToggleIcon.Parent = UI
 
 local function CreateActionBtn(name, yPos, color, showKey)
@@ -85,8 +85,8 @@ local function CreateActionBtn(name, yPos, color, showKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "ShowC")
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), "ShowC2")
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 280, 0, 360)
@@ -98,7 +98,7 @@ Menu.Visible = false
 Menu.ClipsDescendants = true
 Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 6)
 local MenuStroke = Instance.new("UIStroke", Menu)
-MenuStroke.Color = Color3.fromRGB(255, 50, 50)
+MenuStroke.Color = Color3.fromRGB(40, 40, 45)
 MenuStroke.Thickness = 1
 Menu.Parent = UI
 
@@ -106,17 +106,17 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "MACRO APEX PREDATOR"
+Title.Text = "MACRO"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
+Title.TextSize = 15
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
 local UILine = Instance.new("Frame")
 UILine.Size = UDim2.new(1, 0, 0, 1)
 UILine.Position = UDim2.new(0, 0, 0, 40)
-UILine.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+UILine.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 UILine.BorderSizePixel = 0
 UILine.Parent = Menu
 
@@ -130,7 +130,7 @@ local TabBtns = {}
 local Indicator = Instance.new("Frame")
 Indicator.Size = UDim2.new(0.33, 0, 0, 2)
 Indicator.Position = UDim2.new(0, 0, 1, -2)
-Indicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+Indicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Indicator.BorderSizePixel = 0
 Indicator.Parent = TabBar
 
@@ -223,7 +223,7 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
 
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((Config[configKey] - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     fill.Parent = bg
 
@@ -487,7 +487,7 @@ RunService.Heartbeat:Connect(function()
                         if not espGui then
                             espGui = Instance.new("BillboardGui")
                             espGui.Name = espId
-                            espGui.Size = UDim2.new(0, 200, 0, 60)
+                            espGui.Size = UDim2.new(0, 200, 0, 50)
                             espGui.StudsOffset = Vector3.new(0, 3, 0)
                             espGui.AlwaysOnTop = true
                             local txt = Instance.new("TextLabel")
@@ -501,9 +501,13 @@ RunService.Heartbeat:Connect(function()
                         end
                         
                         local lvl, hp, mhp = SafeGetPlayerInfo(plr)
+                        local weap = "None"
+                        local pTool = plr.Character:FindFirstChildOfClass("Tool")
+                        if pTool then weap = pTool.Name end
+                        
                         local txtNode = espGui:FindFirstChildOfClass("TextLabel")
                         if txtNode then
-                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d\nDist: %dm", lvl, plr.Name, hp, mhp, math.floor(dist))
+                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d | W: %s", lvl, plr.Name, hp, mhp, string.sub(weap, 1, 15))
                             txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
                         end
                     else
@@ -515,16 +519,16 @@ RunService.Heartbeat:Connect(function()
                     
                     if Config.ViewTracer and dist <= 1000 then
                         if not tracer then
-                            tracer = Instance.new("LineHandleAdornment")
+                            tracer = Instance.new("CylinderHandleAdornment")
                             tracer.Name = tracerId
                             tracer.Adornee = hrp
                             tracer.Color3 = Color3.fromRGB(255, 50, 50)
-                            tracer.Thickness = 5
-                            tracer.Length = 20
+                            tracer.Radius = 0.35 
+                            tracer.Height = 35 
                             tracer.ZIndex = 5
-                            tracer.Transparency = 0.4
+                            tracer.Transparency = 0.3
                             tracer.AlwaysOnTop = true
-                            tracer.CFrame = CFrame.Angles(0, math.pi, 0)
+                            tracer.CFrame = CFrame.new(0, 0, -17.5) 
                             tracer.Parent = hrp
                         end
                     else
