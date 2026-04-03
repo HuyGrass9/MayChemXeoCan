@@ -9,12 +9,12 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Ultimate.json"
+local ConfigName = "Macro_ApexPredator.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
-    ComboDelay = 0.05,
-    ActionDelay = 0.1,
+    ComboDelay = 0.2,
+    ActionDelay = 0.4,
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
@@ -22,8 +22,7 @@ local Config = {
     ShowC = true,
     ShowC2 = true,
     WalkSpeed = 35,
-    JumpPower = 50,
-    AutoClick = false
+    ESP = false
 }
 
 pcall(function()
@@ -49,13 +48,13 @@ UI.Parent = pcall(gethui) and gethui() or CoreGui
 local ToggleIcon = Instance.new("ImageButton")
 ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
 ToggleIcon.Position = UDim2.new(0.5, -22, 0, 10)
-ToggleIcon.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ToggleIcon.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 ToggleIcon.Image = "rbxassetid://10709769508"
 ToggleIcon.BorderSizePixel = 0
 ToggleIcon.Active = true
 ToggleIcon.Draggable = true
 Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(60, 60, 65)
+Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(40, 40, 45)
 ToggleIcon.Parent = UI
 
 local function CreateActionBtn(name, yPos, color, showKey)
@@ -86,12 +85,12 @@ local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 2
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 280, 0, 380)
 Menu.Position = UDim2.new(0.1, 0, 0.5, -190)
-Menu.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+Menu.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 Menu.BorderSizePixel = 0
 Menu.Active = true
 Menu.Visible = false
 Menu.ClipsDescendants = true
-Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 6)
 local MenuStroke = Instance.new("UIStroke", Menu)
 MenuStroke.Color = Color3.fromRGB(40, 40, 45)
 MenuStroke.Thickness = 1
@@ -100,10 +99,10 @@ Menu.Parent = UI
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = " MACRO HUB"
+Title.Text = " MACRO AI PREDATOR"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
+Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
@@ -119,7 +118,6 @@ TabBar.Size = UDim2.new(1, 0, 0, 35)
 TabBar.Position = UDim2.new(0, 0, 0, 41)
 TabBar.BackgroundTransparency = 1
 TabBar.Parent = Menu
-
 local TabFrames = {}
 local TabBtns = {}
 local Indicator = Instance.new("Frame")
@@ -160,7 +158,7 @@ local function CreateTab(name, xPos, isActive)
 end
 
 local TabCombat = CreateTab("COMBAT", 0, true)
-local TabMove = CreateTab("PLAYER", 0.33, false)
+local TabVisual = CreateTab("VISUALS", 0.33, false)
 local TabSet = CreateTab("SETTINGS", 0.66, false)
 
 local function CreateTextInput(parent, yPos, text, configKey)
@@ -178,7 +176,7 @@ local function CreateTextInput(parent, yPos, text, configKey)
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(0.9, 0, 0, 35)
     box.Position = UDim2.new(0.05, 0, 0, yPos + 25)
-    box.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
+    box.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
     box.TextColor3 = Color3.fromRGB(255, 255, 255)
     box.Font = Enum.Font.GothamBold
     box.TextSize = 14
@@ -266,14 +264,13 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
     end)
 end
 
-CreateSlider(TabCombat, 125, "Key Delay (Combo Speed)", 0.01, 0.2, "ComboDelay", false)
-CreateSlider(TabCombat, 170, "Action Sync Delay", 0.05, 0.5, "ActionDelay", false)
+CreateSlider(TabCombat, 145, "Combo Delay (Base)", 0.05, 0.5, "ComboDelay", false)
+CreateSlider(TabCombat, 190, "Action Delay (Sync)", 0.1, 1.0, "ActionDelay", false)
 
-CreateSlider(TabMove, 5, "WalkSpeed", 16, 150, "WalkSpeed", true)
-CreateSlider(TabMove, 50, "JumpPower", 50, 200, "JumpPower", true)
+CreateSlider(TabVisual, 5, "WalkSpeed Override", 16, 150, "WalkSpeed", true)
+CreateSlider(TabVisual, 50, "Hitbox Expander", 5, 60, "HitboxSize", true)
 
-CreateSlider(TabSet, 5, "Hitbox Size", 5, 60, "HitboxSize", true)
-CreateSlider(TabSet, 50, "Button Scale", 40, 120, "BtnSize", true)
+CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
 
 local function CreateToggle(parent, x, y, text, configKey, cb)
     local btn = Instance.new("TextButton")
@@ -297,19 +294,19 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 225, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
-CreateToggle(TabCombat, 0.53, 225, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
-CreateToggle(TabMove, 0.05, 100, "AUTO CLICK", "AutoClick")
-CreateToggle(TabSet, 0.05, 100, "HITBOX", "Hitbox")
-CreateToggle(TabSet, 0.53, 100, "SETUP", "SetupMode", function(v)
+CreateToggle(TabCombat, 0.05, 240, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
+CreateToggle(TabCombat, 0.53, 240, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
+CreateToggle(TabVisual, 0.05, 100, "HITBOX", "Hitbox")
+CreateToggle(TabVisual, 0.53, 100, "ESP INFO", "ESP")
+CreateToggle(TabSet, 0.05, 55, "SETUP", "SetupMode", function(v)
     ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v
 end)
 
 local HideBtn = Instance.new("TextButton")
 HideBtn.Size = UDim2.new(0.9, 0, 0, 35)
-HideBtn.Position = UDim2.new(0.05, 0, 0, 150)
-HideBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-HideBtn.Text = "CLOSE MENU"
+HideBtn.Position = UDim2.new(0.05, 0, 0, 105)
+HideBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+HideBtn.Text = "HIDE MENU"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HideBtn.Font = Enum.Font.GothamBold
 HideBtn.TextSize = 12
@@ -319,6 +316,7 @@ HideBtn.Parent = TabSet
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
 HideBtn.MouseButton1Click:Connect(function() Menu.Visible = false end)
 local function ClearStun(char)
+    if not char then return end
     local badTags = {"busy", "cant", "stun", "nodash", "nojump", "usingskill"}
     for _, v in ipairs(char:GetDescendants()) do
         if v:IsA("BoolValue") and v.Value == true then
@@ -330,7 +328,7 @@ local function ClearStun(char)
     end
 end
 
-local function EnsureEquip(slotStr)
+local function SmartEquipVirtual(slotStr)
     local kc
     if slotStr == "1" then kc = Enum.KeyCode.One
     elseif slotStr == "2" then kc = Enum.KeyCode.Two
@@ -339,36 +337,51 @@ local function EnsureEquip(slotStr)
     else return end
     
     VIM:SendKeyEvent(true, kc, false, game)
-    task.wait(0.02)
+    task.wait(0.01)
     VIM:SendKeyEvent(false, kc, false, game)
     
-    local waitStart = tick()
-    while not LP.Character:FindFirstChildOfClass("Tool") and tick() - waitStart < 0.5 do
+    local w = tick()
+    while not LP.Character:FindFirstChildOfClass("Tool") and tick() - w < 0.5 do
         RunService.Heartbeat:Wait()
     end
-    task.wait(0.15)
+    task.wait(0.1)
 end
 
-local function FireCombo(str, stroke, baseColor)
+local function FireAICombo(str, stroke, baseColor)
     stroke.Color = Color3.fromRGB(255, 255, 255)
     task.spawn(function()
         local s = string.upper(str)
-        local keyDelay = tonumber(Config.ComboDelay) or 0.05
-        local actDelay = tonumber(Config.ActionDelay) or 0.1
+        local keyDelay = tonumber(Config.ComboDelay) or 0.2
+        local actDelay = tonumber(Config.ActionDelay) or 0.4
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                EnsureEquip(char)
+                SmartEquipVirtual(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
-                if LP.Character then ClearStun(LP.Character) end
-                
+                ClearStun(LP.Character)
                 local kc = Enum.KeyCode[char]
+                
                 VIM:SendKeyEvent(true, kc, false, game)
                 task.wait(keyDelay)
                 VIM:SendKeyEvent(false, kc, false, game)
                 
-                if LP.Character then ClearStun(LP.Character) end
+                local waitStart = tick()
+                local isAnim = false
+                while tick() - waitStart < 0.8 do
+                    RunService.Heartbeat:Wait()
+                    local hasTag = false
+                    for _, v in ipairs(LP.Character:GetDescendants()) do
+                        if v:IsA("BoolValue") and v.Value == true and (string.find(string.lower(v.Name), "busy") or string.find(string.lower(v.Name), "usingskill")) then
+                            hasTag = true
+                            isAnim = true
+                            break
+                        end
+                    end
+                    if isAnim and not hasTag then break end
+                end
+                
+                ClearStun(LP.Character)
                 task.wait(actDelay)
             end
         end
@@ -382,8 +395,8 @@ ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC then return end
         lockC = true
-        FireCombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60))
-        task.spawn(function() task.wait(0.3); lockC = false end)
+        FireAICombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60))
+        task.spawn(function() task.wait(0.5); lockC = false end)
     end
 end)
 
@@ -391,52 +404,103 @@ ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC2 then return end
         lockC2 = true
-        FireCombo(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255))
-        task.spawn(function() task.wait(0.3); lockC2 = false end)
+        FireAICombo(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255))
+        task.spawn(function() task.wait(0.5); lockC2 = false end)
     end
 end)
+
+local function GetPlayerInfo(plr)
+    local lvl, race = "?", "?"
+    if plr:FindFirstChild("Data") then
+        local lObj = plr.Data:FindFirstChild("Level")
+        if lObj then lvl = tostring(lObj.Value) end
+        local rObj = plr.Data:FindFirstChild("Race")
+        if rObj then race = tostring(rObj.Value) end
+    end
+    
+    local hp, mhp = 0, 0
+    local weap = "None"
+    local ken = "OFF"
+    
+    if plr.Character then
+        local hum = plr.Character:FindFirstChild("Humanoid")
+        if hum then hp = math.floor(hum.Health); mhp = math.floor(hum.MaxHealth) end
+        
+        local tool = plr.Character:FindFirstChildOfClass("Tool")
+        if tool then weap = tool.Name end
+        
+        local dodge = plr.Character:FindFirstChild("Dodge") or plr.Character:FindFirstChild("Ken")
+        if dodge and dodge.Value > 0 then ken = "ON" end
+    end
+    
+    return lvl, race, hp, mhp, weap, ken
+end
 
 RunService.Heartbeat:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
         if hum then
-            local targetSpeed = tonumber(Config.WalkSpeed) or 35
-            if hum.WalkSpeed < targetSpeed then hum.WalkSpeed = targetSpeed end
-            
-            local targetJump = tonumber(Config.JumpPower) or 50
-            if hum.JumpPower < targetJump then hum.JumpPower = targetJump end
-            if not hum.UseJumpPower then hum.UseJumpPower = true end
+            if hum.MoveDirection.Magnitude > 0 then
+                local isSkill = false
+                for _, v in ipairs(LP.Character:GetDescendants()) do
+                    if v:IsA("BoolValue") and v.Value == true and (string.find(string.lower(v.Name), "usingskill") or string.find(string.lower(v.Name), "busy")) then
+                        isSkill = true; break
+                    end
+                end
+                if not isSkill then
+                    local tgtSpd = tonumber(Config.WalkSpeed) or 35
+                    if hum.WalkSpeed < tgtSpd then hum.WalkSpeed = tgtSpd end
+                end
+            end
         end
         
         ClearStun(LP.Character)
         
-        if Config.Hitbox then
-            local hs = tonumber(Config.HitboxSize) or 15
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = plr.Character.HumanoidRootPart
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = plr.Character.HumanoidRootPart
+                
+                if Config.Hitbox then
+                    local hs = tonumber(Config.HitboxSize) or 15
                     hrp.Size = Vector3.new(hs, hs, hs)
-                    hrp.Transparency = 1
+                    hrp.Transparency = 0.8
                     hrp.CanCollide = false
                     hrp.Massless = true
+                end
+                
+                local espId = "ESP_" .. plr.Name
+                local espGui = hrp:FindFirstChild(espId)
+                
+                if Config.ESP then
+                    if not espGui then
+                        espGui = Instance.new("BillboardGui")
+                        espGui.Name = espId
+                        espGui.Size = UDim2.new(0, 200, 0, 80)
+                        espGui.StudsOffset = Vector3.new(0, 3, 0)
+                        espGui.AlwaysOnTop = true
+                        
+                        local txt = Instance.new("TextLabel")
+                        txt.Size = UDim2.new(1, 0, 1, 0)
+                        txt.BackgroundTransparency = 1
+                        txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        txt.Font = Enum.Font.GothamBold
+                        txt.TextSize = 10
+                        txt.TextStrokeTransparency = 0
+                        txt.Parent = espGui
+                        
+                        espGui.Parent = hrp
+                    end
+                    
+                    local lvl, race, hp, mhp, weap, ken = GetPlayerInfo(plr)
+                    local txtNode = espGui:FindFirstChildOfClass("TextLabel")
+                    if txtNode then
+                        txtNode.Text = string.format("[Lv. %s] %s\nHP: %d/%d\nRace: %s | Ken: %s\nW: %s", lvl, plr.Name, hp, mhp, race, ken, weap)
+                        if hp / mhp < 0.3 then txtNode.TextColor3 = Color3.fromRGB(255, 50, 50) else txtNode.TextColor3 = Color3.fromRGB(255, 255, 255) end
+                    end
+                else
+                    if espGui then espGui:Destroy() end
                 end
             end
         end
     end
-end)
-
-local clickTime = 0
-RunService.RenderStepped:Connect(function()
-    if Config.AutoClick and tick() - clickTime > 0.1 then
-        clickTime = tick()
-        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-    end
-end)
-
-if LP.Character then
-    LP.Character.DescendantAdded:Connect(function() ClearStun(LP.Character) end)
-end
-LP.CharacterAdded:Connect(function(char)
-    char.DescendantAdded:Connect(function() ClearStun(char) end)
 end)
