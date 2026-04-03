@@ -14,16 +14,16 @@ local DefaultConfig = {
     ComboC2 = "3XZ1C",
     BtnC_Show = false,
     BtnC2_Show = false,
-    ComboDelay = 0.05, 
-    MacroDelay = 0.04, 
+    ComboDelay = 0.02, 
+    MacroDelay = 0.01, 
     Hitbox = false, 
     HitboxSize = 15,
     BtnSize = 55,
     BtnSizeC2 = 55,
-    SetupMode = true
+    SetupMode = false
 }
 
-local DefaultDelays = {ComboDelay = 0.05, MacroDelay = 0.04, HitboxSize = 15, BtnSize = 55, BtnSizeC2 = 55}
+local DefaultDelays = {ComboDelay = 0.02, MacroDelay = 0.01, HitboxSize = 15, BtnSize = 55, BtnSizeC2 = 55}
 
 local Config = {}
 for k, v in pairs(DefaultConfig) do Config[k] = v end
@@ -54,7 +54,8 @@ ToggleIcon.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 ToggleIcon.Text = "⚙️"
 ToggleIcon.TextSize = 20
 ToggleIcon.BorderSizePixel = 0
-ToggleIcon.Active = true
+ToggleIcon.Active = false
+ToggleIcon.Selectable = false
 ToggleIcon.Draggable = true
 Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(255, 50, 50)
@@ -70,8 +71,9 @@ local function CreateComboBtn(name, yPos, color, isVisible, sizeKey)
     btn.Font = Enum.Font.GothamBlack
     btn.TextSize = math.clamp(Config[sizeKey] * 0.4, 10, 40)
     btn.Active = Config.SetupMode
+    btn.Selectable = false
     btn.Draggable = Config.SetupMode
-    btn.Visible = isVisible
+    btn.Visible = Config[isVisible]
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     local stroke = Instance.new("UIStroke", btn)
     stroke.Color = color
@@ -80,14 +82,15 @@ local function CreateComboBtn(name, yPos, color, isVisible, sizeKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateComboBtn("C", 0.4, Color3.fromRGB(255, 50, 50), Config.BtnC_Show, "BtnSize")
-local ExecBtnC2, StrokeC2 = CreateComboBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), Config.BtnC2_Show, "BtnSizeC2")
+local ExecBtnC, StrokeC = CreateComboBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "BtnC_Show", "BtnSize")
+local ExecBtnC2, StrokeC2 = CreateComboBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), "BtnC2_Show", "BtnSizeC2")
 
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 260, 0, 320)
 Menu.Position = UDim2.new(0.1, 0, 0.5, -160)
 Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Menu.BorderSizePixel = 0
+Menu.Active = true
 Menu.Visible = false
 Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
 Instance.new("UIStroke", Menu).Color = Color3.fromRGB(255, 50, 50)
@@ -110,6 +113,8 @@ local function CreateTab(name, xPos, isActive)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 12
+    btn.Active = false
+    btn.Selectable = false
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     btn.Parent = TabBar
     
@@ -171,6 +176,8 @@ local function CreateSlider(parentTab, yPos, text, min, max, configKey, isInt)
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = ""
+    btn.Active = false
+    btn.Selectable = false
     btn.Parent = bg
 
     SlidersData[configKey] = function(val)
@@ -220,7 +227,7 @@ local function CreateSlider(parentTab, yPos, text, min, max, configKey, isInt)
     end)
 end
 
-CreateSlider(TabDelay, 10, "Combo Delay (Skill Speed)", 0.01, 0.4, "ComboDelay", false)
+CreateSlider(TabDelay, 10, "Combo Delay (Skill Speed)", 0.01, 0.2, "ComboDelay", false)
 CreateSlider(TabDelay, 70, "Macro Delay (Anti-Busy)", 0.01, 0.1, "MacroDelay", false)
 
 local function CreateComboInput(yPos, name, configKey, color)
@@ -266,6 +273,8 @@ local function CreateToggleBtn(parentTab, x, y, text, configKey, colorOn, colorO
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBlack
     btn.TextSize = 12
+    btn.Active = false
+    btn.Selectable = false
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     btn.Parent = parentTab
     
@@ -300,6 +309,8 @@ ResetBtn.Text = "RESET DELAYS"
 ResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ResetBtn.Font = Enum.Font.GothamBlack
 ResetBtn.TextSize = 11
+ResetBtn.Active = false
+ResetBtn.Selectable = false
 Instance.new("UICorner", ResetBtn).CornerRadius = UDim.new(0, 4)
 ResetBtn.Parent = TabSettings
 
@@ -311,6 +322,8 @@ HideBtn.Text = "HIDE ALL UI"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HideBtn.Font = Enum.Font.GothamBlack
 HideBtn.TextSize = 11
+HideBtn.Active = false
+HideBtn.Selectable = false
 Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 4)
 HideBtn.Parent = TabSettings
 
@@ -322,15 +335,6 @@ ResetBtn.MouseButton1Click:Connect(function()
     for key, func in pairs(SlidersData) do if DefaultDelays[key] ~= nil then func(Config[key]) end end
     SaveConfig()
 end)
-
-local function MayChemXeoCan_IsHolding(char)
-    if not char then return false end
-    local tags = {"Charging", "Holding", "UsingSkill", "Stance", "Active", "Channeling", "Power", "Action"}
-    for _, tag in ipairs(tags) do if char:FindFirstChild(tag) then return true end end
-    local tool = char:FindFirstChildOfClass("Tool")
-    if tool then for _, tag in ipairs(tags) do if tool:FindFirstChild(tag) then return true end end end
-    return false
-end
 
 local function GetCurrentWeaponType()
     if not LP.Character then return nil end
@@ -377,17 +381,13 @@ local function ExecuteCombo(comboString, strokeRef, colorOff)
             
             if key then
                 VIM:SendKeyEvent(true, key, false, game)
-                task.wait(0.02)
+                task.wait(0.01)
                 VIM:SendKeyEvent(false, key, false, game)
                 
                 if isWeapon then
-                    task.wait(0.2)
+                    task.wait(0.1)
                 else
                     task.wait(cDelay)
-                    local holdTimeout = tick()
-                    while MayChemXeoCan_IsHolding(LP.Character) and (tick() - holdTimeout) < 2.5 do
-                        RunService.Heartbeat:Wait()
-                    end
                 end
             end
         end
@@ -398,18 +398,22 @@ end
 local isComboingC = false
 local isComboingC2 = false
 
-ExecBtnC.MouseButton1Click:Connect(function()
-    if isComboingC then return end
-    isComboingC = true
-    ExecuteCombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 50, 50))
-    task.spawn(function() task.wait(1); isComboingC = false end)
+ExecBtnC.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if isComboingC then return end
+        isComboingC = true
+        ExecuteCombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 50, 50))
+        task.spawn(function() task.wait(0.5); isComboingC = false end)
+    end
 end)
 
-ExecBtnC2.MouseButton1Click:Connect(function()
-    if isComboingC2 then return end
-    isComboingC2 = true
-    ExecuteCombo(Config.ComboC2, StrokeC2, Color3.fromRGB(50, 150, 255))
-    task.spawn(function() task.wait(1); isComboingC2 = false end)
+ExecBtnC2.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if isComboingC2 then return end
+        isComboingC2 = true
+        ExecuteCombo(Config.ComboC2, StrokeC2, Color3.fromRGB(50, 150, 255))
+        task.spawn(function() task.wait(0.5); isComboingC2 = false end)
+    end
 end)
 
 local function MayChemXeoCan_ApexPvP(char)
@@ -419,9 +423,8 @@ local function MayChemXeoCan_ApexPvP(char)
             local name = string.lower(v.Name)
             if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
                 task.spawn(function()
-                    local mDelay = tonumber(Config.MacroDelay) or 0.04
+                    local mDelay = tonumber(Config.MacroDelay) or 0.01
                     task.wait(mDelay)
-                    while char and char.Parent and MayChemXeoCan_IsHolding(char) do RunService.Heartbeat:Wait() end
                     if v and v.Parent and v:IsA("BoolValue") then v.Value = false end
                 end)
             end
@@ -436,11 +439,7 @@ RunService.RenderStepped:Connect(function()
     if LP.Character then
         local hum = LP.Character:FindFirstChild("Humanoid")
         if hum and hum.WalkSpeed < 35 then
-            local isStunned = false
-            for _, tag in pairs(LP.Character:GetChildren()) do
-                if tag:IsA("BoolValue") and string.find(string.lower(tag.Name), "stun") and tag.Value == true then isStunned = true; break end
-            end
-            if not isStunned and not MayChemXeoCan_IsHolding(LP.Character) then hum.WalkSpeed = 35 end
+            hum.WalkSpeed = 35
         end
     end
 end)
