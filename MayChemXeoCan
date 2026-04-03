@@ -9,17 +9,17 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_WarMind.json"
+local ConfigName = "Macro_Perfect_V1.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
+    ComboDelay = 0.05,
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
     ShowC = true,
     ShowC2 = true,
-    AutoConfig = false,
     ESP = false
 }
 
@@ -77,12 +77,12 @@ local function CreateActionBtn(name, yPos, color, showKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "ShowC")
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), "ShowC2")
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 280, 0, 380)
-Menu.Position = UDim2.new(0.1, 0, 0.5, -190)
+Menu.Size = UDim2.new(0, 280, 0, 360)
+Menu.Position = UDim2.new(0.1, 0, 0.5, -180)
 Menu.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -95,38 +95,26 @@ MenuStroke.Thickness = 1
 Menu.Parent = UI
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "MACRO AI PREDATOR"
+Title.Text = "MACRO AI ENGINE"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
+Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
-local StatusFrame = Instance.new("Frame")
-StatusFrame.Size = UDim2.new(0.9, 0, 0, 55)
-StatusFrame.Position = UDim2.new(0.05, 0, 0, 35)
-StatusFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
-Instance.new("UICorner", StatusFrame).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", StatusFrame).Color = Color3.fromRGB(40, 40, 45)
-StatusFrame.Parent = Menu
-
-local StatTxt = Instance.new("TextLabel")
-StatTxt.Size = UDim2.new(1, -10, 1, 0)
-StatTxt.Position = UDim2.new(0, 5, 0, 0)
-StatTxt.BackgroundTransparency = 1
-StatTxt.Text = "Loading Data..."
-StatTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
-StatTxt.Font = Enum.Font.GothamMedium
-StatTxt.TextSize = 10
-StatTxt.TextXAlignment = Enum.TextXAlignment.Left
-StatTxt.Parent = StatusFrame
+local UILine = Instance.new("Frame")
+UILine.Size = UDim2.new(1, 0, 0, 1)
+UILine.Position = UDim2.new(0, 0, 0, 40)
+UILine.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+UILine.BorderSizePixel = 0
+UILine.Parent = Menu
 
 local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, 0, 0, 30)
-TabBar.Position = UDim2.new(0, 0, 0, 95)
+TabBar.Size = UDim2.new(1, 0, 0, 35)
+TabBar.Position = UDim2.new(0, 0, 0, 41)
 TabBar.BackgroundTransparency = 1
 TabBar.Parent = Menu
 local TabFrames = {}
@@ -150,8 +138,8 @@ local function CreateTab(name, xPos, isActive)
     btn.Parent = TabBar
     
     local frame = Instance.new("ScrollingFrame")
-    frame.Size = UDim2.new(1, 0, 1, -125)
-    frame.Position = UDim2.new(0, 0, 0, 125)
+    frame.Size = UDim2.new(1, 0, 1, -76)
+    frame.Position = UDim2.new(0, 0, 0, 76)
     frame.BackgroundTransparency = 1
     frame.Visible = isActive
     frame.ScrollBarThickness = 2
@@ -198,11 +186,10 @@ local function CreateTextInput(parent, yPos, text, configKey)
     box.Parent = parent
     
     box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
-    return box
 end
 
-getgenv().BoxComboC = CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
-getgenv().BoxComboC2 = CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
+CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
+CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
 
@@ -269,6 +256,7 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
     end)
 end
 
+CreateSlider(TabCombat, 145, "Combo Delay (Ping Sync)", 0.01, 0.2, "ComboDelay", false)
 CreateSlider(TabVisual, 5, "Hitbox Expander", 5, 30, "HitboxSize", true)
 CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
 
@@ -294,12 +282,11 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 145, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
-CreateToggle(TabCombat, 0.53, 145, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
+CreateToggle(TabCombat, 0.05, 190, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
+CreateToggle(TabCombat, 0.53, 190, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
 CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
 CreateToggle(TabVisual, 0.53, 55, "ESP RADAR", "ESP")
-CreateToggle(TabSet, 0.05, 55, "AUTO CONFIG", "AutoConfig")
-CreateToggle(TabSet, 0.53, 55, "SETUP UI", "SetupMode", function(v)
+CreateToggle(TabSet, 0.05, 55, "SETUP UI", "SetupMode", function(v)
     ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v
 end)
 
@@ -327,25 +314,8 @@ local function GetToolType(tool)
     return "0"
 end
 
-local function GetWeaponData()
-    local melee, fruit, sword = "None", "None", "None"
-    if not LP.Character then return melee, fruit, sword end
-    local items = {}
-    if LP.Backpack then for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(items, v) end end end
-    for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(items, v) end end
-    
-    for _, tool in ipairs(items) do
-        local typ = GetToolType(tool)
-        if typ == "1" then melee = tool.Name
-        elseif typ == "2" then fruit = tool.Name
-        elseif typ == "3" then sword = tool.Name end
-    end
-    return melee, fruit, sword
-end
-
-local function DirectEquip(slotStr)
+local function ForceEquipTool(slotStr)
     if not LP.Character or not LP.Character:FindFirstChild("Humanoid") then return end
-    
     local current = LP.Character:FindFirstChildOfClass("Tool")
     if current and GetToolType(current) == slotStr then return end
 
@@ -362,75 +332,69 @@ local function DirectEquip(slotStr)
     end
 
     if targetTool then
-        LP.Character.Humanoid:UnequipTools()
-        task.wait(0.01)
-        targetTool.Parent = LP.Character
-        local timeout = tick()
-        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.3 do RunService.Heartbeat:Wait() end
+        LP.Character.Humanoid:EquipTool(targetTool)
+        local t = tick()
+        while not LP.Character:FindFirstChild(targetTool.Name) and tick() - t < 0.4 do
+            RunService.Heartbeat:Wait()
+        end
         task.wait(0.05)
     end
 end
 
-local function IsBusy(char)
+local function IsSkillBusy(char)
     if not char then return false end
-    local badTags = {"busy", "cant", "stun", "nodash", "nojump", "usingskill"}
-    for _, v in ipairs(char:GetDescendants()) do
+    for _, v in ipairs(char:GetChildren()) do
         if v:IsA("BoolValue") and v.Value == true then
             local n = string.lower(v.Name)
-            for _, tag in ipairs(badTags) do
-                if string.find(n, tag) then return true end
+            if string.find(n, "busy") or string.find(n, "usingskill") then
+                return true
             end
         end
     end
     return false
 end
 
-local function ForceClearStun(char)
+local function ClearEnemyStun(char)
     if not char then return end
-    local badTags = {"busy", "cant", "stun", "nodash", "nojump", "usingskill"}
-    for _, v in ipairs(char:GetDescendants()) do
+    local stuns = {"stun", "cant", "nodash", "nojump"} 
+    for _, v in ipairs(char:GetChildren()) do
         if v:IsA("BoolValue") and v.Value == true then
             local n = string.lower(v.Name)
-            for _, tag in ipairs(badTags) do
+            for _, tag in ipairs(stuns) do
                 if string.find(n, tag) then v.Value = false end
             end
         end
     end
 end
 
-local function FireAICombo(str, stroke, baseColor)
+local function ExecuteAIPacing(comboStr, stroke, baseColor)
     stroke.Color = Color3.fromRGB(255, 255, 255)
     task.spawn(function()
-        local s = string.upper(str)
+        local s = string.upper(comboStr)
+        local delayBuffer = tonumber(Config.ComboDelay) or 0.05
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                DirectEquip(char)
+                ForceEquipTool(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
-                ForceClearStun(LP.Character)
+                ClearEnemyStun(LP.Character)
                 local kc = Enum.KeyCode[char]
                 
                 VIM:SendKeyEvent(true, kc, false, game)
                 task.wait(0.01)
                 VIM:SendKeyEvent(false, kc, false, game)
                 
-                local waitReg = tick()
-                local triggered = false
-                while tick() - waitReg < 0.15 do
-                    if IsBusy(LP.Character) then triggered = true; break end
-                    RunService.Heartbeat:Wait()
-                end
+                task.wait(0.1)
                 
-                if triggered then
-                    local waitAnim = tick()
-                    while IsBusy(LP.Character) and tick() - waitAnim < 1.5 do
+                if IsSkillBusy(LP.Character) then
+                    local waitStart = tick()
+                    while IsSkillBusy(LP.Character) and tick() - waitStart < 1.5 do
                         RunService.Heartbeat:Wait()
                     end
                 end
                 
-                task.wait(0.01)
-                ForceClearStun(LP.Character)
+                task.wait(delayBuffer)
             end
         end
         stroke.Color = baseColor
@@ -443,7 +407,7 @@ ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC then return end
         lockC = true
-        FireAICombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 50, 50))
+        ExecuteAIPacing(Config.ComboC, StrokeC, Color3.fromRGB(255, 50, 50))
         task.spawn(function() task.wait(0.2); lockC = false end)
     end
 end)
@@ -452,13 +416,13 @@ ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC2 then return end
         lockC2 = true
-        FireAICombo(Config.ComboC2, StrokeC2, Color3.fromRGB(50, 150, 255))
+        ExecuteAIPacing(Config.ComboC2, StrokeC2, Color3.fromRGB(50, 150, 255))
         task.spawn(function() task.wait(0.2); lockC2 = false end)
     end
 end)
 
 local function SafeGetPlayerInfo(plr)
-    local lvl, race, hp, mhp, weap = "?", "?", 0, 0, "None"
+    local lvl, race, hp, mhp = "?", "?", 0, 0
     pcall(function()
         if plr:FindFirstChild("Data") then
             if plr.Data:FindFirstChild("Level") then lvl = tostring(plr.Data.Level.Value) end
@@ -467,38 +431,15 @@ local function SafeGetPlayerInfo(plr)
         if plr.Character then
             local hum = plr.Character:FindFirstChild("Humanoid")
             if hum then hp = math.floor(hum.Health); mhp = math.floor(hum.MaxHealth) end
-            local tool = plr.Character:FindFirstChildOfClass("Tool")
-            if tool then weap = tool.Name end
         end
     end)
-    return lvl, race, hp, mhp, weap
+    return lvl, race, hp, mhp
 end
-
-task.spawn(function()
-    while task.wait(2) do
-        if Config.AutoConfig then
-            local m, f, s = GetWeaponData()
-            local c1, c2 = "", ""
-            if s ~= "None" and m ~= "None" and f ~= "None" then c1, c2 = "3ZX1ZC", "2XC1Z"
-            elseif s ~= "None" and m ~= "None" then c1, c2 = "3ZX1ZXC", "1ZXC3X"
-            elseif f ~= "None" and m ~= "None" then c1, c2 = "2VXC1Z", "1ZXC2X"
-            end
-            if c1 ~= "" and (Config.ComboC ~= c1 or Config.ComboC2 ~= c2) then
-                Config.ComboC, Config.ComboC2 = c1, c2
-                getgenv().BoxComboC.Text, getgenv().BoxComboC2.Text = c1, c2
-                SaveConfig()
-            end
-        end
-    end
-end)
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
-            local m, f, s = GetWeaponData()
-            StatTxt.Text = string.format("Melee: %s\nFruit: %s\nSword: %s", m, f, s)
-            
-            ForceClearStun(LP.Character)
+            ClearEnemyStun(LP.Character)
             
             for _, plr in ipairs(Players:GetPlayers()) do
                 if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
@@ -508,7 +449,7 @@ RunService.Heartbeat:Connect(function()
                     if Config.Hitbox then
                         local hs = tonumber(Config.HitboxSize) or 15
                         hrp.Size = Vector3.new(hs, hs, hs)
-                        hrp.Transparency = 0.7
+                        hrp.Transparency = 0.8
                         hrp.CanCollide = false
                     end
                     
@@ -519,7 +460,7 @@ RunService.Heartbeat:Connect(function()
                         if not espGui then
                             espGui = Instance.new("BillboardGui")
                             espGui.Name = espId
-                            espGui.Size = UDim2.new(0, 200, 0, 80)
+                            espGui.Size = UDim2.new(0, 200, 0, 60)
                             espGui.StudsOffset = Vector3.new(0, 3, 0)
                             espGui.AlwaysOnTop = true
                             local txt = Instance.new("TextLabel")
@@ -532,10 +473,10 @@ RunService.Heartbeat:Connect(function()
                             espGui.Parent = hrp
                         end
                         
-                        local lvl, race, hp, mhp, weap = SafeGetPlayerInfo(plr)
+                        local lvl, race, hp, mhp = SafeGetPlayerInfo(plr)
                         local txtNode = espGui:FindFirstChildOfClass("TextLabel")
                         if txtNode then
-                            txtNode.Text = string.format("[Lv. %s] %s\nHP: %d/%d\nRace: %s\nW: %s\nDist: %dm", lvl, plr.Name, hp, mhp, race, weap, math.floor(dist))
+                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d\nDist: %dm", lvl, plr.Name, hp, mhp, math.floor(dist))
                             txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
                         end
                     else
@@ -546,3 +487,6 @@ RunService.Heartbeat:Connect(function()
         end
     end)
 end)
+
+if LP.Character then LP.Character.ChildAdded:Connect(function() ClearEnemyStun(LP.Character) end) end
+LP.CharacterAdded:Connect(function(char) char.ChildAdded:Connect(function() ClearEnemyStun(char) end) end)
