@@ -9,18 +9,26 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_ZeroDelay_V1.json"
+local ConfigName = "Macro_Supreme_V2.json"
 local Config = {
-    ComboC = "1Z3XZ", 
-    ComboC2 = "",
+    ComboC = "3XZ1CZ2ZX", 
+    ComboC2 = "2C1XZ",
+    ComboDelay = 0.05,
+    ActionDelay = 0.1,
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
-    ShowC = false,
-    ShowC2 = false,
+    ShowC = true,
+    ShowC2 = true,
     ESP = false,
-    ViewTracer = false
+    ViewTracer = false,
+    TracerR = 255,
+    TracerG = 50,
+    TracerB = 50,
+    CenterAim = true,
+    Crosshair = true,
+    SmartHide = false
 }
 
 pcall(function()
@@ -50,6 +58,16 @@ UI.ResetOnSpawn = false
 UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 UI.DisplayOrder = 9999
 UI.Parent = UIParent
+
+local CrosshairFolder = Instance.new("Folder", UI)
+local chX = Instance.new("Frame", CrosshairFolder)
+chX.Size = UDim2.new(0, 16, 0, 2)
+chX.Position = UDim2.new(0.5, -8, 0.5, -1)
+chX.BorderSizePixel = 0
+local chY = Instance.new("Frame", CrosshairFolder)
+chY.Size = UDim2.new(0, 2, 0, 16)
+chY.Position = UDim2.new(0.5, -1, 0.5, -8)
+chY.BorderSizePixel = 0
 
 local ToggleIcon = Instance.new("ImageButton")
 ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
@@ -89,8 +107,8 @@ local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60),
 local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 280, 0, 360)
-Menu.Position = UDim2.new(0.1, 0, 0.5, -180)
+Menu.Size = UDim2.new(0, 280, 0, 400)
+Menu.Position = UDim2.new(0.1, 0, 0.5, -200)
 Menu.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -195,7 +213,6 @@ local function CreateTextInput(parent, yPos, text, configKey)
     box.Parent = parent
     
     box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
-    return box
 end
 
 CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
@@ -211,7 +228,7 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
     lbl.Text = text .. ": " .. tostring(Config[configKey])
     lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
     lbl.Font = Enum.Font.GothamMedium
-    lbl.TextSize = 12
+    lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = parent
 
@@ -266,9 +283,6 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
     end)
 end
 
-CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true)
-CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
-
 local function CreateToggle(parent, x, y, text, configKey, cb)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.42, 0, 0, 35)
@@ -291,11 +305,21 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 145, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
-CreateToggle(TabCombat, 0.53, 145, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
+CreateToggle(TabCombat, 0.05, 125, "SMART HIDE", "SmartHide")
+CreateToggle(TabCombat, 0.53, 125, "CENTER AIM", "CenterAim")
+CreateToggle(TabCombat, 0.05, 170, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden and not Config.SmartHide then ExecBtnC.Visible = v end end)
+CreateToggle(TabCombat, 0.53, 170, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden and not Config.SmartHide then ExecBtnC2.Visible = v end end)
+
+CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true)
 CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
-CreateToggle(TabVisual, 0.53, 55, "ESP RADAR", "ESP")
-CreateToggle(TabVisual, 0.05, 100, "VIEW TRACER", "ViewTracer")
+CreateToggle(TabVisual, 0.53, 55, "CROSSHAIR", "Crosshair", function(v) CrosshairFolder.Parent = v and UI or nil end)
+CreateToggle(TabVisual, 0.05, 100, "ESP RADAR", "ESP")
+CreateToggle(TabVisual, 0.53, 100, "VIEW TRACER", "ViewTracer")
+CreateSlider(TabVisual, 145, "Tracer Color R", 0, 255, "TracerR", true)
+CreateSlider(TabVisual, 190, "Tracer Color G", 0, 255, "TracerG", true)
+CreateSlider(TabVisual, 235, "Tracer Color B", 0, 255, "TracerB", true)
+
+CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
 CreateToggle(TabSet, 0.05, 55, "SETUP UI", "SetupMode", function(v)
     ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v
 end)
@@ -311,16 +335,26 @@ HideBtn.TextSize = 11
 Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
+local InstPanel = Instance.new("Frame")
+InstPanel.Size = UDim2.new(0.9, 0, 0, 180)
+InstPanel.Position = UDim2.new(0.05, 0, 0, 105)
+InstPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+Instance.new("UICorner", InstPanel).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", InstPanel).Color = Color3.fromRGB(60, 60, 65)
+InstPanel.Parent = TabSet
+
 local InstTxt = Instance.new("TextLabel")
-InstTxt.Size = UDim2.new(0.9, 0, 0, 80)
-InstTxt.Position = UDim2.new(0.05, 0, 0, 105)
+InstTxt.Size = UDim2.new(1, -10, 1, -10)
+InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "HƯỚNG DẪN:\nNhập combo (VD: 3XZ1C).\nSố = Vũ khí, Chữ = Skill.\nAI Bật show C để bật nút Macro hỗ trợ combo \nAI Tinh chỉnh vị trí nút Macro cho dễ tiếp cận ( 4 ngón )"
-InstTxt.TextColor3 = Color3.fromRGB(180, 180, 180)
+InstTxt.Text = "HƯỚNG DẪN SỬ DỤNG MACRO\n\n1. SỐ (1,2,3,4): Rút vũ khí (1:Melee, 2:Trái, 3:Kiếm). AI tự nhận diện vũ khí đang cầm để TỰ BỎ QUA lệnh rút đồ nếu trùng khớp.\n\n2. CHỮ (Z,X,C,V): Skill. Nhập vào mục Sequence.\n\n3. SETUP UI: Bật để kéo nút C/C2. Kéo thanh Scale để chỉnh to nhỏ.\n\n4. SMART HIDE: Tự động khóa và ẩn nút C nếu kỹ năng chưa hồi xong."
+InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
 InstTxt.TextSize = 11
-InstTxt.Parent = TabSet
+InstTxt.TextXAlignment = Enum.TextXAlignment.Left
+InstTxt.TextYAlignment = Enum.TextYAlignment.Top
+InstTxt.Parent = InstPanel
 
 HideBtn.MouseButton1Click:Connect(function()
     getgenv().MacroHidden = true
@@ -369,6 +403,33 @@ local function ClearEnemyStun(char)
     end
 end
 
+local function GetFirstSkillKey(comboStr)
+    for i = 1, #comboStr do
+        local c = string.upper(string.sub(comboStr, i, i))
+        if c == "Z" or c == "X" or c == "C" or c == "V" or c == "F" then return c end
+    end
+    return nil
+end
+
+local function IsFirstSkillOnCooldown(key)
+    local pg = LP:FindFirstChild("PlayerGui")
+    if not pg then return false end
+    local main = pg:FindFirstChild("Main")
+    local skills = main and main:FindFirstChild("Skills") or main and main:FindFirstChild("MobileControls")
+    if skills then
+        for _, v in ipairs(skills:GetDescendants()) do
+            if v:IsA("TextLabel") and string.upper(v.Text) == string.upper(key) then
+                local p = v.Parent
+                local cd = p and p:FindFirstChild("Cooldown")
+                if cd and cd:IsA("GuiObject") and cd.Size.Y.Scale > 0 then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
 local lockC, lockC2 = false, false
 
 local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
@@ -408,16 +469,28 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
                             if t and GetToolType(t) == char then break end
                             RunService.Heartbeat:Wait()
                         end
-                        task.wait(0.02)
+                        task.wait(0.05)
                     end
                 end
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
                 ClearEnemyStun(LP.Character)
                 local kc = Enum.KeyCode[char]
                 
+                if Config.CenterAim then
+                    local cam = workspace.CurrentCamera
+                    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
+                    VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 0)
+                end
+                
                 VIM:SendKeyEvent(true, kc, false, game)
                 task.wait(0.01)
                 VIM:SendKeyEvent(false, kc, false, game)
+                
+                if Config.CenterAim then
+                    local cam = workspace.CurrentCamera
+                    local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
+                    VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 0)
+                end
                 
                 local waitReg = tick()
                 local triggered = false
@@ -433,19 +506,19 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, isC2)
                     end
                     task.wait(0.05)
                 else
-                    break
+                    break 
                 end
                 ClearEnemyStun(LP.Character)
             end
         end
         stroke.Color = baseColor
-        if not isC2 then lockC = false else lockC2 = false end
+        if isC2 then lockC2 = false else lockC = false end
     end)
 end
 
 ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if Config.SetupMode or lockC then return end
+        if Config.SetupMode or lockC or (Config.SmartHide and not ExecBtnC.Visible) then return end
         lockC = true
         ExecuteAIPacing(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60), false)
     end
@@ -453,7 +526,7 @@ end)
 
 ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if Config.SetupMode or lockC2 then return end
+        if Config.SetupMode or lockC2 or (Config.SmartHide and not ExecBtnC2.Visible) then return end
         lockC2 = true
         ExecuteAIPacing(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255), true)
     end
@@ -476,6 +549,28 @@ end
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
+        if Config.Crosshair then
+            chX.BackgroundColor3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
+            chY.BackgroundColor3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
+            CrosshairFolder.Parent = UI
+        else
+            CrosshairFolder.Parent = nil
+        end
+        
+        if Config.SmartHide and not getgenv().MacroHidden then
+            if lockC then ExecBtnC.Visible = false else
+                local k1 = GetFirstSkillKey(Config.ComboC)
+                ExecBtnC.Visible = (k1 and not IsFirstSkillOnCooldown(k1)) and Config.ShowC or false
+            end
+            if lockC2 then ExecBtnC2.Visible = false else
+                local k2 = GetFirstSkillKey(Config.ComboC2)
+                ExecBtnC2.Visible = (k2 and not IsFirstSkillOnCooldown(k2)) and Config.ShowC2 or false
+            end
+        elseif not getgenv().MacroHidden then
+            ExecBtnC.Visible = Config.ShowC
+            ExecBtnC2.Visible = Config.ShowC2
+        end
+
         if LP.Character then
             ClearEnemyStun(LP.Character)
             
@@ -533,39 +628,39 @@ RunService.Heartbeat:Connect(function()
                         if espGui then espGui:Destroy() end
                     end
                     
-                    local head = plr.Character:FindFirstChild("Head") or root
                     local lineId = "TracerLine_" .. plr.Name
                     local arrId = "TracerArrow_" .. plr.Name
-                    local line = head:FindFirstChild(lineId)
-                    local arr = head:FindFirstChild(arrId)
+                    local line = root:FindFirstChild(lineId)
+                    local arr = root:FindFirstChild(arrId)
                     
                     if Config.ViewTracer and dist <= 1000 and not getgenv().MacroHidden then
                         if not line then
                             line = Instance.new("CylinderHandleAdornment")
                             line.Name = lineId
-                            line.Adornee = head
-                            line.Color3 = Color3.fromRGB(255, 50, 50)
+                            line.Adornee = root
                             line.Radius = 0.6
                             line.Height = 50
                             line.ZIndex = 5
                             line.Transparency = 0.2
                             line.AlwaysOnTop = true
                             line.CFrame = CFrame.new(0, 0, -25) 
-                            line.Parent = head
+                            line.Parent = root
                         end
+                        line.Color3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
+                        
                         if not arr then
                             arr = Instance.new("ConeHandleAdornment")
                             arr.Name = arrId
-                            arr.Adornee = head
-                            arr.Color3 = Color3.fromRGB(255, 50, 50)
+                            arr.Adornee = root
                             arr.Radius = 1.8
                             arr.Height = 3.5
                             arr.ZIndex = 5
                             arr.Transparency = 0.2
                             arr.AlwaysOnTop = true
                             arr.CFrame = CFrame.new(0, 0, -51.5) 
-                            arr.Parent = head
+                            arr.Parent = root
                         end
+                        arr.Color3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
                     else
                         if line then line:Destroy() end
                         if arr then arr:Destroy() end
