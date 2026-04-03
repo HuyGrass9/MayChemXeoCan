@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Perfect_V1.json"
+local ConfigName = "Macro_Perfect_Final.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
@@ -18,8 +18,9 @@ local Config = {
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
-    ShowC = true,
-    ShowC2 = true,
+    ShowC = false,
+    ShowC2 = false,
+    AutoConfig = false,
     ESP = false
 }
 
@@ -77,8 +78,8 @@ local function CreateActionBtn(name, yPos, color, showKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC")
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(60, 180, 255), "ShowC2")
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "ShowC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.6, Color3.fromRGB(50, 150, 255), "ShowC2")
 
 local Menu = Instance.new("Frame")
 Menu.Size = UDim2.new(0, 280, 0, 360)
@@ -186,10 +187,11 @@ local function CreateTextInput(parent, yPos, text, configKey)
     box.Parent = parent
     
     box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
+    return box
 end
 
-CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
-CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
+getgenv().BoxComboC = CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
+getgenv().BoxComboC2 = CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
 
@@ -286,7 +288,8 @@ CreateToggle(TabCombat, 0.05, 190, "SHOW C", "ShowC", function(v) ExecBtnC.Visib
 CreateToggle(TabCombat, 0.53, 190, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
 CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
 CreateToggle(TabVisual, 0.53, 55, "ESP RADAR", "ESP")
-CreateToggle(TabSet, 0.05, 55, "SETUP UI", "SetupMode", function(v)
+CreateToggle(TabSet, 0.05, 55, "AUTO CONFIG", "AutoConfig")
+CreateToggle(TabSet, 0.53, 55, "SETUP UI", "SetupMode", function(v)
     ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v
 end)
 
@@ -307,37 +310,37 @@ local function GetToolType(tool)
     local tt = tool:FindFirstChild("ToolTip")
     if not tt then return "0" end
     local v = string.lower(tostring(tt.Value))
-    if string.find(v, "melee") or string.find(v, "cận chiến") or string.find(v, "võ thuật") then return "1" end
-    if string.find(v, "fruit") or string.find(v, "trái") or string.find(v, "ác quỷ") then return "2" end
+    if string.find(v, "melee") or string.find(v, "cận") or string.find(v, "võ") then return "1" end
+    if string.find(v, "fruit") or string.find(v, "trái") or string.find(v, "quỷ") then return "2" end
     if string.find(v, "sword") or string.find(v, "kiếm") or string.find(v, "đao") then return "3" end
     if string.find(v, "gun") or string.find(v, "súng") or string.find(v, "pháo") then return "4" end
     return "0"
 end
 
-local function ForceEquipTool(slotStr)
-    if not LP.Character or not LP.Character:FindFirstChild("Humanoid") then return end
-    local current = LP.Character:FindFirstChildOfClass("Tool")
-    if current and GetToolType(current) == slotStr then return end
-
+local function ForceEquipPhysical(slotStr)
+    if not LP.Character then return end
     local targetTool = nil
+    local tools = {}
     if LP.Backpack then
-        for _, tool in ipairs(LP.Backpack:GetChildren()) do
-            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
-        end
+        for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
     end
-    if not targetTool then
-        for _, tool in ipairs(LP.Character:GetChildren()) do
-            if tool:IsA("Tool") and GetToolType(tool) == slotStr then targetTool = tool; break end
-        end
+    for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
+
+    for _, tool in ipairs(tools) do
+        if GetToolType(tool) == slotStr then targetTool = tool; break end
     end
 
-    if targetTool then
-        LP.Character.Humanoid:EquipTool(targetTool)
-        local t = tick()
-        while not LP.Character:FindFirstChild(targetTool.Name) and tick() - t < 0.4 do
+    if targetTool and targetTool.Parent ~= LP.Character then
+        if LP.Character:FindFirstChildOfClass("Humanoid") then
+            LP.Character.Humanoid:UnequipTools()
+        end
+        task.wait(0.02)
+        targetTool.Parent = LP.Character
+        local timeout = tick()
+        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.3 do
             RunService.Heartbeat:Wait()
         end
-        task.wait(0.05)
+        task.wait(0.15)
     end
 end
 
@@ -376,7 +379,7 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                ForceEquipTool(char)
+                ForceEquipPhysical(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
                 ClearEnemyStun(LP.Character)
                 local kc = Enum.KeyCode[char]
@@ -435,6 +438,32 @@ local function SafeGetPlayerInfo(plr)
     end)
     return lvl, race, hp, mhp
 end
+
+task.spawn(function()
+    while task.wait(2) do
+        if Config.AutoConfig then
+            local m, f, s = false, false, false
+            local tools = {}
+            if LP.Backpack then for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end end
+            if LP.Character then for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end end
+            for _, tool in ipairs(tools) do
+                local t = GetToolType(tool)
+                if t == "1" then m = true elseif t == "2" then f = true elseif t == "3" then s = true end
+            end
+            
+            local c1, c2 = "", ""
+            if s and m and f then c1, c2 = "3ZX1ZC", "2XC1Z"
+            elseif s and m then c1, c2 = "3ZX1ZXC", "1ZXC3X"
+            elseif f and m then c1, c2 = "2VXC1Z", "1ZXC2X"
+            end
+            if c1 ~= "" and (Config.ComboC ~= c1 or Config.ComboC2 ~= c2) then
+                Config.ComboC, Config.ComboC2 = c1, c2
+                getgenv().BoxComboC.Text, getgenv().BoxComboC2.Text = c1, c2
+                SaveConfig()
+            end
+        end
+    end
+end)
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
