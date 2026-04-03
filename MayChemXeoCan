@@ -315,7 +315,7 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(0.9, 0, 0, 80)
 InstTxt.Position = UDim2.new(0.05, 0, 0, 105)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "HƯỚNG DẪN:\nNhập combo (VD: 3XZ1C).\nSố = Vũ khí, Chữ = Skill.\nAI tự cắt bỏ số nếu đang cầm sẵn.\nNếu skill chưa hồi, Combo tự hủy!"
+InstTxt.Text = "HƯỚNG DẪN:\nNhập combo (VD: 3XZ1C).\nSố = Vũ khí, Chữ = Skill.\nAI Bật show C để bật nút Macro hỗ trợ combo \nAI Tinh chỉnh vị trí nút Macro cho dễ tiếp cận ( 4 ngón )"
 InstTxt.TextColor3 = Color3.fromRGB(180, 180, 180)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
