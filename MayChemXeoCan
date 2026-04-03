@@ -109,6 +109,9 @@ ComboBox.FocusLost:Connect(function()
     SaveConfig()
 end)
 
+local SlidersData = {}
+getgenv().MCXC_ActiveSlider = nil
+
 local function CreateSlider(yPos, text, min, max, configKey, isInt)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0.9, 0, 0, 40)
@@ -145,17 +148,37 @@ local function CreateSlider(yPos, text, min, max, configKey, isInt)
     btn.Text = ""
     btn.Parent = bg
 
+    SlidersData[configKey] = function(val)
+        local pct = math.clamp((val - min) / (max - min), 0, 1)
+        fill.Size = UDim2.new(pct, 0, 1, 0)
+        if isInt then val = math.floor(val) else val = math.floor(val * 100) / 100 end
+        lbl.Text = text .. ": " .. tostring(val)
+        if configKey == "BtnSize" then
+            ExecBtn.Size = UDim2.new(0, val, 0, val)
+            ExecBtn.TextSize = math.clamp(val * 0.4, 10, 40)
+        end
+    end
+
     local dragging = false
     btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if not getgenv().MCXC_ActiveSlider then
+                getgenv().MCXC_ActiveSlider = configKey
+                dragging = true
+            end
+        end
     end)
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if dragging then dragging = false; SaveConfig() end
+            if dragging and getgenv().MCXC_ActiveSlider == configKey then
+                dragging = false
+                getgenv().MCXC_ActiveSlider = nil
+                SaveConfig()
+            end
         end
     end)
     RunService.RenderStepped:Connect(function()
-        if dragging then
+        if dragging and getgenv().MCXC_ActiveSlider == configKey then
             local mousePos = UserInputService:GetMouseLocation().X
             local relPos = mousePos - bg.AbsolutePosition.X
             local pct = math.clamp(relPos / bg.AbsoluteSize.X, 0, 1)
@@ -228,8 +251,10 @@ ResetBtn.MouseButton1Click:Connect(function()
     SetupBtn.Text = "SETUP: " .. (Config.SetupMode and "ON" or "OFF")
     ExecBtn.Active = Config.SetupMode
     ExecBtn.Draggable = Config.SetupMode
-    ExecBtn.Size = UDim2.new(0, Config.BtnSize, 0, Config.BtnSize)
-    ExecBtn.TextSize = math.clamp(Config.BtnSize * 0.4, 10, 40)
+    
+    for key, func in pairs(SlidersData) do
+        func(Config[key])
+    end
     SaveConfig()
 end)
 
@@ -250,6 +275,8 @@ end
 
 local function SmartEquip(slot)
     if not LP.Character then return false end
+    local hum = LP.Character:FindFirstChild("Humanoid")
+    if not hum then return false end
     
     local targetTooltip = ""
     if slot == "1" then targetTooltip = "melee"
@@ -265,9 +292,11 @@ local function SmartEquip(slot)
 
     for _, tool in pairs(LP.Backpack:GetChildren()) do
         if tool:IsA("Tool") and tool:FindFirstChild("ToolTip") and string.find(string.lower(tool.ToolTip.Value), targetTooltip) then
-            if currentTool then currentTool.Parent = LP.Backpack end
-            task.wait(0.01)
-            tool.Parent = LP.Character
+            hum:EquipTool(tool)
+            local timeout = tick()
+            while tool.Parent ~= LP.Character and (tick() - timeout) < 0.5 do
+                RunService.Heartbeat:Wait()
+            end
             return true 
         end
     end
@@ -290,7 +319,7 @@ ExecBtn.MouseButton1Click:Connect(function()
             
             if char == "1" or char == "2" or char == "3" or char == "4" then
                 local switched = SmartEquip(char)
-                if switched then task.wait(0.05) end
+                if switched then task.wait(0.1) end
             elseif char == "Z" then key = Enum.KeyCode.Z
             elseif char == "X" then key = Enum.KeyCode.X
             elseif char == "C" then key = Enum.KeyCode.C
