@@ -8,27 +8,24 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_TitanForce.json"
+local ConfigName = "Macro_Ultimate_Final.json"
 local Config = {
-    ComboC = "3XZ1X", 
+    ComboC = "3XZ1CZ", 
     ComboC2 = "2C1XZ",
-    ComboDelay = 0.05,
-    ActionDelay = 0.1,
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
-    ShowC = false,
+    ShowC = flase,
     ShowC2 = false,
     ESP = false,
     ViewTracer = false,
     TracerR = 255,
     TracerG = 50,
     TracerB = 50,
-    GhostMode = false,
+    AutoHideC = false,
     HideTimer = 1.5,
-    UnlockFPS = true,
-    FixLag = false
+    UnlockFPS = true
 }
 
 pcall(function()
@@ -209,7 +206,7 @@ local function CreateTextInput(parent, yPos, text, configKey)
 end
 
 CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
-CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
+CreateTextInput(TabCombat, 70, "Sequence C2:", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
 
@@ -298,10 +295,10 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateSlider(TabCombat, 145, "Action Delay (Ping Sync)", 0.05, 0.5, "ActionDelay", false)
-CreateSlider(TabCombat, 190, "Ghost Mode Timer", 0.5, 5.0, "HideTimer", false)
-CreateToggle(TabCombat, 0.05, 240, "GHOST MODE", "GhostMode")
-CreateToggle(TabCombat, 0.53, 240, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
+CreateSlider(TabCombat, 135, "Time Hide UI (Seconds)", 0.5, 5.0, "HideTimer", false)
+CreateToggle(TabCombat, 0.05, 185, "AUTO HIDE C", "AutoHideC")
+CreateToggle(TabCombat, 0.05, 230, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
+CreateToggle(TabCombat, 0.53, 230, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
 
 CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true)
 CreateSlider(TabVisual, 50, "Tracer R", 0, 255, "TracerR", true)
@@ -341,7 +338,7 @@ Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
 local InstPanel = Instance.new("Frame")
-InstPanel.Size = UDim2.new(0.9, 0, 0, 185)
+InstPanel.Size = UDim2.new(0.9, 0, 0, 170)
 InstPanel.Position = UDim2.new(0.05, 0, 0, 145)
 InstPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 Instance.new("UICorner", InstPanel).CornerRadius = UDim.new(0, 6)
@@ -352,8 +349,8 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, -10, 1, -10)
 InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "HƯỚNG DẪN SỬ DỤNG MACRO:\n\n1. SỐ (1,2,3,4): Rút vũ khí (1:Cận chiến, 2:Trái ác quỷ, 3:Kiếm). AI tự nhận diện vũ khí đang cầm để TỰ BỎ QUA lệnh rút đồ thừa.\n\n2. CHỮ (Z,X,C,V,F): Kỹ năng.\n\n3. GHOST MODE: Khi bấm nút C, nó sẽ tàng hình theo thời gian bạn chỉnh ở thanh Timer để tránh bấm nhầm khi PVP."
-InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
+InstTxt.Text = "📜 HƯỚNG DẪN:\n- NHẬP SỐ (1,2,3,4): Rút vũ khí (1:Melee, 2:Trái, 3:Kiếm). AI thông minh tự động CẮT BỎ số nếu phát hiện bạn đang cầm sẵn vũ khí đó.\n- NHẬP CHỮ (Z,X,C,V,F): Kỹ năng.\n- AUTO HIDE C: Tự tàng hình nút C khi bấm để tránh spam, hết thời gian tự hiện lại."
+InstTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
 InstTxt.TextSize = 11
@@ -423,10 +420,10 @@ local function ClearEnemyStun(char)
     end
 end
 
-local function ExecuteAIPacing(comboStr, stroke, baseColor, btnRef)
+local function ExecuteForceCombo(comboStr, stroke, baseColor, btnRef)
     stroke.Color = Color3.fromRGB(255, 255, 255)
     
-    if Config.GhostMode and btnRef.Visible then
+    if Config.AutoHideC and btnRef.Visible then
         btnRef.Visible = false
         task.delay(Config.HideTimer, function()
             if not getgenv().MacroHidden and ((btnRef == ExecBtnC and Config.ShowC) or (btnRef == ExecBtnC2 and Config.ShowC2)) then
@@ -436,7 +433,7 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, btnRef)
     end
     
     task.spawn(function()
-        task.wait(0.05)
+        task.wait(0.01)
         local s = string.upper(comboStr)
         
         local firstChar = string.sub(s, 1, 1)
@@ -446,9 +443,6 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, btnRef)
                 s = string.sub(s, 2)
             end
         end
-        
-        local delayBuffer = tonumber(Config.ComboDelay) or 0.05
-        local actDelay = tonumber(Config.ActionDelay) or 0.1
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
@@ -468,12 +462,12 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, btnRef)
                         VIM:SendKeyEvent(false, kc, false, game)
                         
                         local w = tick()
-                        while tick() - w < 0.5 do
+                        while tick() - w < 0.3 do
                             local t = LP.Character:FindFirstChildOfClass("Tool")
                             if t and GetToolType(t) == char then break end
                             RunService.Heartbeat:Wait()
                         end
-                        task.wait(0.05)
+                        task.wait(0.02)
                     end
                 end
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
@@ -496,9 +490,9 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor, btnRef)
                     while IsSkillBusy(LP.Character) and tick() - waitAnim < 2.5 do
                         RunService.Heartbeat:Wait()
                     end
-                    task.wait(actDelay)
+                    task.wait(0.05)
                 else
-                    task.wait(delayBuffer)
+                    task.wait(0.05)
                 end
                 ClearEnemyStun(LP.Character)
             end
@@ -515,7 +509,7 @@ ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or getgenv().lockC then return end
         getgenv().lockC = true
-        ExecuteAIPacing(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60), ExecBtnC)
+        ExecuteForceCombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60), ExecBtnC)
     end
 end)
 
@@ -523,7 +517,7 @@ ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or getgenv().lockC2 then return end
         getgenv().lockC2 = true
-        ExecuteAIPacing(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255), ExecBtnC2)
+        ExecuteForceCombo(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255), ExecBtnC2)
     end
 end)
 
@@ -601,37 +595,38 @@ RunService.Heartbeat:Connect(function()
                         if espGui then espGui:Destroy() end
                     end
                     
+                    local head = plr.Character:FindFirstChild("Head") or root
                     local lineId = "TracerLine_" .. plr.Name
                     local arrId = "TracerArrow_" .. plr.Name
-                    local line = root:FindFirstChild(lineId)
-                    local arr = root:FindFirstChild(arrId)
+                    local line = head:FindFirstChild(lineId)
+                    local arr = head:FindFirstChild(arrId)
                     
                     if Config.ViewTracer and dist <= 1000 and not getgenv().MacroHidden then
                         if not line then
                             line = Instance.new("CylinderHandleAdornment")
                             line.Name = lineId
-                            line.Adornee = root
+                            line.Adornee = head
                             line.Radius = 0.6
                             line.Height = 50
                             line.ZIndex = 5
                             line.Transparency = 0.2
                             line.AlwaysOnTop = true
                             line.CFrame = CFrame.new(0, 0, -25) 
-                            line.Parent = root
+                            line.Parent = head
                         end
                         line.Color3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
                         
                         if not arr then
                             arr = Instance.new("ConeHandleAdornment")
                             arr.Name = arrId
-                            arr.Adornee = root
+                            arr.Adornee = head
                             arr.Radius = 1.8
                             arr.Height = 3.5
                             arr.ZIndex = 5
                             arr.Transparency = 0.2
                             arr.AlwaysOnTop = true
                             arr.CFrame = CFrame.new(0, 0, -51.5) 
-                            arr.Parent = root
+                            arr.Parent = head
                         end
                         arr.Color3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
                     else
