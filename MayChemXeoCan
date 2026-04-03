@@ -9,7 +9,7 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Perfect_Final.json"
+local ConfigName = "Macro_Final_V12.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
@@ -307,9 +307,8 @@ HideBtn.Parent = TabSet
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
 HideBtn.MouseButton1Click:Connect(function() Menu.Visible = false end)
 local function GetToolType(tool)
-    local tt = tool:FindFirstChild("ToolTip")
-    if not tt then return "0" end
-    local v = string.lower(tostring(tt.Value))
+    if not tool or not tool:FindFirstChild("ToolTip") then return "0" end
+    local v = string.lower(tostring(tool.ToolTip.Value))
     if string.find(v, "melee") or string.find(v, "cận") or string.find(v, "võ") then return "1" end
     if string.find(v, "fruit") or string.find(v, "trái") or string.find(v, "quỷ") then return "2" end
     if string.find(v, "sword") or string.find(v, "kiếm") or string.find(v, "đao") then return "3" end
@@ -317,31 +316,31 @@ local function GetToolType(tool)
     return "0"
 end
 
-local function ForceEquipPhysical(slotStr)
-    if not LP.Character then return end
-    local targetTool = nil
-    local tools = {}
-    if LP.Backpack then
-        for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
-    end
-    for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
+local function GetActiveType()
+    if not LP.Character then return "0" end
+    local tool = LP.Character:FindFirstChildOfClass("Tool")
+    return GetToolType(tool)
+end
 
-    for _, tool in ipairs(tools) do
-        if GetToolType(tool) == slotStr then targetTool = tool; break end
+local function SmartVIMEquip(slotStr)
+    if GetActiveType() == slotStr then return end
+    
+    local kc
+    if slotStr == "1" then kc = Enum.KeyCode.One
+    elseif slotStr == "2" then kc = Enum.KeyCode.Two
+    elseif slotStr == "3" then kc = Enum.KeyCode.Three
+    elseif slotStr == "4" then kc = Enum.KeyCode.Four
+    else return end
+    
+    VIM:SendKeyEvent(true, kc, false, game)
+    task.wait(0.01)
+    VIM:SendKeyEvent(false, kc, false, game)
+    
+    local t = tick()
+    while GetActiveType() ~= slotStr and tick() - t < 0.5 do
+        RunService.Heartbeat:Wait()
     end
-
-    if targetTool and targetTool.Parent ~= LP.Character then
-        if LP.Character:FindFirstChildOfClass("Humanoid") then
-            LP.Character.Humanoid:UnequipTools()
-        end
-        task.wait(0.02)
-        targetTool.Parent = LP.Character
-        local timeout = tick()
-        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.3 do
-            RunService.Heartbeat:Wait()
-        end
-        task.wait(0.15)
-    end
+    task.wait(0.1)
 end
 
 local function IsSkillBusy(char)
@@ -379,7 +378,7 @@ local function ExecuteAIPacing(comboStr, stroke, baseColor)
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                ForceEquipPhysical(char)
+                SmartVIMEquip(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
                 ClearEnemyStun(LP.Character)
                 local kc = Enum.KeyCode[char]
