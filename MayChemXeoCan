@@ -70,7 +70,7 @@ local function CreateComboBtn(name, yPos, color, isVisibleKey, sizeKey)
     btn.TextColor3 = color
     btn.Font = Enum.Font.GothamBlack
     btn.TextSize = math.clamp(Config[sizeKey] * 0.4, 10, 40)
-    btn.Active = Config.SetupMode
+    btn.Active = true
     btn.Selectable = false
     btn.Draggable = Config.SetupMode
     btn.Visible = Config[isVisibleKey]
@@ -90,7 +90,7 @@ JoyBase.Size = UDim2.new(0, 140, 0, 140)
 JoyBase.Position = UDim2.new(0, 40, 1, -190)
 JoyBase.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 JoyBase.BackgroundTransparency = 0.5
-JoyBase.Active = Config.SetupMode
+JoyBase.Active = true
 JoyBase.Draggable = Config.SetupMode
 JoyBase.Visible = Config.DPad_Show
 Instance.new("UICorner", JoyBase).CornerRadius = UDim.new(1, 0)
@@ -361,9 +361,9 @@ CreateSlider(TabSettings, 120, "C2 Button Size", 30, 100, "BtnSizeC2", true)
 
 local HitboxBtn = CreateToggleBtn(TabSettings, 0.05, 175, "HITBOX", "Hitbox", Color3.fromRGB(50, 200, 50), Color3.fromRGB(200, 50, 50))
 local SetupBtn = CreateToggleBtn(TabSettings, 0.53, 175, "SETUP", "SetupMode", Color3.fromRGB(50, 200, 50), Color3.fromRGB(200, 50, 50), function(val)
-    ExecBtnC.Draggable = val; ExecBtnC.Active = val
-    ExecBtnC2.Draggable = val; ExecBtnC2.Active = val
-    JoyBase.Draggable = val; JoyBase.Active = val
+    ExecBtnC.Draggable = val
+    ExecBtnC2.Draggable = val
+    JoyBase.Draggable = val
 end)
 
 local DPadToggle = CreateToggleBtn(TabSettings, 0.05, 215, "JOYSTICK", "DPad_Show", Color3.fromRGB(50, 200, 50), Color3.fromRGB(200, 50, 50), function(val) JoyBase.Visible = val end)
@@ -398,6 +398,28 @@ ResetBtn.MouseButton1Click:Connect(function()
     for key, func in pairs(SlidersData) do if DefaultDelays[key] ~= nil then func(Config[key]) end end
     SaveConfig()
 end)
+
+task.spawn(function()
+    while task.wait(0.1) do
+        pcall(function()
+            local playerGui = LP:FindFirstChild("PlayerGui")
+            if playerGui and playerGui:FindFirstChild("TouchGui") then
+                local touchFrame = playerGui.TouchGui:FindFirstChild("TouchControlFrame")
+                if touchFrame then
+                    local stick = touchFrame:FindFirstChild("DynamicThumbstickFrame") or touchFrame:FindFirstChild("ThumbstickFrame")
+                    if stick then
+                        if Config.DPad_Show then
+                            stick.Visible = false
+                        else
+                            stick.Visible = true
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
 local function GetCurrentWeapon()
     local tool = LP.Character:FindFirstChildOfClass("Tool")
     if tool and tool:FindFirstChild("ToolTip") then
@@ -408,6 +430,34 @@ local function GetCurrentWeapon()
         if string.find(tt, "gun") then return "4" end
     end
     return "0"
+end
+
+local function SmartEquip(slot)
+    if not LP.Character then return false end
+    
+    local targetTooltip = ""
+    if slot == "1" then targetTooltip = "melee"
+    elseif slot == "2" then targetTooltip = "blox fruit"
+    elseif slot == "3" then targetTooltip = "sword"
+    elseif slot == "4" then targetTooltip = "gun"
+    else return false end
+
+    local currentTool = LP.Character:FindFirstChildOfClass("Tool")
+    if currentTool and currentTool:FindFirstChild("ToolTip") and string.find(string.lower(currentTool.ToolTip.Value), targetTooltip) then
+        return true
+    end
+
+    for _, tool in pairs(LP.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool:FindFirstChild("ToolTip") and string.find(string.lower(tool.ToolTip.Value), targetTooltip) then
+            local hum = LP.Character:FindFirstChild("Humanoid")
+            if hum then hum:UnequipTools() end
+            task.wait(0.01)
+            tool.Parent = LP.Character
+            task.wait(0.15)
+            return true
+        end
+    end
+    return false
 end
 
 local function ExecuteCombo(comboString, strokeRef, colorOff)
