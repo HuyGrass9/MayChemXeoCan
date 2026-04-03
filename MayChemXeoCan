@@ -2,9 +2,27 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
+
+local ConfigName = "MayChemXeoCan_Config.json"
+local Config = {ComboStr = "1ZX2XZ", ComboDelay = 0.15, MacroDelay = 0.04, Hitbox = false}
+
+pcall(function()
+    if isfile and isfile(ConfigName) then
+        local saved = HttpService:JSONDecode(readfile(ConfigName))
+        for k, v in pairs(saved) do Config[k] = v end
+    end
+end)
+
+local function SaveConfig()
+    pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end)
+end
+
+getgenv().MCXC_Hitbox = Config.Hitbox
 
 local oldUI = pcall(gethui) and gethui():FindFirstChild("MayChemXeoCan_Pro") or CoreGui:FindFirstChild("MayChemXeoCan_Pro")
 if oldUI then oldUI:Destroy() end
@@ -13,11 +31,6 @@ local UI = Instance.new("ScreenGui")
 UI.Name = "MayChemXeoCan_Pro"
 UI.ResetOnSpawn = false
 UI.Parent = pcall(gethui) and gethui() or CoreGui
-
-getgenv().MCXC_ComboStr = getgenv().MCXC_ComboStr or "3XZ"
-getgenv().MCXC_ComboDelay = getgenv().MCXC_ComboDelay or "0.2"
-getgenv().MCXC_MacroDelay = getgenv().MCXC_MacroDelay or "0.04"
-getgenv().MCXC_Hitbox = getgenv().MCXC_Hitbox or false
 
 local ToggleIcon = Instance.new("TextButton")
 ToggleIcon.Size = UDim2.new(0, 40, 0, 40)
@@ -49,8 +62,8 @@ ExecStroke.Thickness = 2
 ExecBtn.Parent = UI
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 220, 0, 210)
-Menu.Position = UDim2.new(0.5, -110, 0.5, -105)
+Menu.Size = UDim2.new(0, 220, 0, 220)
+Menu.Position = UDim2.new(0.5, -110, 0.5, -110)
 Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -69,63 +82,113 @@ Title.Font = Enum.Font.GothamBlack
 Title.TextSize = 14
 Title.Parent = Menu
 
-local function MakeBox(yPos, placeholder, defaultVal, isNum)
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0.9, 0, 0, 30)
-    box.Position = UDim2.new(0.05, 0, 0, yPos)
-    box.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    box.TextColor3 = Color3.fromRGB(0, 255, 150)
-    box.Font = Enum.Font.GothamBold
-    box.TextSize = 14
-    box.Text = defaultVal
-    box.PlaceholderText = placeholder
-    box.ClearTextOnFocus = false
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
-    box.Parent = Menu
-    return box
+local ComboBox = Instance.new("TextBox")
+ComboBox.Size = UDim2.new(0.9, 0, 0, 30)
+ComboBox.Position = UDim2.new(0.05, 0, 0, 35)
+ComboBox.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+ComboBox.TextColor3 = Color3.fromRGB(0, 255, 150)
+ComboBox.Font = Enum.Font.GothamBold
+ComboBox.TextSize = 14
+ComboBox.Text = Config.ComboStr
+ComboBox.PlaceholderText = "Combo (Ex: 1ZX2XZ)"
+ComboBox.ClearTextOnFocus = false
+Instance.new("UICorner", ComboBox).CornerRadius = UDim.new(0, 4)
+ComboBox.Parent = Menu
+
+ComboBox.FocusLost:Connect(function()
+    Config.ComboStr = ComboBox.Text
+    SaveConfig()
+end)
+
+local function CreateSlider(yPos, text, min, max, currentVal, configKey)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.9, 0, 0, 40)
+    frame.Position = UDim2.new(0.05, 0, 0, yPos)
+    frame.BackgroundTransparency = 1
+    frame.Parent = Menu
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 15)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text .. ": " .. tostring(currentVal)
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, 0, 0, 10)
+    bg.Position = UDim2.new(0, 0, 0, 20)
+    bg.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+    bg.Parent = frame
+
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((currentVal - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    fill.Parent = bg
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.Parent = bg
+
+    local dragging = false
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if dragging then
+                dragging = false
+                SaveConfig()
+            end
+        end
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if dragging then
+            local mousePos = UserInputService:GetMouseLocation().X
+            local relPos = mousePos - bg.AbsolutePosition.X
+            local pct = math.clamp(relPos / bg.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(pct, 0, 1, 0)
+            
+            local val = min + (max - min) * pct
+            val = math.floor(val * 100) / 100
+            lbl.Text = text .. ": " .. tostring(val)
+            Config[configKey] = val
+        end
+    end)
 end
 
-local ComboBox = MakeBox(35, "Combo (Ex: 2Z3XZ)", getgenv().MCXC_ComboStr, false)
-local CmbDelayBox = MakeBox(70, "Combo Delay (Ex: 0.15)", getgenv().MCXC_ComboDelay, true)
-local MacDelayBox = MakeBox(105, "Macro Delay (Ex: 0.04)", getgenv().MCXC_MacroDelay, true)
+CreateSlider(75, "Combo Delay", 0.05, 0.5, Config.ComboDelay, "ComboDelay")
+CreateSlider(120, "Macro Delay", 0.01, 0.1, Config.MacroDelay, "MacroDelay")
 
 local HitboxBtn = Instance.new("TextButton")
 HitboxBtn.Size = UDim2.new(0.9, 0, 0, 30)
-HitboxBtn.Position = UDim2.new(0.05, 0, 0, 140)
-HitboxBtn.BackgroundColor3 = getgenv().MCXC_Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-HitboxBtn.Text = "HITBOX: " .. (getgenv().MCXC_Hitbox and "ON" or "OFF")
+HitboxBtn.Position = UDim2.new(0.05, 0, 0, 175)
+HitboxBtn.BackgroundColor3 = Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+HitboxBtn.Text = "HITBOX: " .. (Config.Hitbox and "ON" or "OFF")
 HitboxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 HitboxBtn.Font = Enum.Font.GothamBlack
 HitboxBtn.TextSize = 13
 Instance.new("UICorner", HitboxBtn).CornerRadius = UDim.new(0, 4)
 HitboxBtn.Parent = Menu
 
-local SaveBtn = Instance.new("TextButton")
-SaveBtn.Size = UDim2.new(0.9, 0, 0, 30)
-SaveBtn.Position = UDim2.new(0.05, 0, 0, 175)
-SaveBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-SaveBtn.Text = "APPLY & SAVE"
-SaveBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-SaveBtn.Font = Enum.Font.GothamBlack
-SaveBtn.TextSize = 13
-Instance.new("UICorner", SaveBtn).CornerRadius = UDim.new(0, 4)
-SaveBtn.Parent = Menu
-
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
 
 HitboxBtn.MouseButton1Click:Connect(function()
-    getgenv().MCXC_Hitbox = not getgenv().MCXC_Hitbox
-    HitboxBtn.BackgroundColor3 = getgenv().MCXC_Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-    HitboxBtn.Text = "HITBOX: " .. (getgenv().MCXC_Hitbox and "ON" or "OFF")
-end)
-
-SaveBtn.MouseButton1Click:Connect(function()
-    getgenv().MCXC_ComboStr = ComboBox.Text
-    getgenv().MCXC_ComboDelay = CmbDelayBox.Text
-    getgenv().MCXC_MacroDelay = MacDelayBox.Text
-    SaveBtn.Text = "SAVED!"
-    task.wait(0.5)
-    SaveBtn.Text = "APPLY & SAVE"
+    Config.Hitbox = not Config.Hitbox
+    getgenv().MCXC_Hitbox = Config.Hitbox
+    HitboxBtn.BackgroundColor3 = Config.Hitbox and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    HitboxBtn.Text = "HITBOX: " .. (Config.Hitbox and "ON" or "OFF")
+    SaveConfig()
 end)
 
 local isComboing = false
@@ -133,20 +196,21 @@ ExecBtn.MouseButton1Click:Connect(function()
     if isComboing then return end
     isComboing = true
     ExecStroke.Color = Color3.fromRGB(0, 255, 100)
+    
     task.spawn(function()
-        local str = string.upper(getgenv().MCXC_ComboStr)
-        local cDelay = tonumber(getgenv().MCXC_ComboDelay) or 0.2
+        local str = string.upper(Config.ComboStr)
+        local cDelay = tonumber(Config.ComboDelay) or 0.15
         
         for i = 1, #str do
             local char = string.sub(str, i, i)
             local key = nil
-            local customWait = cDelay
+            local isWeaponSwitch = false
             
-            if char == "1" then key = Enum.KeyCode.One; customWait = 0.1
-            elseif char == "2" then key = Enum.KeyCode.Two; customWait = 0.1
-            elseif char == "3" then key = Enum.KeyCode.Three; customWait = 0.1
-            elseif char == "4" then key = Enum.KeyCode.Four; customWait = 0.1
-            elseif char == "5" then key = Enum.KeyCode.Five; customWait = 0.1
+            if char == "1" then key = Enum.KeyCode.One; isWeaponSwitch = true
+            elseif char == "2" then key = Enum.KeyCode.Two; isWeaponSwitch = true
+            elseif char == "3" then key = Enum.KeyCode.Three; isWeaponSwitch = true
+            elseif char == "4" then key = Enum.KeyCode.Four; isWeaponSwitch = true
+            elseif char == "5" then key = Enum.KeyCode.Five; isWeaponSwitch = true
             elseif char == "Z" then key = Enum.KeyCode.Z
             elseif char == "X" then key = Enum.KeyCode.X
             elseif char == "C" then key = Enum.KeyCode.C
@@ -158,7 +222,12 @@ ExecBtn.MouseButton1Click:Connect(function()
                 VIM:SendKeyEvent(true, key, false, game)
                 task.wait(0.02)
                 VIM:SendKeyEvent(false, key, false, game)
-                task.wait(customWait)
+                
+                if isWeaponSwitch then
+                    task.wait(0.15) 
+                else
+                    task.wait(cDelay)
+                end
             end
         end
         isComboing = false
@@ -187,7 +256,7 @@ local function MayChemXeoCan_ApexPvP(char)
             local name = string.lower(v.Name)
             if string.find(name, "busy") or string.find(name, "cant") or string.find(name, "nodash") or string.find(name, "nojump") then
                 task.spawn(function()
-                    local mDelay = tonumber(getgenv().MCXC_MacroDelay) or 0.04
+                    local mDelay = tonumber(Config.MacroDelay) or 0.04
                     task.wait(mDelay)
                     while char and char.Parent and MayChemXeoCan_IsHolding(char) do
                         RunService.Heartbeat:Wait()
