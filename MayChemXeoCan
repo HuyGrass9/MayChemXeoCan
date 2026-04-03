@@ -9,19 +9,18 @@ local LP = Players.LocalPlayer
 
 pcall(function() if setfpscap then setfpscap(120) end end)
 
-local ConfigName = "Macro_Apex_V11.json"
+local ConfigName = "Macro_Core.json"
 local Config = {
     ComboC = "3ZX1Z", 
     ComboC2 = "2C1XZ",
-    ComboDelay = 0.2,
-    ActionDelay = 0.4,
+    ComboDelay = 0.05,
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
     ShowC = true,
     ShowC2 = true,
-    WalkSpeed = 35,
+    AutoConfig = false,
     ESP = false
 }
 
@@ -97,38 +96,25 @@ MenuStroke.Thickness = 1
 Menu.Parent = UI
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Position = UDim2.new(0, 10, 0, 0)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "MACRO AI PREDATOR"
+Title.Text = " MACRO"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
+Title.TextSize = 15
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Menu
 
-local StatusFrame = Instance.new("Frame")
-StatusFrame.Size = UDim2.new(0.9, 0, 0, 55)
-StatusFrame.Position = UDim2.new(0.05, 0, 0, 35)
-StatusFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
-Instance.new("UICorner", StatusFrame).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", StatusFrame).Color = Color3.fromRGB(40, 40, 45)
-StatusFrame.Parent = Menu
-
-local StatTxt = Instance.new("TextLabel")
-StatTxt.Size = UDim2.new(1, -10, 1, 0)
-StatTxt.Position = UDim2.new(0, 5, 0, 0)
-StatTxt.BackgroundTransparency = 1
-StatTxt.Text = "Loading Data..."
-StatTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
-StatTxt.Font = Enum.Font.GothamMedium
-StatTxt.TextSize = 10
-StatTxt.TextXAlignment = Enum.TextXAlignment.Left
-StatTxt.Parent = StatusFrame
+local UILine = Instance.new("Frame")
+UILine.Size = UDim2.new(1, 0, 0, 1)
+UILine.Position = UDim2.new(0, 0, 0, 40)
+UILine.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+UILine.BorderSizePixel = 0
+UILine.Parent = Menu
 
 local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, 0, 0, 30)
-TabBar.Position = UDim2.new(0, 0, 0, 95)
+TabBar.Size = UDim2.new(1, 0, 0, 35)
+TabBar.Position = UDim2.new(0, 0, 0, 41)
 TabBar.BackgroundTransparency = 1
 TabBar.Parent = Menu
 local TabFrames = {}
@@ -152,8 +138,8 @@ local function CreateTab(name, xPos, isActive)
     btn.Parent = TabBar
     
     local frame = Instance.new("ScrollingFrame")
-    frame.Size = UDim2.new(1, 0, 1, -125)
-    frame.Position = UDim2.new(0, 0, 0, 125)
+    frame.Size = UDim2.new(1, 0, 1, -76)
+    frame.Position = UDim2.new(0, 0, 0, 76)
     frame.BackgroundTransparency = 1
     frame.Visible = isActive
     frame.ScrollBarThickness = 2
@@ -200,10 +186,30 @@ local function CreateTextInput(parent, yPos, text, configKey)
     box.Parent = parent
     
     box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
+    return box
 end
 
-CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
-CreateTextInput(TabCombat, 75, "Sequence C2:", "ComboC2")
+local StatusFrame = Instance.new("Frame")
+StatusFrame.Size = UDim2.new(0.9, 0, 0, 45)
+StatusFrame.Position = UDim2.new(0.05, 0, 0, 5)
+StatusFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
+Instance.new("UICorner", StatusFrame).CornerRadius = UDim.new(0, 4)
+Instance.new("UIStroke", StatusFrame).Color = Color3.fromRGB(40, 40, 45)
+StatusFrame.Parent = TabCombat
+
+local StatTxt = Instance.new("TextLabel")
+StatTxt.Size = UDim2.new(1, -10, 1, 0)
+StatTxt.Position = UDim2.new(0, 5, 0, 0)
+StatTxt.BackgroundTransparency = 1
+StatTxt.Text = "Loading Data..."
+StatTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
+StatTxt.Font = Enum.Font.GothamMedium
+StatTxt.TextSize = 10
+StatTxt.TextXAlignment = Enum.TextXAlignment.Left
+StatTxt.Parent = StatusFrame
+
+getgenv().BoxComboC = CreateTextInput(TabCombat, 60, "Sequence C:", "ComboC")
+getgenv().BoxComboC2 = CreateTextInput(TabCombat, 130, "Sequence C2:", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
 
@@ -270,12 +276,8 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt)
     end)
 end
 
-CreateSlider(TabCombat, 145, "Combo Delay (Base)", 0.05, 0.5, "ComboDelay", false)
-CreateSlider(TabCombat, 190, "Action Delay (Sync)", 0.1, 1.0, "ActionDelay", false)
-
-CreateSlider(TabVisual, 5, "WalkSpeed Override", 16, 150, "WalkSpeed", true)
-CreateSlider(TabVisual, 50, "Hitbox Expander", 5, 60, "HitboxSize", true)
-
+CreateSlider(TabCombat, 200, "Base Key Delay", 0.01, 0.2, "ComboDelay", false)
+CreateSlider(TabVisual, 5, "Hitbox Expander", 5, 60, "HitboxSize", true)
 CreateSlider(TabSet, 5, "UI Button Scale", 40, 120, "BtnSize", true)
 
 local function CreateToggle(parent, x, y, text, configKey, cb)
@@ -300,11 +302,12 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 240, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
-CreateToggle(TabCombat, 0.53, 240, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
-CreateToggle(TabVisual, 0.05, 100, "HITBOX", "Hitbox")
-CreateToggle(TabVisual, 0.53, 100, "ESP INFO", "ESP")
-CreateToggle(TabSet, 0.05, 55, "SETUP", "SetupMode", function(v)
+CreateToggle(TabCombat, 0.05, 245, "SHOW C", "ShowC", function(v) ExecBtnC.Visible = v end)
+CreateToggle(TabCombat, 0.53, 245, "SHOW C2", "ShowC2", function(v) ExecBtnC2.Visible = v end)
+CreateToggle(TabVisual, 0.05, 55, "HITBOX", "Hitbox")
+CreateToggle(TabVisual, 0.53, 55, "ESP RADAR", "ESP")
+CreateToggle(TabSet, 0.05, 55, "AUTO CONFIG", "AutoConfig")
+CreateToggle(TabSet, 0.53, 55, "SETUP UI", "SetupMode", function(v)
     ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v
 end)
 
@@ -348,14 +351,15 @@ local function GetWeaponData()
     return melee, fruit, sword
 end
 
-local function ForceEquipAI(slotStr)
-    if not LP.Character then return end
+local function ForceEquipPhysical(slotStr)
+    if not LP.Character or not LP.Character:FindFirstChild("Humanoid") then return end
+    
     local current = LP.Character:FindFirstChildOfClass("Tool")
     if current and GetToolType(current) == slotStr then return end
 
     local tools = {}
     if LP.Backpack then for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end end
-    if LP.Character then for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end end
+    for _, v in ipairs(LP.Character:GetChildren()) do if v:IsA("Tool") then table.insert(tools, v) end end
 
     local targetTool = nil
     for _, tool in ipairs(tools) do
@@ -365,11 +369,11 @@ local function ForceEquipAI(slotStr)
         end
     end
 
-    if targetTool and LP.Character:FindFirstChild("Humanoid") then
+    if targetTool then
         LP.Character.Humanoid:EquipTool(targetTool)
         local timeout = tick()
-        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.5 do RunService.Heartbeat:Wait() end
-        task.wait(0.15)
+        while targetTool.Parent ~= LP.Character and tick() - timeout < 0.4 do RunService.Heartbeat:Wait() end
+        task.wait(0.05)
     end
 end
 
@@ -404,28 +408,36 @@ local function FireAICombo(str, stroke, baseColor)
     stroke.Color = Color3.fromRGB(255, 255, 255)
     task.spawn(function()
         local s = string.upper(str)
-        local kDelay = tonumber(Config.ComboDelay) or 0.2
-        local aDelay = tonumber(Config.ActionDelay) or 0.4
+        local kDelay = tonumber(Config.ComboDelay) or 0.05
         
         for i = 1, #s do
             local char = string.sub(s, i, i)
             if char == "1" or char == "2" or char == "3" or char == "4" then
-                ForceEquipAI(char)
+                ForceEquipPhysical(char)
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
                 ForceClearStun(LP.Character)
                 local kc = Enum.KeyCode[char]
                 
                 VIM:SendKeyEvent(true, kc, false, game)
-                task.wait(kDelay)
+                task.wait(0.01)
                 VIM:SendKeyEvent(false, kc, false, game)
                 
-                local animStart = tick()
-                while IsBusy(LP.Character) and tick() - animStart < 0.8 do
+                local waitReg = tick()
+                local triggered = false
+                while tick() - waitReg < 0.15 do
+                    if IsBusy(LP.Character) then triggered = true; break end
                     RunService.Heartbeat:Wait()
                 end
                 
+                if triggered then
+                    local waitAnim = tick()
+                    while IsBusy(LP.Character) and tick() - waitAnim < 1.0 do
+                        RunService.Heartbeat:Wait()
+                    end
+                end
+                
+                task.wait(kDelay)
                 ForceClearStun(LP.Character)
-                task.wait(aDelay)
             end
         end
         stroke.Color = baseColor
@@ -438,8 +450,8 @@ ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC then return end
         lockC = true
-        FireAICombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 60, 60))
-        task.spawn(function() task.wait(0.5); lockC = false end)
+        FireAICombo(Config.ComboC, StrokeC, Color3.fromRGB(255, 50, 50))
+        task.spawn(function() task.wait(0.3); lockC = false end)
     end
 end)
 
@@ -447,8 +459,8 @@ ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or lockC2 then return end
         lockC2 = true
-        FireAICombo(Config.ComboC2, StrokeC2, Color3.fromRGB(60, 180, 255))
-        task.spawn(function() task.wait(0.5); lockC2 = false end)
+        FireAICombo(Config.ComboC2, StrokeC2, Color3.fromRGB(50, 150, 255))
+        task.spawn(function() task.wait(0.3); lockC2 = false end)
     end
 end)
 
@@ -469,19 +481,29 @@ local function SafeGetPlayerInfo(plr)
     return lvl, race, hp, mhp, weap
 end
 
+task.spawn(function()
+    while task.wait(2) do
+        if Config.AutoConfig then
+            local m, f, s = GetWeaponData()
+            local c1, c2 = "", ""
+            if s ~= "None" and m ~= "None" and f ~= "None" then c1, c2 = "3ZX1ZC", "2XC1Z"
+            elseif s ~= "None" and m ~= "None" then c1, c2 = "3ZX1ZXC", "1ZXC3X"
+            elseif f ~= "None" and m ~= "None" then c1, c2 = "2VXC1Z", "1ZXC2X"
+            end
+            if c1 ~= "" and (Config.ComboC ~= c1 or Config.ComboC2 ~= c2) then
+                Config.ComboC, Config.ComboC2 = c1, c2
+                getgenv().BoxComboC.Text, getgenv().BoxComboC2.Text = c1, c2
+                SaveConfig()
+            end
+        end
+    end
+end)
+
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
             local m, f, s = GetWeaponData()
             StatTxt.Text = string.format("Melee: %s\nFruit: %s\nSword: %s", m, f, s)
-            
-            local hum = LP.Character:FindFirstChild("Humanoid")
-            if hum and hum.MoveDirection.Magnitude > 0 then
-                if not IsBusy(LP.Character) then
-                    local tgtSpd = tonumber(Config.WalkSpeed) or 35
-                    if hum.WalkSpeed < tgtSpd then hum.WalkSpeed = tgtSpd end
-                end
-            end
             
             ForceClearStun(LP.Character)
             
@@ -537,6 +559,3 @@ RunService.Heartbeat:Connect(function()
         end
     end)
 end)
-
-if LP.Character then LP.Character.DescendantAdded:Connect(function() ForceClearStun(LP.Character) end) end
-LP.CharacterAdded:Connect(function(char) char.DescendantAdded:Connect(function() ForceClearStun(char) end) end)
