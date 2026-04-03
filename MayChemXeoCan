@@ -8,15 +8,15 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Ultimate_Final.json"
+local ConfigName = "Macro_Ultimate_V2.json"
 local Config = {
-    ComboC = "3XZ1CZ", 
+    ComboC = "3XZ1C", 
     ComboC2 = "2C1XZ",
     HitboxSize = 15,
     Hitbox = false,
     BtnSize = 60,
     SetupMode = false,
-    ShowC = flase,
+    ShowC = false,
     ShowC2 = false,
     ESP = false,
     ViewTracer = false,
@@ -349,7 +349,7 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, -10, 1, -10)
 InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "📜 HƯỚNG DẪN:\n- NHẬP SỐ (1,2,3,4): Rút vũ khí (1:Melee, 2:Trái, 3:Kiếm). AI thông minh tự động CẮT BỎ số nếu phát hiện bạn đang cầm sẵn vũ khí đó.\n- NHẬP CHỮ (Z,X,C,V,F): Kỹ năng.\n- AUTO HIDE C: Tự tàng hình nút C khi bấm để tránh spam, hết thời gian tự hiện lại."
+InstTxt.Text = "📜 HƯỚNG DẪN:\n- NHẬP SỐ (1,2,3,4): Rút vũ khí (1:Melee, 2:Trái, 3:Kiếm). Macro Bá Sàn PvP.\n- NHẬP CHỮ (Z,X,C,V,F): Kỹ năng.\n- AUTO HIDE C: Tự tàng hình nút C khi bấm để tránh spam, hết thời gian tự hiện lại."
 InstTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
@@ -399,7 +399,7 @@ local function IsSkillBusy(char)
     for _, v in ipairs(char:GetChildren()) do
         if v:IsA("BoolValue") and v.Value == true then
             local n = string.lower(v.Name)
-            if string.find(n, "busy") or string.find(n, "usingskill") or string.find(n, "charging") or string.find(n, "holding") or string.find(n, "power") then
+            if string.find(n, "busy") or string.find(n, "usingskill") or string.find(n, "charging") or string.find(n, "holding") or string.find(n, "power") or string.find(n, "action") or string.find(n, "attack") or string.find(n, "cast") then
                 return true
             end
         end
@@ -458,16 +458,16 @@ local function ExecuteForceCombo(comboStr, stroke, baseColor, btnRef)
                     
                     if kc then
                         VIM:SendKeyEvent(true, kc, false, game)
-                        task.wait(0.01)
+                        task.wait(0.02)
                         VIM:SendKeyEvent(false, kc, false, game)
                         
                         local w = tick()
-                        while tick() - w < 0.3 do
+                        while tick() - w < 0.4 do
                             local t = LP.Character:FindFirstChildOfClass("Tool")
                             if t and GetToolType(t) == char then break end
                             RunService.Heartbeat:Wait()
                         end
-                        task.wait(0.02)
+                        task.wait(0.05)
                     end
                 end
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
@@ -475,24 +475,24 @@ local function ExecuteForceCombo(comboStr, stroke, baseColor, btnRef)
                 local kc = Enum.KeyCode[char]
                 
                 VIM:SendKeyEvent(true, kc, false, game)
-                task.wait(0.01)
+                task.wait(0.05)
                 VIM:SendKeyEvent(false, kc, false, game)
                 
                 local waitReg = tick()
                 local triggered = false
-                while tick() - waitReg < 0.15 do
+                while tick() - waitReg < 0.4 do
                     if IsSkillBusy(LP.Character) then triggered = true; break end
                     RunService.Heartbeat:Wait()
                 end
                 
                 if triggered then
                     local waitAnim = tick()
-                    while IsSkillBusy(LP.Character) and tick() - waitAnim < 2.5 do
+                    while IsSkillBusy(LP.Character) and tick() - waitAnim < 3.0 do
                         RunService.Heartbeat:Wait()
                     end
-                    task.wait(0.05)
+                    task.wait(0.1)
                 else
-                    task.wait(0.05)
+                    task.wait(0.25)
                 end
                 ClearEnemyStun(LP.Character)
             end
