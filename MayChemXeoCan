@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Premium_V5.json"
+local ConfigName = "Macro_Premium_V6.json"
 local Config = {
     ComboC = "3XZ1CZ2ZX", 
     ComboC2 = "2C1XZ",
@@ -23,6 +23,7 @@ local Config = {
     ShowC = false,
     ShowC2 = false,
     ShowX = false,
+    FakeLag = false,
     ESP = false,
     ViewTracer = false,
     TracerR = 255,
@@ -362,18 +363,19 @@ CreateToggle(TabCombat, 0.53, 135, "AUTO HIDE C", "AutoHideC")
 CreateToggle(TabCombat, 0.05, 180, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
 CreateToggle(TabCombat, 0.53, 180, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
 CreateToggle(TabCombat, 0.05, 225, "SHOW X (CANCEL)", "ShowX", function(v) if not getgenv().MacroHidden then ExecBtnX.Visible = v end end)
+CreateToggle(TabCombat, 0.53, 225, "FAKE LAG (DESYNC)", "FakeLag")
 
 local delayF1 = CreateSlider(TabCombat, 315, "Combo Delay", 0.01, 0.2, "ComboDelay", false, nil)
 local delayF2 = CreateSlider(TabCombat, 360, "Action Delay", 0.05, 0.5, "ActionDelay", false, nil)
 delayF1.Visible = Config.ShowDelays
 delayF2.Visible = Config.ShowDelays
 
-CreateToggle(TabCombat, 0.53, 225, "SETTING DELAY", "ShowDelays", function(v)
+CreateToggle(TabCombat, 0.05, 270, "SETTING DELAY", "ShowDelays", function(v)
     delayF1.Visible = v
     delayF2.Visible = v
 end)
 
-CreateSlider(TabCombat, 270, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil)
+CreateSlider(TabCombat, 405, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil)
 
 CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true, nil)
 CreateSlider(TabVisual, 50, "Tracer R", 0, 255, "TracerR", true, nil)
@@ -421,11 +423,11 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, 0, 1, 0)
 InstTxt.Position = UDim2.new(0, 0, 0, 0)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "CẨM NANG SỬ DỤNG\n\n1. COMBO (C / C2)\n- Số (1,2,3,4) = Kéo vũ khí.\n- Chữ (Z,X,C,V,F) = Tung chiêu.\n- Tự động bỏ qua lệnh rút đồ nếu tay đang cầm sẵn vũ khí đó.\n\n2. NÚT X (HỦY)\n- Ngắt ngay lập tức chuỗi combo đang chạy.\n\n3. ANTI-STUN\n- Tính năng chạy ngầm. Miễn nhiễm với các hiệu ứng khựng, choáng khi PVP đánh tay.\n\n4. AUTO HIDE C\n- Nút C sẽ tàng hình khi bấm để tránh chạm nhầm, hết thời gian cài đặt tự hiện lại.\n\n5. FIX LAG & FPS\n- Tối ưu cực mạnh đồ họa môi trường, phá giới hạn FPS lên tối đa nhưng VẪN GIỮ lại hiệu ứng chiêu thức để PVP.\n\n6. ẨN MACRO\n- Bấm HIDE ALL UI. Chat 'MCXC' để gọi lại."
+InstTxt.Text = "SỔ TAY THỰC CHIẾN\n\n1. COMBO (C / C2)\n- Ghi số (1,2,3,4) để cầm vũ khí. Ghi chữ (Z,X,C,V,F) tung chiêu.\n- Tự động bỏ qua thao tác lấy vũ khí nếu tay đang cầm sẵn.\n\n2. NÚT X & FAKE LAG\n- X: Ngắt khẩn cấp luồng combo đang chạy.\n- FAKE LAG: Bật để tạo ảo ảnh giật lag, đánh lừa máy chủ khiến địch ném trượt chiêu.\n\n3. ANTI-STUN & AUTO HIDE\n- ANTI-STUN: Chống khựng, miễn nhiễm hiệu ứng khi đánh tay.\n- AUTO HIDE: Ấn nút combo sẽ tàng hình tạm thời tránh chạm nhầm.\n\n4. TỐI ƯU HỆ THỐNG\n- FIX LAG: Ép đồ họa xuống đáy, tăng khung hình nhưng VẪN GIỮ ĐƯỢC hạt kỹ năng.\n- ẨN MACRO: Bấm HIDE ALL UI. Chat 'MCXC' vào game để gọi lại."
 InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
-InstTxt.TextSize = 12
+InstTxt.TextSize = 11
 InstTxt.TextXAlignment = Enum.TextXAlignment.Left
 InstTxt.TextYAlignment = Enum.TextYAlignment.Top
 InstTxt.Parent = TabGuide
@@ -464,6 +466,8 @@ ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible 
 FPSText.Visible = Config.ShowFPS
 local sec = tick()
 local frames = 0
+local lagTick = 0
+
 RunService.RenderStepped:Connect(function()
     frames = frames + 1
     if tick() - sec >= 1 then
@@ -664,6 +668,16 @@ RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
             if Config.AntiStun then ClearEnemyStun(LP.Character) end
+            
+            if Config.FakeLag and LP.Character:FindFirstChild("HumanoidRootPart") then
+                lagTick = lagTick + 1
+                if lagTick >= 15 then
+                    local hrp = LP.Character.HumanoidRootPart
+                    hrp.Anchored = true
+                    task.delay(0.05, function() if hrp then hrp.Anchored = false end end)
+                    lagTick = 0
+                end
+            end
             
             for _, plr in ipairs(Players:GetPlayers()) do
                 if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
