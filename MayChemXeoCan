@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V12.json"
+local ConfigName = "Macro_Titan_V13.json"
 local Config = {
     ComboC = "3XZ1CZ2ZX", 
     ComboC2 = "2C1XZ",
@@ -408,7 +408,7 @@ end
 
 CreateToggle(TabCombat, 0.05, 125, "ANTI-STUN", "AntiStun")
 CreateToggle(TabCombat, 0.53, 125, "AUTO HIDE C", "AutoHideC")
-CreateToggle(TabCombat, 0.05, 165, "GOD DESYNC (FAKE LAG)", "FakeLag")
+CreateToggle(TabCombat, 0.05, 165, "SMART DESYNC", "FakeLag")
 CreateSlider(TabCombat, 205, "Desync Tick Freq", 2, 20, "FakeLagTick", true, nil)
 CreateToggle(TabCombat, 0.05, 255, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
 CreateToggle(TabCombat, 0.53, 255, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
@@ -466,7 +466,7 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, -10, 1, -10)
 InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "SỔ TAY CẤM THUẬT\n\n1. LÕI COMBO (C/C2): Bỏ qua thao tác rút đồ thừa nếu đang cầm sẵn.\n2. NÚT X: Ngắt luồng combo tức thì.\n3. GOD DESYNC (FAKE LAG): Bản nâng cấp tối thượng! Ném tọa độ thật của bạn ra xa hàng trăm mét rồi kéo về trong 1 khung hình. Màn hình bạn MƯỢT 100%, nhưng địch đánh 100% trượt!\n4. ESP DỌN RÁC: Khắc phục triệt để lỗi kẹt hình. Tắt là dọn dẹp sạch sẽ.\n5. MINIMAP: Bắt radar liên tục, hiện hướng nhìn Camera cực chuẩn xác để PvP."
+InstTxt.Text = "SỔ TAY CẤM THUẬT\n\n1. LÕI COMBO (C/C2): Tự động bỏ qua lệnh rút vũ khí nếu đang cầm sẵn.\n2. NÚT X: Ngắt khẩn cấp luồng combo.\n3. SMART DESYNC (FAKE LAG V13): Tự động vô hiệu hóa Fake Lag ngay thời khắc bạn xuất chiêu để chiêu thức bay chuẩn 100%. Xuất chiêu xong lập tức biến bạn thành bóng ma chớp nháy né đạn.\n4. TỐI ƯU CẢM ỨNG: Không còn tình trạng cuộn Menu bị cấn thanh trượt. Kéo thanh trượt dễ dàng chính xác.\n5. DỌN RÁC ESP: Tắt ESP là xóa sạch, không bị dính hình."
 InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
@@ -714,18 +714,20 @@ local function SafeGetPlayerInfo(plr)
     return lvl, hp, mhp
 end
 
--- GOD DESYNC ENGINE
+-- SMART DESYNC ENGINE
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
             if Config.AntiStun then ClearEnemyStun(LP.Character) end
             
-            if Config.FakeLag and LP.Character:FindFirstChild("HumanoidRootPart") then
+            -- Chốt chặn: Ngừng Fake Lag ngay khi xuất chiêu để skill bay đúng quỹ đạo
+            local isAttacking = IsSkillBusy(LP.Character) or getgenv().lockC or getgenv().lockC2
+            
+            if Config.FakeLag and LP.Character:FindFirstChild("HumanoidRootPart") and not isAttacking then
                 lagTick = lagTick + 1
                 if lagTick >= (tonumber(Config.FakeLagTick) or 6) then
                     local hrp = LP.Character.HumanoidRootPart
                     ghostCF = hrp.CFrame
-                    -- Quăng hit box đi siêu xa (150-400 mét) để né sạch skill AoE to
                     hrp.CFrame = ghostCF * CFrame.new(math.random(-150, 150), math.random(100, 400), math.random(-150, 150))
                     lagTick = 0
                 end
@@ -835,7 +837,6 @@ RunService.Heartbeat:Connect(function()
     end)
 end)
 
--- Trả lại tọa độ chuẩn xác để Camera không giật trước khi vẽ hình (Render 150)
 RunService:BindToRenderStep("GhostDesyncFix", 150, function()
     if ghostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
         LP.Character.HumanoidRootPart.CFrame = ghostCF
