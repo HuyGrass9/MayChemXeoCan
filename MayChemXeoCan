@@ -6,9 +6,18 @@ local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V18.json"
+pcall(function()
+    StarterGui:SetCore("SendNotification", {
+        Title = "MAYCHEMXEOCAN",
+        Text = "MACRO ENABLE",
+        Duration = 5
+    })
+end)
+
+local ConfigName = "Macro_Titan_V19.json"
 local Config = {
     ComboC = "3XZ1CZ2ZX", 
     ComboC2 = "2C1XZ",
@@ -25,7 +34,7 @@ local Config = {
     ShowX = false,
     ShowAim = false,
     FakeLag = false,
-    FakeLagTick = 2,
+    FakeLagTick = 3,
     ESP = false,
     ViewTracer = false,
     TracerR = 0,
@@ -100,7 +109,7 @@ UI.Parent = UIParent
 
 local ToggleIcon = Instance.new("ImageButton")
 ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
-ToggleIcon.Position = UDim2.new(0.5, -22, 0, 10)
+ToggleIcon.Position = UDim2.new(0.5, -22, 0, 45)
 ToggleIcon.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 ToggleIcon.Image = "rbxassetid://10709769508"
 ToggleIcon.BorderSizePixel = 0
@@ -137,16 +146,40 @@ local rs1 = Instance.new("UIStroke", ring1)
 rs1.Color = Color3.fromRGB(0, 255, 150)
 rs1.Transparency = 0.8
 rs1.Thickness = 1
+
 local hLine = Instance.new("Frame", MapFrame)
-hLine.Size = UDim2.new(1, 0, 0, 1); hLine.Position = UDim2.new(0, 0, 0.5, 0); hLine.BackgroundColor3 = Color3.fromRGB(0, 255, 150); hLine.BackgroundTransparency = 0.8; hLine.BorderSizePixel = 0
+hLine.Size = UDim2.new(1, 0, 0, 1)
+hLine.Position = UDim2.new(0, 0, 0.5, 0)
+hLine.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+hLine.BackgroundTransparency = 0.8
+hLine.BorderSizePixel = 0
+
 local vLine = Instance.new("Frame", MapFrame)
-vLine.Size = UDim2.new(0, 1, 1, 0); vLine.Position = UDim2.new(0.5, 0, 0, 0); vLine.BackgroundColor3 = Color3.fromRGB(0, 255, 150); vLine.BackgroundTransparency = 0.8; vLine.BorderSizePixel = 0
+vLine.Size = UDim2.new(0, 1, 1, 0)
+vLine.Position = UDim2.new(0.5, 0, 0, 0)
+vLine.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+vLine.BackgroundTransparency = 0.8
+vLine.BorderSizePixel = 0
+
 local CenterDot = Instance.new("Frame")
-CenterDot.Size = UDim2.new(0, 6, 0, 6); CenterDot.Position = UDim2.new(0.5, -3, 0.5, -3); CenterDot.BackgroundColor3 = Color3.fromRGB(0, 255, 255); Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1, 0); CenterDot.ZIndex = 3; CenterDot.Parent = MapFrame
+CenterDot.Size = UDim2.new(0, 6, 0, 6)
+CenterDot.Position = UDim2.new(0.5, -3, 0.5, -3)
+CenterDot.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1, 0)
+CenterDot.ZIndex = 3
+CenterDot.Parent = MapFrame
+
 local CamCone = Instance.new("Frame")
-CamCone.Size = UDim2.new(0, 2, 0, 12); CamCone.Position = UDim2.new(0.5, -1, 0, -12); CamCone.BackgroundColor3 = Color3.fromRGB(255, 200, 0); CamCone.BorderSizePixel = 0; CamCone.ZIndex = 2; CamCone.Parent = CenterDot
+CamCone.Size = UDim2.new(0, 2, 0, 12)
+CamCone.Position = UDim2.new(0.5, -1, 0, -12)
+CamCone.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+CamCone.BorderSizePixel = 0
+CamCone.ZIndex = 2
+CamCone.Parent = CenterDot
+
 local DotsContainer = Instance.new("Folder")
-DotsContainer.Name = "Dots"; DotsContainer.Parent = MapFrame
+DotsContainer.Name = "Dots"
+DotsContainer.Parent = MapFrame
 
 local TouchZone = Instance.new("Frame")
 TouchZone.Name = "TouchCastZone"
@@ -178,7 +211,7 @@ Menu.Position = UDim2.new(0.5, -240, 0.5, -155)
 Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 Menu.BorderSizePixel = 0
 Menu.Active = true
-Menu.Visible = false
+Menu.Visible = true 
 Menu.Draggable = false
 Menu.ClipsDescendants = true
 Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
