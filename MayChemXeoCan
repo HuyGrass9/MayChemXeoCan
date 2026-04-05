@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_GodTier_V3.json"
+local ConfigName = "Macro_Titan_V4.json"
 local Config = {
     ComboC = "3XZ1CZ2ZX", 
     ComboC2 = "2C1XZ",
@@ -19,15 +19,10 @@ local Config = {
     BtnSizeC = 60,
     BtnSizeC2 = 60,
     BtnSizeX = 45,
-    BtnSizeAS = 45,
-    BtnSizeAim = 45,
     SetupMode = false,
     ShowC = true,
     ShowC2 = true,
     ShowX = true,
-    ShowAS = true,
-    ShowAim = true,
-    AimEnabled = false,
     ESP = false,
     ViewTracer = false,
     TracerR = 255,
@@ -37,9 +32,9 @@ local Config = {
     AutoHideC = false,
     HideTimer = 1.5,
     UnlockFPS = true,
-    AntiStun = true,
     ShowDelays = false,
-    ShowFPS = false
+    ShowFPS = false,
+    AutoSoru = false
 }
 
 pcall(function()
@@ -57,6 +52,7 @@ pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 9999 or 60) en
 
 getgenv().MacroHidden = false
 getgenv().CancelCombo = false
+getgenv().LastSoru = 0
 
 local UIParent = nil
 pcall(function() UIParent = gethui() end)
@@ -82,7 +78,7 @@ FPSText.BackgroundTransparency = 1
 FPSText.TextColor3 = Color3.fromRGB(50, 255, 50)
 FPSText.Font = Enum.Font.GothamBold
 FPSText.TextSize = 14
-FPSText.TextStrokeTransparency = 0
+FPSText.TextStrokeTransparency = 0.5
 FPSText.TextXAlignment = Enum.TextXAlignment.Right
 FPSText.Parent = FPSGui
 
@@ -105,13 +101,13 @@ Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(40, 40, 45)
 ToggleIcon.Parent = UI
 
-local function CreateActionBtn(name, yPos, color, showKey, sizeKey, isToggle)
+local function CreateActionBtn(name, yPos, color, showKey, sizeKey)
     local btn = Instance.new("TextButton")
     local sz = Config[sizeKey]
     btn.Size = UDim2.new(0, sz, 0, sz)
     btn.Position = UDim2.new(0.8, 0, yPos, 0)
     btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    btn.BackgroundTransparency = (isToggle and Config.AimEnabled) and 0 or 0.2
+    btn.BackgroundTransparency = 0.2
     btn.Text = name
     btn.TextColor3 = color
     btn.Font = Enum.Font.GothamBlack
@@ -122,21 +118,19 @@ local function CreateActionBtn(name, yPos, color, showKey, sizeKey, isToggle)
     btn.Draggable = Config.SetupMode
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     local stroke = Instance.new("UIStroke", btn)
-    stroke.Color = (isToggle and Config.AimEnabled) and Color3.fromRGB(255, 255, 255) or color
-    stroke.Thickness = (isToggle and Config.AimEnabled) and 3 or 2
+    stroke.Color = color
+    stroke.Thickness = 2
     btn.Parent = UI
     return btn, stroke
 end
 
-local ExecBtnAim, StrokeAim = CreateActionBtn("aim", 0.2, Color3.fromRGB(200, 50, 255), "ShowAim", "BtnSizeAim", true)
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.35, Color3.fromRGB(255, 60, 60), "ShowC", "BtnSizeC", false)
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.5, Color3.fromRGB(60, 180, 255), "ShowC2", "BtnSizeC2", false)
-local ExecBtnX, StrokeX = CreateActionBtn("X", 0.65, Color3.fromRGB(255, 200, 50), "ShowX", "BtnSizeX", false)
-local ExecBtnAS, StrokeAS = CreateActionBtn("AS", 0.8, Color3.fromRGB(50, 255, 150), "ShowAS", "BtnSizeAS", false)
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC", "BtnSizeC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.55, Color3.fromRGB(60, 180, 255), "ShowC2", "BtnSizeC2")
+local ExecBtnX, StrokeX = CreateActionBtn("X", 0.7, Color3.fromRGB(255, 200, 50), "ShowX", "BtnSizeX")
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 280, 0, 580)
-Menu.Position = UDim2.new(0.1, 0, 0.5, -290)
+Menu.Size = UDim2.new(0, 280, 0, 480)
+Menu.Position = UDim2.new(0.1, 0, 0.5, -240)
 Menu.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 Menu.BorderSizePixel = 0
 Menu.Active = true
@@ -338,26 +332,24 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 135, "ANTI-STUN (PASSIVE)", "AntiStun")
+CreateToggle(TabCombat, 0.05, 135, "AUTO ESCAPE (SORU)", "AutoSoru")
 CreateToggle(TabCombat, 0.53, 135, "AUTO HIDE C", "AutoHideC")
 
 CreateToggle(TabCombat, 0.05, 180, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
 CreateToggle(TabCombat, 0.53, 180, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
 CreateToggle(TabCombat, 0.05, 225, "SHOW X (CANCEL)", "ShowX", function(v) if not getgenv().MacroHidden then ExecBtnX.Visible = v end end)
-CreateToggle(TabCombat, 0.53, 225, "SHOW AS (SORU)", "ShowAS", function(v) if not getgenv().MacroHidden then ExecBtnAS.Visible = v end end)
-CreateToggle(TabCombat, 0.05, 270, "SHOW AIM", "ShowAim", function(v) if not getgenv().MacroHidden then ExecBtnAim.Visible = v end end)
 
-local delayF1 = CreateSlider(TabCombat, 360, "Combo Delay", 0.01, 0.2, "ComboDelay", false, nil)
-local delayF2 = CreateSlider(TabCombat, 405, "Action Delay", 0.05, 0.5, "ActionDelay", false, nil)
+local delayF1 = CreateSlider(TabCombat, 315, "Combo Delay", 0.01, 0.2, "ComboDelay", false, nil)
+local delayF2 = CreateSlider(TabCombat, 360, "Action Delay", 0.05, 0.5, "ActionDelay", false, nil)
 delayF1.Visible = Config.ShowDelays
 delayF2.Visible = Config.ShowDelays
 
-CreateToggle(TabCombat, 0.53, 270, "SETTING DELAY", "ShowDelays", function(v)
+CreateToggle(TabCombat, 0.53, 225, "SETTING DELAY", "ShowDelays", function(v)
     delayF1.Visible = v
     delayF2.Visible = v
 end)
 
-CreateSlider(TabCombat, 315, "Hide Timer", 0.5, 5.0, "HideTimer", false, nil)
+CreateSlider(TabCombat, 270, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil)
 
 CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true, nil)
 CreateSlider(TabVisual, 50, "Tracer R", 0, 255, "TracerR", true, nil)
@@ -368,22 +360,21 @@ CreateToggle(TabVisual, 0.05, 230, "HITBOX", "Hitbox")
 CreateToggle(TabVisual, 0.53, 230, "ESP RADAR", "ESP")
 CreateToggle(TabVisual, 0.05, 275, "VIEW TRACER", "ViewTracer")
 
-CreateSlider(TabSet, 5, "Size C/C2", 40, 120, "BtnSizeC", true, ExecBtnC)
-CreateSlider(TabSet, 50, "Size X", 30, 100, "BtnSizeX", true, ExecBtnX)
-CreateSlider(TabSet, 95, "Size AS", 30, 100, "BtnSizeAS", true, ExecBtnAS)
-CreateSlider(TabSet, 140, "Size AIM", 30, 100, "BtnSizeAim", true, ExecBtnAim)
+CreateSlider(TabSet, 5, "Size C", 40, 120, "BtnSizeC", true, ExecBtnC)
+CreateSlider(TabSet, 50, "Size C2", 40, 120, "BtnSizeC2", true, ExecBtnC2)
+CreateSlider(TabSet, 95, "Size X", 30, 100, "BtnSizeX", true, ExecBtnX)
 
-CreateToggle(TabSet, 0.05, 185, "SETUP UI", "SetupMode", function(v)
-    ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v; ExecBtnX.Draggable = v; ExecBtnAS.Draggable = v; ExecBtnAim.Draggable = v
+CreateToggle(TabSet, 0.05, 140, "SETUP UI", "SetupMode", function(v)
+    ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v; ExecBtnX.Draggable = v
 end)
-CreateToggle(TabSet, 0.53, 185, "UNLOCK MAX FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
-CreateToggle(TabSet, 0.05, 230, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible = v end)
+CreateToggle(TabSet, 0.53, 140, "UNLOCK MAX FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
+CreateToggle(TabSet, 0.05, 185, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible = v end)
 
 local FixBtn = Instance.new("TextButton")
 FixBtn.Size = UDim2.new(0.42, 0, 0, 35)
-FixBtn.Position = UDim2.new(0.53, 0, 0, 230)
+FixBtn.Position = UDim2.new(0.53, 0, 0, 185)
 FixBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
-FixBtn.Text = "FIX LAG (PVP SAFE)"
+FixBtn.Text = "FIX LAG (KEEP SKILL)"
 FixBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
 FixBtn.Font = Enum.Font.GothamBold
 FixBtn.TextSize = 9
@@ -393,7 +384,7 @@ FixBtn.Parent = TabSet
 
 local HideBtn = Instance.new("TextButton")
 HideBtn.Size = UDim2.new(0.9, 0, 0, 35)
-HideBtn.Position = UDim2.new(0.05, 0, 0, 275)
+HideBtn.Position = UDim2.new(0.05, 0, 0, 230)
 HideBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 HideBtn.Text = "HIDE ALL UI"
 HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -403,8 +394,8 @@ Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
 local InstPanel = Instance.new("Frame")
-InstPanel.Size = UDim2.new(0.9, 0, 0, 160)
-InstPanel.Position = UDim2.new(0.05, 0, 0, 320)
+InstPanel.Size = UDim2.new(0.9, 0, 0, 125)
+InstPanel.Position = UDim2.new(0.05, 0, 0, 275)
 InstPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 Instance.new("UICorner", InstPanel).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", InstPanel).Color = Color3.fromRGB(60, 60, 65)
@@ -414,7 +405,7 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, -10, 1, -10)
 InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "CẨM NANG SỬ DỤNG:\n- COMBO: Số (1,2,3,4) = Vũ khí. Chữ (Z,X,C,V,F) = Chiêu. Tự động bỏ số nếu đang cầm.\n- AS (Auto Soru): Dịch chuyển lên trời, né khẩn cấp.\n- AIM (Silent Aim): Tự động quay mặt khóa mục tiêu khi xả chiêu.\n- X (Hủy): Ngắt ngay lập tức mọi hoạt động.\n- ANTI-STUN: Miễn nhiễm khựng khi PvP tay.\n- ẨN MENU: Bấm HIDE ALL. Chat 'MCXC' để mở lại."
+InstTxt.Text = "CẨM NANG SỬ DỤNG:\n- COMBO: Nhập số (1,2,3,4) để rút vũ khí, chữ (Z,X,C,V,F) tung chiêu. Hệ thống tự động CẮT SỐ thừa nếu đang cầm sẵn đồ.\n- NÚT X: Hủy ngay lập tức chuỗi combo đang chạy.\n- AUTO ESCAPE: Tự động dịch chuyển lên trời thoát thân khi bị địch gây choáng.\n- FIX LAG: Tối ưu đồ họa cực mạnh, phá giới hạn FPS nhưng VẪN GIỮ hiệu ứng chiêu thức.\n- ẨN UI: Bấm HIDE ALL. Chat 'MCXC' để gọi lại Menu."
 InstTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
@@ -500,84 +491,47 @@ local function IsSkillBusy(char)
     return false
 end
 
-local function ClearEnemyStun(char)
+local function ProcessStunAndEscape(char)
     if not char then return end
-    local stuns = {"stun", "cant", "nodash", "nojump"} 
+    local stuns = {"stun", "cant", "nodash", "nojump"}
+    local gotStunned = false
+    
     for _, v in ipairs(char:GetChildren()) do
         if v:IsA("BoolValue") and v.Value == true then
             local n = string.lower(v.Name)
             for _, tag in ipairs(stuns) do
-                if string.find(n, tag) then v.Value = false end
+                if string.find(n, tag) then
+                    v.Value = false 
+                    gotStunned = true
+                end
             end
         end
     end
-end
-
-local function GetNearestEnemy()
-    local nearest = nil
-    local minDist = tonumber(Config.RenderDistance) or 1500
-    if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return nil end
-    local myRoot = LP.Character.HumanoidRootPart
     
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-            local dist = (plr.Character.HumanoidRootPart.Position - myRoot.Position).Magnitude
-            if dist < minDist then
-                minDist = dist
-                nearest = plr.Character.HumanoidRootPart
+    if gotStunned and Config.AutoSoru and not getgenv().CancelCombo then
+        if tick() - getgenv().LastSoru > 2 then
+            getgenv().LastSoru = tick()
+            getgenv().CancelCombo = true
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.CFrame = root.CFrame * CFrame.new(0, 100, 0)
             end
         end
     end
-    return nearest
 end
 
-local function SetBtnActiveState(btn, stroke, color, isActive, isAim)
+local function SetBtnActiveState(btn, stroke, color, isActive)
     if isActive then
         TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
         TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(255, 255, 255), Thickness = 3}):Play()
     else
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = (isAim and Config.AimEnabled) and 0 or 0.2}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = (isAim and Config.AimEnabled) and Color3.fromRGB(255, 255, 255) or color, Thickness = (isAim and Config.AimEnabled) and 3 or 2}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
+        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = color, Thickness = 2}):Play()
     end
 end
 
-ExecBtnAim.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if Config.SetupMode then return end
-        Config.AimEnabled = not Config.AimEnabled
-        SaveConfig()
-        SetBtnActiveState(ExecBtnAim, StrokeAim, Color3.fromRGB(200, 50, 255), false, true)
-    end
-end)
-
-ExecBtnAS.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if Config.SetupMode then return end
-        getgenv().CancelCombo = true
-        getgenv().lockC = false
-        getgenv().lockC2 = false
-        SetBtnActiveState(ExecBtnAS, StrokeAS, Color3.fromRGB(50, 255, 150), true, false)
-        
-        task.spawn(function()
-            if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                local root = LP.Character.HumanoidRootPart
-                local target = GetNearestEnemy()
-                if target then
-                    local dir = (root.Position - target.Position).Unit
-                    root.CFrame = CFrame.lookAt(root.Position + dir * 50 + Vector3.new(0, 30, 0), root.Position)
-                else
-                    root.CFrame = root.CFrame * CFrame.new(0, 30, 50)
-                end
-            end
-            task.wait(0.2)
-            SetBtnActiveState(ExecBtnAS, StrokeAS, Color3.fromRGB(50, 255, 150), false, false)
-            getgenv().CancelCombo = false
-        end)
-    end
-end)
-
 local function ExecuteForceCombo(comboStr, btnRef, stroke, baseColor)
-    SetBtnActiveState(btnRef, stroke, baseColor, true, false)
+    SetBtnActiveState(btnRef, stroke, baseColor, true)
     
     if Config.AutoHideC and btnRef.Visible then
         btnRef.Visible = false
@@ -630,14 +584,7 @@ local function ExecuteForceCombo(comboStr, btnRef, stroke, baseColor)
                     end
                 end
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
-                if Config.AimEnabled then
-                    local target = GetNearestEnemy()
-                    if target and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                        LP.Character.HumanoidRootPart.CFrame = CFrame.lookAt(LP.Character.HumanoidRootPart.Position, target.Position)
-                    end
-                end
-                
-                ClearEnemyStun(LP.Character)
+                ProcessStunAndEscape(LP.Character)
                 local kc = Enum.KeyCode[char]
                 
                 VIM:SendKeyEvent(true, kc, false, game)
@@ -662,12 +609,13 @@ local function ExecuteForceCombo(comboStr, btnRef, stroke, baseColor)
                 else
                     task.wait(tonumber(Config.ComboDelay) or 0.05)
                 end
-                ClearEnemyStun(LP.Character)
+                ProcessStunAndEscape(LP.Character)
             end
         end
         
-        SetBtnActiveState(btnRef, stroke, baseColor, false, false)
+        SetBtnActiveState(btnRef, stroke, baseColor, false)
         if btnRef == ExecBtnC2 then getgenv().lockC2 = false else getgenv().lockC = false end
+        getgenv().CancelCombo = false
     end)
 end
 
@@ -696,8 +644,8 @@ ExecBtnX.InputBegan:Connect(function(input)
         getgenv().CancelCombo = true
         getgenv().lockC = false
         getgenv().lockC2 = false
-        SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 200, 50), true, false)
-        task.delay(0.2, function() SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 200, 50), false, false) end)
+        SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 200, 50), true)
+        task.delay(0.2, function() SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 200, 50), false) end)
     end
 end)
 
@@ -720,12 +668,13 @@ end
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
-            if Config.AntiStun then ClearEnemyStun(LP.Character) end
+            ProcessStunAndEscape(LP.Character)
             
             for _, plr in ipairs(Players:GetPlayers()) do
                 if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
                     local root = plr.Character.HumanoidRootPart
                     local dist = (root.Position - LP.Character.HumanoidRootPart.Position).Magnitude
+                    local maxDist = tonumber(Config.RenderDistance) or 1500
                     
                     if Config.Hitbox and not getgenv().MacroHidden then
                         local hs = tonumber(Config.HitboxSize) or 15
@@ -737,19 +686,20 @@ RunService.Heartbeat:Connect(function()
                     local espId = "ESP_" .. plr.Name
                     local espGui = root:FindFirstChild(espId)
                     
-                    if Config.ESP and dist <= (tonumber(Config.RenderDistance) or 1500) and not getgenv().MacroHidden then
+                    if Config.ESP and dist <= maxDist and not getgenv().MacroHidden then
                         if not espGui then
                             espGui = Instance.new("BillboardGui")
                             espGui.Name = espId
-                            espGui.Size = UDim2.new(0, 250, 0, 75)
+                            espGui.Size = UDim2.new(0, 200, 0, 75)
                             espGui.StudsOffset = Vector3.new(0, 3, 0)
                             espGui.AlwaysOnTop = true
                             local txt = Instance.new("TextLabel")
+                            txt.Name = "TextNode"
                             txt.Size = UDim2.new(1, 0, 1, 0)
                             txt.BackgroundTransparency = 1
                             txt.Font = Enum.Font.GothamBold
                             txt.TextSize = 11
-                            txt.TextStrokeTransparency = 0
+                            txt.TextStrokeTransparency = 0.5
                             txt.Parent = espGui
                             espGui.Parent = root
                         end
@@ -759,7 +709,7 @@ RunService.Heartbeat:Connect(function()
                         local pTool = plr.Character:FindFirstChildOfClass("Tool")
                         if pTool then weap = pTool.Name end
                         
-                        local txtNode = espGui:FindFirstChildOfClass("TextLabel")
+                        local txtNode = espGui:FindFirstChild("TextNode")
                         if txtNode then
                             txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d\nE: %s | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, energy, string.sub(weap, 1, 15), math.floor(dist))
                             txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
@@ -768,46 +718,30 @@ RunService.Heartbeat:Connect(function()
                         if espGui then espGui:Destroy() end
                     end
                     
-                    local head = plr.Character:FindFirstChild("Head") or root
                     local lineId = "TracerLine_" .. plr.Name
-                    local arrId = "TracerArrow_" .. plr.Name
-                    local line = head:FindFirstChild(lineId)
-                    local arr = head:FindFirstChild(arrId)
+                    local line = root:FindFirstChild(lineId)
                     
-                    if Config.ViewTracer and dist <= (tonumber(Config.RenderDistance) or 1500) and not getgenv().MacroHidden then
+                    if Config.ViewTracer and dist <= maxDist and not getgenv().MacroHidden then
                         if not line then
-                            line = Instance.new("CylinderHandleAdornment")
+                            line = Instance.new("LineHandleAdornment")
                             line.Name = lineId
-                            line.Adornee = head
-                            line.Radius = 0.6
-                            line.Height = 50
+                            line.Adornee = root
+                            line.Thickness = 5
+                            line.Length = 50
                             line.ZIndex = 5
                             line.Transparency = 0.2
                             line.AlwaysOnTop = true
-                            line.CFrame = CFrame.new(0, 0, -25) 
-                            line.Parent = head
+                            line.Parent = root
                         end
                         line.Color3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
-                        
-                        if not arr then
-                            arr = Instance.new("ConeHandleAdornment")
-                            arr.Name = arrId
-                            arr.Adornee = head
-                            arr.Radius = 1.8
-                            arr.Height = 3.5
-                            arr.ZIndex = 5
-                            arr.Transparency = 0.2
-                            arr.AlwaysOnTop = true
-                            arr.CFrame = CFrame.new(0, 0, -51.5) 
-                            arr.Parent = head
-                        end
-                        arr.Color3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
                     else
                         if line then line:Destroy() end
-                        if arr then arr:Destroy() end
                     end
                 end
             end
         end
     end)
 end)
+
+if LP.Character then LP.Character.ChildAdded:Connect(function() ProcessStunAndEscape(LP.Character) end) end
+LP.CharacterAdded:Connect(function(char) char.ChildAdded:Connect(function() ProcessStunAndEscape(char) end) end)
