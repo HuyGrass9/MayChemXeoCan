@@ -450,7 +450,7 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, -10, 1, -10)
 InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "HOW TO USE\n\n1. COMBO C/C2: Auto Combo số = vũ khí trên tay theo thứ tự, chữ = chiêu (ZXCVF) .\n\n2. TETHER FAKE LAG : (giật ngang trục X, Z) khi bạn di chuyển để né đòn ảo .\n\n3. MINIMAP: Vạch vàng chỉ hướng Camera của bạn. Chấm đỏ là kẻ địch."
+InstTxt.Text = "HOW TO\n\n1. NÚT C & SETUP COMBO\n- Nhập chuỗi chiêu vào ô (VD: 3XZ1C). Số (1,2,3,4) để rút vũ khí, Chữ (Z,X,C,V,F) để tung chiêu. Hệ thống cực kỳ SETUPui: Tinh Chỉnh vị trí nút C,C2,X,Minimap .\n\n2. NÚT X (HỦY ComBo)\n- Khi đang xả combo mà địch né được, bấm X để ngắt luồng combo ngay lập tức.\n\n3. TETHER FAKE LAG\n- Bật Fake Lag: sẽ tạo ảo ảnh giật lag đánh lừa server KHI BẠN DI CHUYỂN. Địch không thể bắt combo .\n- Thanh trượt 'Fake Lag Freq': Chỉnh tần số giật (khuyên dùng mức 3-6). Số càng nhỏ giật càng nhanh.\n- CAC.\n\n4. FIX LAG (MAX FPS)\n- Bấm nút FIX LAG để ép đồ họa môi trường xuống đáy, xóa bóng râm. Tuy nhiên VẪN GIỮ LẠI hiệu ứng kỹ năng để PvP cực mượt.\n\n5. ẨN VÀ GỌI LẠI MENU\n- Bấm HIDE ALL UI để dọn sạch màn hình.\n- ĐỂ BẬT LẠI: Mở khung Chat của Roblox, gõ đúng chữ 'MCXC' rồi gửi, hệ thống sẽ hiện lên trở lại."
 InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
