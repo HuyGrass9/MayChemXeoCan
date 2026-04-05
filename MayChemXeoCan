@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V4.json"
+local ConfigName = "Macro_Premium_V5.json"
 local Config = {
     ComboC = "3XZ1CZ2ZX", 
     ComboC2 = "2C1XZ",
@@ -20,9 +20,9 @@ local Config = {
     BtnSizeC2 = 60,
     BtnSizeX = 45,
     SetupMode = false,
-    ShowC = true,
-    ShowC2 = true,
-    ShowX = true,
+    ShowC = false,
+    ShowC2 = false,
+    ShowX = false,
     ESP = false,
     ViewTracer = false,
     TracerR = 255,
@@ -32,9 +32,9 @@ local Config = {
     AutoHideC = false,
     HideTimer = 1.5,
     UnlockFPS = true,
+    AntiStun = true,
     ShowDelays = false,
-    ShowFPS = false,
-    AutoSoru = false
+    ShowFPS = false
 }
 
 pcall(function()
@@ -52,7 +52,6 @@ pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 9999 or 60) en
 
 getgenv().MacroHidden = false
 getgenv().CancelCombo = false
-getgenv().LastSoru = 0
 
 local UIParent = nil
 pcall(function() UIParent = gethui() end)
@@ -75,10 +74,10 @@ local FPSText = Instance.new("TextLabel")
 FPSText.Size = UDim2.new(0, 100, 0, 30)
 FPSText.Position = UDim2.new(1, -110, 0, 10)
 FPSText.BackgroundTransparency = 1
-FPSText.TextColor3 = Color3.fromRGB(50, 255, 50)
-FPSText.Font = Enum.Font.GothamBold
-FPSText.TextSize = 14
-FPSText.TextStrokeTransparency = 0.5
+FPSText.TextColor3 = Color3.fromRGB(50, 255, 100)
+FPSText.Font = Enum.Font.GothamBlack
+FPSText.TextSize = 16
+FPSText.TextStrokeTransparency = 0.3
 FPSText.TextXAlignment = Enum.TextXAlignment.Right
 FPSText.Parent = FPSGui
 
@@ -90,15 +89,17 @@ UI.DisplayOrder = 9999
 UI.Parent = UIParent
 
 local ToggleIcon = Instance.new("ImageButton")
-ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
-ToggleIcon.Position = UDim2.new(0.5, -22, 0, 10)
-ToggleIcon.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+ToggleIcon.Size = UDim2.new(0, 50, 0, 50)
+ToggleIcon.Position = UDim2.new(0.5, -25, 0, 10)
+ToggleIcon.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 ToggleIcon.Image = "rbxassetid://10709769508"
 ToggleIcon.BorderSizePixel = 0
 ToggleIcon.Active = true
 ToggleIcon.Draggable = true
 Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(40, 40, 45)
+local tStroke = Instance.new("UIStroke", ToggleIcon)
+tStroke.Color = Color3.fromRGB(80, 80, 90)
+tStroke.Thickness = 2
 ToggleIcon.Parent = UI
 
 local function CreateActionBtn(name, yPos, color, showKey, sizeKey)
@@ -106,8 +107,8 @@ local function CreateActionBtn(name, yPos, color, showKey, sizeKey)
     local sz = Config[sizeKey]
     btn.Size = UDim2.new(0, sz, 0, sz)
     btn.Position = UDim2.new(0.8, 0, yPos, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    btn.BackgroundTransparency = 0.2
+    btn.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    btn.BackgroundTransparency = 0.1
     btn.Text = name
     btn.TextColor3 = color
     btn.Font = Enum.Font.GothamBlack
@@ -124,90 +125,108 @@ local function CreateActionBtn(name, yPos, color, showKey, sizeKey)
     return btn, stroke
 end
 
-local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 60, 60), "ShowC", "BtnSizeC")
-local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.55, Color3.fromRGB(60, 180, 255), "ShowC2", "BtnSizeC2")
-local ExecBtnX, StrokeX = CreateActionBtn("X", 0.7, Color3.fromRGB(255, 200, 50), "ShowX", "BtnSizeX")
+local ExecBtnC, StrokeC = CreateActionBtn("C", 0.4, Color3.fromRGB(255, 50, 50), "ShowC", "BtnSizeC")
+local ExecBtnC2, StrokeC2 = CreateActionBtn("C2", 0.55, Color3.fromRGB(50, 180, 255), "ShowC2", "BtnSizeC2")
+local ExecBtnX, StrokeX = CreateActionBtn("X", 0.7, Color3.fromRGB(255, 180, 30), "ShowX", "BtnSizeX")
 
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 280, 0, 480)
-Menu.Position = UDim2.new(0.1, 0, 0.5, -240)
-Menu.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+Menu.Size = UDim2.new(0, 480, 0, 320)
+Menu.Position = UDim2.new(0.5, -240, 0.5, -160)
+Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 Menu.BorderSizePixel = 0
 Menu.Active = true
 Menu.Visible = false
+Menu.Draggable = true
 Menu.ClipsDescendants = true
-Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
 local MenuStroke = Instance.new("UIStroke", Menu)
-MenuStroke.Color = Color3.fromRGB(40, 40, 45)
+MenuStroke.Color = Color3.fromRGB(50, 50, 60)
 MenuStroke.Thickness = 1
 Menu.Parent = UI
 
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 120, 1, 0)
+Sidebar.Position = UDim2.new(0, 0, 0, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(12, 12, 14)
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = Menu
+
+local ContentArea = Instance.new("Frame")
+ContentArea.Size = UDim2.new(1, -120, 1, 0)
+ContentArea.Position = UDim2.new(0, 120, 0, 0)
+ContentArea.BackgroundTransparency = 1
+ContentArea.Parent = Menu
+
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Position = UDim2.new(0, 10, 0, 0)
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundTransparency = 1
 Title.Text = "MACRO"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 16
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Menu
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 18
+Title.Parent = Sidebar
 
-local UILine = Instance.new("Frame")
-UILine.Size = UDim2.new(1, 0, 0, 1)
-UILine.Position = UDim2.new(0, 0, 0, 40)
-UILine.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-UILine.BorderSizePixel = 0
-UILine.Parent = Menu
-
-local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, 0, 0, 35)
-TabBar.Position = UDim2.new(0, 0, 0, 41)
-TabBar.BackgroundTransparency = 1
-TabBar.Parent = Menu
+local SideLine = Instance.new("Frame")
+SideLine.Size = UDim2.new(0, 1, 1, 0)
+SideLine.Position = UDim2.new(1, 0, 0, 0)
+SideLine.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+SideLine.BorderSizePixel = 0
+SideLine.Parent = Sidebar
 
 local TabFrames = {}
 local TabBtns = {}
-local Indicator = Instance.new("Frame")
-Indicator.Size = UDim2.new(0.33, 0, 0, 2)
-Indicator.Position = UDim2.new(0, 0, 1, -2)
-Indicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-Indicator.BorderSizePixel = 0
-Indicator.Parent = TabBar
 
-local function CreateTab(name, xPos, isActive)
+local function CreateTab(name, yPos, isActive)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.33, 0, 1, 0)
-    btn.Position = UDim2.new(xPos, 0, 0, 0)
-    btn.BackgroundTransparency = 1
-    btn.Text = name
-    btn.TextColor3 = isActive and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 11
-    btn.Parent = TabBar
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.Position = UDim2.new(0, 0, 0, yPos)
+    btn.BackgroundTransparency = isActive and 0.9 or 1
+    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = "  " .. name
+    btn.TextColor3 = isActive and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(130, 130, 140)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.BorderSizePixel = 0
+    btn.Parent = Sidebar
+    
+    local indicator = Instance.new("Frame")
+    indicator.Size = UDim2.new(0, 3, 1, -16)
+    indicator.Position = UDim2.new(0, 0, 0, 8)
+    indicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    indicator.BorderSizePixel = 0
+    indicator.Visible = isActive
+    indicator.Parent = btn
     
     local frame = Instance.new("ScrollingFrame")
-    frame.Size = UDim2.new(1, 0, 1, -76)
-    frame.Position = UDim2.new(0, 0, 0, 76)
+    frame.Size = UDim2.new(1, -20, 1, -20)
+    frame.Position = UDim2.new(0, 10, 0, 10)
     frame.BackgroundTransparency = 1
     frame.Visible = isActive
     frame.ScrollBarThickness = 2
-    frame.Parent = Menu
+    frame.Parent = ContentArea
     
-    TabBtns[name] = btn
+    TabBtns[name] = {Btn = btn, Ind = indicator}
     TabFrames[name] = frame
     
     btn.MouseButton1Click:Connect(function()
         for k, v in pairs(TabFrames) do v.Visible = (k == name) end
-        for k, v in pairs(TabBtns) do v.TextColor3 = (k == name) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150) end
-        TweenService:Create(Indicator, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(xPos, 0, 1, -2)}):Play()
+        for k, v in pairs(TabBtns) do
+            v.Ind.Visible = (k == name)
+            TweenService:Create(v.Btn, TweenInfo.new(0.2), {
+                BackgroundTransparency = (k == name) and 0.9 or 1,
+                TextColor3 = (k == name) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(130, 130, 140)
+            }):Play()
+        end
     end)
     return frame
 end
 
-local TabCombat = CreateTab("COMBAT", 0, true)
-local TabVisual = CreateTab("VISUALS", 0.33, false)
-local TabSet = CreateTab("SETTINGS", 0.66, false)
+local TabCombat = CreateTab("COMBAT", 60, true)
+local TabVisual = CreateTab("VISUALS", 100, false)
+local TabSet = CreateTab("SETTINGS", 140, false)
+local TabGuide = CreateTab("GUIDE", 180, false)
 
 local function CreateTextInput(parent, yPos, text, configKey)
     local lbl = Instance.new("TextLabel")
@@ -224,14 +243,14 @@ local function CreateTextInput(parent, yPos, text, configKey)
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(0.9, 0, 0, 35)
     box.Position = UDim2.new(0.05, 0, 0, yPos + 25)
-    box.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
+    box.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
     box.TextColor3 = Color3.fromRGB(255, 255, 255)
     box.Font = Enum.Font.GothamBold
     box.TextSize = 14
     box.Text = Config[configKey]
     box.ClearTextOnFocus = false
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", box).Color = Color3.fromRGB(40, 40, 45)
+    Instance.new("UIStroke", box).Color = Color3.fromRGB(50, 50, 60)
     box.Parent = parent
     
     box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
@@ -263,13 +282,13 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt, btnR
     local bg = Instance.new("Frame")
     bg.Size = UDim2.new(0.9, 0, 0, 6)
     bg.Position = UDim2.new(0.05, 0, 0, 25)
-    bg.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    bg.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
     bg.Parent = frame
 
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((Config[configKey] - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     fill.Parent = bg
 
@@ -314,27 +333,32 @@ local function CreateToggle(parent, x, y, text, configKey, cb)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.42, 0, 0, 35)
     btn.Position = UDim2.new(x, 0, 0, y)
-    btn.BackgroundColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(20, 20, 22)
+    btn.BackgroundColor3 = Config[configKey] and Color3.fromRGB(255, 60, 60) or Color3.fromRGB(25, 25, 30)
     btn.Text = text
-    btn.TextColor3 = Config[configKey] and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(200, 200, 200)
+    btn.TextColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 10
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", btn).Color = Color3.fromRGB(40, 40, 45)
+    local stroke = Instance.new("UIStroke", btn)
+    stroke.Color = Config[configKey] and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(50, 50, 60)
     btn.Parent = parent
     
     btn.MouseButton1Click:Connect(function()
         Config[configKey] = not Config[configKey]
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(20, 20, 22)}):Play()
-        TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = Config[configKey] and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(200, 200, 200)}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {
+            BackgroundColor3 = Config[configKey] and Color3.fromRGB(255, 60, 60) or Color3.fromRGB(25, 25, 30),
+            TextColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+        }):Play()
+        TweenService:Create(stroke, TweenInfo.new(0.2), {
+            Color = Config[configKey] and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(50, 50, 60)
+        }):Play()
         SaveConfig()
         if cb then cb(Config[configKey]) end
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 135, "AUTO ESCAPE (SORU)", "AutoSoru")
+CreateToggle(TabCombat, 0.05, 135, "ANTI-STUN (PASSIVE)", "AntiStun")
 CreateToggle(TabCombat, 0.53, 135, "AUTO HIDE C", "AutoHideC")
-
 CreateToggle(TabCombat, 0.05, 180, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
 CreateToggle(TabCombat, 0.53, 180, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
 CreateToggle(TabCombat, 0.05, 225, "SHOW X (CANCEL)", "ShowX", function(v) if not getgenv().MacroHidden then ExecBtnX.Visible = v end end)
@@ -373,13 +397,13 @@ CreateToggle(TabSet, 0.05, 185, "SHOW FPS", "ShowFPS", function(v) FPSText.Visib
 local FixBtn = Instance.new("TextButton")
 FixBtn.Size = UDim2.new(0.42, 0, 0, 35)
 FixBtn.Position = UDim2.new(0.53, 0, 0, 185)
-FixBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
-FixBtn.Text = "FIX LAG (KEEP SKILL)"
+FixBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+FixBtn.Text = "FIX LAG (PVP SAFE)"
 FixBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
 FixBtn.Font = Enum.Font.GothamBold
 FixBtn.TextSize = 9
 Instance.new("UICorner", FixBtn).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", FixBtn).Color = Color3.fromRGB(40, 40, 45)
+Instance.new("UIStroke", FixBtn).Color = Color3.fromRGB(50, 50, 60)
 FixBtn.Parent = TabSet
 
 local HideBtn = Instance.new("TextButton")
@@ -393,26 +417,18 @@ HideBtn.TextSize = 11
 Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
 HideBtn.Parent = TabSet
 
-local InstPanel = Instance.new("Frame")
-InstPanel.Size = UDim2.new(0.9, 0, 0, 125)
-InstPanel.Position = UDim2.new(0.05, 0, 0, 275)
-InstPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-Instance.new("UICorner", InstPanel).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", InstPanel).Color = Color3.fromRGB(60, 60, 65)
-InstPanel.Parent = TabSet
-
 local InstTxt = Instance.new("TextLabel")
-InstTxt.Size = UDim2.new(1, -10, 1, -10)
-InstTxt.Position = UDim2.new(0, 5, 0, 5)
+InstTxt.Size = UDim2.new(1, 0, 1, 0)
+InstTxt.Position = UDim2.new(0, 0, 0, 0)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "CẨM NANG SỬ DỤNG:\n- COMBO: Nhập số (1,2,3,4) để rút vũ khí, chữ (Z,X,C,V,F) tung chiêu. Hệ thống tự động CẮT SỐ thừa nếu đang cầm sẵn đồ.\n- NÚT X: Hủy ngay lập tức chuỗi combo đang chạy.\n- AUTO ESCAPE: Tự động dịch chuyển lên trời thoát thân khi bị địch gây choáng.\n- FIX LAG: Tối ưu đồ họa cực mạnh, phá giới hạn FPS nhưng VẪN GIỮ hiệu ứng chiêu thức.\n- ẨN UI: Bấm HIDE ALL. Chat 'MCXC' để gọi lại Menu."
-InstTxt.TextColor3 = Color3.fromRGB(220, 220, 220)
+InstTxt.Text = "CẨM NANG SỬ DỤNG\n\n1. COMBO (C / C2)\n- Số (1,2,3,4) = Kéo vũ khí.\n- Chữ (Z,X,C,V,F) = Tung chiêu.\n- Tự động bỏ qua lệnh rút đồ nếu tay đang cầm sẵn vũ khí đó.\n\n2. NÚT X (HỦY)\n- Ngắt ngay lập tức chuỗi combo đang chạy.\n\n3. ANTI-STUN\n- Tính năng chạy ngầm. Miễn nhiễm với các hiệu ứng khựng, choáng khi PVP đánh tay.\n\n4. AUTO HIDE C\n- Nút C sẽ tàng hình khi bấm để tránh chạm nhầm, hết thời gian cài đặt tự hiện lại.\n\n5. FIX LAG & FPS\n- Tối ưu cực mạnh đồ họa môi trường, phá giới hạn FPS lên tối đa nhưng VẪN GIỮ lại hiệu ứng chiêu thức để PVP.\n\n6. ẨN MACRO\n- Bấm HIDE ALL UI. Chat 'MCXC' để gọi lại."
+InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
-InstTxt.TextSize = 10
+InstTxt.TextSize = 12
 InstTxt.TextXAlignment = Enum.TextXAlignment.Left
 InstTxt.TextYAlignment = Enum.TextYAlignment.Top
-InstTxt.Parent = InstPanel
+InstTxt.Parent = TabGuide
 
 HideBtn.MouseButton1Click:Connect(function()
     getgenv().MacroHidden = true
@@ -491,30 +507,14 @@ local function IsSkillBusy(char)
     return false
 end
 
-local function ProcessStunAndEscape(char)
+local function ClearEnemyStun(char)
     if not char then return end
-    local stuns = {"stun", "cant", "nodash", "nojump"}
-    local gotStunned = false
-    
+    local stuns = {"stun", "cant", "nodash", "nojump"} 
     for _, v in ipairs(char:GetChildren()) do
         if v:IsA("BoolValue") and v.Value == true then
             local n = string.lower(v.Name)
             for _, tag in ipairs(stuns) do
-                if string.find(n, tag) then
-                    v.Value = false 
-                    gotStunned = true
-                end
-            end
-        end
-    end
-    
-    if gotStunned and Config.AutoSoru and not getgenv().CancelCombo then
-        if tick() - getgenv().LastSoru > 2 then
-            getgenv().LastSoru = tick()
-            getgenv().CancelCombo = true
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root then
-                root.CFrame = root.CFrame * CFrame.new(0, 100, 0)
+                if string.find(n, tag) then v.Value = false end
             end
         end
     end
@@ -525,7 +525,7 @@ local function SetBtnActiveState(btn, stroke, color, isActive)
         TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
         TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(255, 255, 255), Thickness = 3}):Play()
     else
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
         TweenService:Create(stroke, TweenInfo.new(0.2), {Color = color, Thickness = 2}):Play()
     end
 end
@@ -584,9 +584,7 @@ local function ExecuteForceCombo(comboStr, btnRef, stroke, baseColor)
                     end
                 end
             elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
-                ProcessStunAndEscape(LP.Character)
                 local kc = Enum.KeyCode[char]
-                
                 VIM:SendKeyEvent(true, kc, false, game)
                 task.wait(0.05)
                 VIM:SendKeyEvent(false, kc, false, game)
@@ -609,7 +607,6 @@ local function ExecuteForceCombo(comboStr, btnRef, stroke, baseColor)
                 else
                     task.wait(tonumber(Config.ComboDelay) or 0.05)
                 end
-                ProcessStunAndEscape(LP.Character)
             end
         end
         
@@ -626,7 +623,7 @@ ExecBtnC.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or getgenv().lockC then return end
         getgenv().lockC = true
-        ExecuteForceCombo(Config.ComboC, ExecBtnC, StrokeC, Color3.fromRGB(255, 60, 60))
+        ExecuteForceCombo(Config.ComboC, ExecBtnC, StrokeC, Color3.fromRGB(255, 50, 50))
     end
 end)
 
@@ -634,7 +631,7 @@ ExecBtnC2.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         if Config.SetupMode or getgenv().lockC2 then return end
         getgenv().lockC2 = true
-        ExecuteForceCombo(Config.ComboC2, ExecBtnC2, StrokeC2, Color3.fromRGB(60, 180, 255))
+        ExecuteForceCombo(Config.ComboC2, ExecBtnC2, StrokeC2, Color3.fromRGB(50, 180, 255))
     end
 end)
 
@@ -644,13 +641,13 @@ ExecBtnX.InputBegan:Connect(function(input)
         getgenv().CancelCombo = true
         getgenv().lockC = false
         getgenv().lockC2 = false
-        SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 200, 50), true)
-        task.delay(0.2, function() SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 200, 50), false) end)
+        SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 180, 30), true)
+        task.delay(0.2, function() SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 180, 30), false) end)
     end
 end)
 
 local function SafeGetPlayerInfo(plr)
-    local lvl, hp, mhp, energy = "?", 0, 0, "?"
+    local lvl, hp, mhp = "?", 0, 0
     pcall(function()
         if plr:FindFirstChild("Data") and plr.Data:FindFirstChild("Level") then 
             lvl = tostring(plr.Data.Level.Value) 
@@ -658,17 +655,15 @@ local function SafeGetPlayerInfo(plr)
         if plr.Character then
             local hum = plr.Character:FindFirstChild("Humanoid")
             if hum then hp = math.floor(hum.Health); mhp = math.floor(hum.MaxHealth) end
-            local e = plr.Character:FindFirstChild("Energy")
-            if e then energy = tostring(math.floor((e.Value / e.MaxValue) * 100)) .. "%" end
         end
     end)
-    return lvl, hp, mhp, energy
+    return lvl, hp, mhp
 end
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
-            ProcessStunAndEscape(LP.Character)
+            if Config.AntiStun then ClearEnemyStun(LP.Character) end
             
             for _, plr in ipairs(Players:GetPlayers()) do
                 if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
@@ -690,7 +685,7 @@ RunService.Heartbeat:Connect(function()
                         if not espGui then
                             espGui = Instance.new("BillboardGui")
                             espGui.Name = espId
-                            espGui.Size = UDim2.new(0, 200, 0, 75)
+                            espGui.Size = UDim2.new(0, 200, 0, 50)
                             espGui.StudsOffset = Vector3.new(0, 3, 0)
                             espGui.AlwaysOnTop = true
                             local txt = Instance.new("TextLabel")
@@ -704,14 +699,14 @@ RunService.Heartbeat:Connect(function()
                             espGui.Parent = root
                         end
                         
-                        local lvl, hp, mhp, energy = SafeGetPlayerInfo(plr)
+                        local lvl, hp, mhp = SafeGetPlayerInfo(plr)
                         local weap = "None"
                         local pTool = plr.Character:FindFirstChildOfClass("Tool")
                         if pTool then weap = pTool.Name end
                         
                         local txtNode = espGui:FindFirstChild("TextNode")
                         if txtNode then
-                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d\nE: %s | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, energy, string.sub(weap, 1, 15), math.floor(dist))
+                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, string.sub(weap, 1, 15), math.floor(dist))
                             txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
                         end
                     else
@@ -742,6 +737,3 @@ RunService.Heartbeat:Connect(function()
         end
     end)
 end)
-
-if LP.Character then LP.Character.ChildAdded:Connect(function() ProcessStunAndEscape(LP.Character) end) end
-LP.CharacterAdded:Connect(function(char) char.ChildAdded:Connect(function() ProcessStunAndEscape(char) end) end)
