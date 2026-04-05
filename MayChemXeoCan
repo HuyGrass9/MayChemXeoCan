@@ -9,7 +9,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V25.json"
+local ConfigName = "Macro_Titan_V26.json"
 local Config = {
     ComboC="3XZ1CZ2ZX", ComboC2="2C1XZ", ComboDelay=0.05, ActionDelay=0.1, HitboxSize=15,
     BtnSizeC=60, BtnSizeC2=60, BtnSizeX=45, BtnSizeAim=45, SetupMode=false, ShowC=false, ShowC2=false,
@@ -44,6 +44,12 @@ local ToggleIcon = Instance.new("ImageButton", UI)
 ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,25); ToggleIcon.BackgroundColor3 = Color3.fromRGB(15,15,18)
 ToggleIcon.Image = "rbxassetid://7485051715"; ToggleIcon.Active = true; ToggleIcon.Draggable = true
 Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); local ts = Instance.new("UIStroke", ToggleIcon); ts.Color = Color3.fromRGB(0,255,150); ts.Thickness=2
+
+local HUD = Instance.new("Frame", UI); HUD.Name = "StatusHUD"; HUD.Size = UDim2.new(0,160,0,55); HUD.Position = UDim2.new(0.5,-80,0,80)
+HUD.BackgroundColor3 = Color3.fromRGB(15,15,18); HUD.BackgroundTransparency = 0.3; HUD.Visible = not getgenv().MacroHidden
+Instance.new("UICorner", HUD).CornerRadius = UDim.new(0,6); local hs = Instance.new("UIStroke", HUD); hs.Color = Color3.fromRGB(0,255,150); hs.Thickness = 1.5
+local HUDTxt = Instance.new("TextLabel", HUD); HUDTxt.Size = UDim2.new(1,-10,1,-10); HUDTxt.Position = UDim2.new(0,5,0,5); HUDTxt.BackgroundTransparency = 1
+HUDTxt.Font = Enum.Font.GothamBold; HUDTxt.TextSize = 11; HUDTxt.TextColor3 = Color3.fromRGB(255,255,255); HUDTxt.TextXAlignment = Enum.TextXAlignment.Left; HUDTxt.TextYAlignment = Enum.TextYAlignment.Top
 
 local MapFrame = Instance.new("Frame", UI); MapFrame.Name = "MiniMap"; MapFrame.Size = UDim2.new(0,Config.MapSize,0,Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Color3.fromRGB(10,10,12); MapFrame.BackgroundTransparency = 0.3; MapFrame.Visible = Config.ShowMap and not getgenv().MacroHidden
 Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(1,0); local ms = Instance.new("UIStroke", MapFrame); ms.Color = Color3.fromRGB(0,255,150); ms.Thickness=1.5
@@ -149,7 +155,7 @@ CreateToggle(TabSet, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden
 local sldAim = CreateSlider(TabSet, "Size LOCK", 30, 100, "BtnSizeAim", true, nil); sldAim.Visible = Config.ShowAim
 CreateToggle(TabSet, "SHOW LOCK", "ShowAim", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnAim.Visible=v end; sldAim.Visible = v end)
 
-CreateToggle(TabSet, "SETUP UI (MOVE)", "SetupMode", function(v) getgenv().SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; TouchZone.Draggable=v; if getgenv().ExecBtnC then getgenv().ExecBtnC.Draggable=v end; if getgenv().ExecBtnC2 then getgenv().ExecBtnC2.Draggable=v end; if getgenv().ExecBtnX then getgenv().ExecBtnX.Draggable=v end; if getgenv().ExecBtnAim then getgenv().ExecBtnAim.Draggable=v end end)
+CreateToggle(TabSet, "SETUP UI (MOVE)", "SetupMode", function(v) getgenv().SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; TouchZone.Draggable=v; HUD.Draggable=v; if getgenv().ExecBtnC then getgenv().ExecBtnC.Draggable=v end; if getgenv().ExecBtnC2 then getgenv().ExecBtnC2.Draggable=v end; if getgenv().ExecBtnX then getgenv().ExecBtnX.Draggable=v end; if getgenv().ExecBtnAim then getgenv().ExecBtnAim.Draggable=v end end)
 CreateToggle(TabSet, "UNLOCK MAX FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
 CreateToggle(TabSet, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible=v end)
 local FixBtn = Instance.new("TextButton", TabSet); FixBtn.Size = UDim2.new(0.95,0,0,30); FixBtn.BackgroundColor3 = Color3.fromRGB(20,20,25); FixBtn.Text = "FIX LAG (MAX FPS)"; FixBtn.TextColor3 = Color3.fromRGB(200,200,200); FixBtn.Font=Enum.Font.GothamBold; FixBtn.TextSize=10; Instance.new("UICorner", FixBtn).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", FixBtn).Color=Color3.fromRGB(50,50,60)
@@ -205,7 +211,6 @@ getgenv().ExecBtnC.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.
 getgenv().ExecBtnC2.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC2 then getgenv().lockC2=true; ExCombo(Config.ComboC2, getgenv().ExecBtnC2, getgenv().StrokeC2, Color3.fromRGB(80,200,255)) end end)
 getgenv().ExecBtnX.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then getgenv().CancelCombo=true; getgenv().lockC=false; getgenv().lockC2=false; TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.1), {BackgroundTransparency=0.1}):Play(); task.delay(0.2, function() TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play() end) end end)
 
--- LOCK TOGGLE TỐI THƯỢNG
 getgenv().ExecBtnAim.InputBegan:Connect(function(inp)
     if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then
         getgenv().IsLocked = not getgenv().IsLocked
@@ -230,18 +235,32 @@ end)
 TouchZone.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then local cam = workspace.CurrentCamera; local r = cam:ScreenPointToRay(inp.Position.X, inp.Position.Y); local hP = r.Origin + r.Direction*1000; local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if myR then myR.CFrame = CFrame.lookAt(myR.Position, Vector3.new(hP.X, myR.Position.Y, hP.Z)); if not getgenv().lockC then getgenv().lockC=true; ExCombo(Config.ComboC, getgenv().ExecBtnC, getgenv().StrokeC, Color3.fromRGB(255,80,80)) end end end end)
 
-RunService.RenderStepped:Connect(function()
+-- CAMERA LOCK BINDING (PRIORITY 205 - VƯỢT QUYỀN CAMERA ROBLOX)
+RunService:BindToRenderStep("MacroAimLock", 205, function()
+    if getgenv().IsLocked and getgenv().LockedTarget and getgenv().LockedTarget.Character and getgenv().LockedTarget.Character:FindFirstChild("HumanoidRootPart") and getgenv().LockedTarget.Character:FindFirstChild("Humanoid") and getgenv().LockedTarget.Character.Humanoid.Health>0 then
+        local cam, eP = workspace.CurrentCamera, getgenv().LockedTarget.Character.HumanoidRootPart.Position
+        local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        cam.CFrame = CFrame.lookAt(cam.CFrame.Position, eP)
+        if myR then myR.CFrame = CFrame.lookAt(myR.Position, Vector3.new(eP.X, myR.Position.Y, eP.Z)) end
+    elseif getgenv().IsLocked then
+        getgenv().IsLocked = false; getgenv().LockedTarget = nil
+        pcall(function() TweenService:Create(getgenv().StrokeAim, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,80,255), Thickness=1.5, Transparency=0.2}):Play(); TweenService:Create(getgenv().ExecBtnAim, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play() end)
+    end
+end)
+
+-- GHOST DESYNC FIX (PRIORITY 199 - CHỐNG TÀN ẢNH)
+RunService:BindToRenderStep("GhostDesyncFix", 199, function() 
+    if ghostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then 
+        LP.Character.HumanoidRootPart.CFrame=ghostCF; ghostCF=nil 
+    end 
+end)
+
+RunService.Heartbeat:Connect(function()
     pcall(function()
-        if getgenv().IsLocked and getgenv().LockedTarget and getgenv().LockedTarget.Character and getgenv().LockedTarget.Character:FindFirstChild("HumanoidRootPart") and getgenv().LockedTarget.Character:FindFirstChild("Humanoid") and getgenv().LockedTarget.Character.Humanoid.Health>0 then
-            local cam, eP = workspace.CurrentCamera, getgenv().LockedTarget.Character.HumanoidRootPart.Position; local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-            cam.CFrame = CFrame.lookAt(cam.CFrame.Position, eP)
-            if r then r.CFrame = CFrame.lookAt(r.Position, Vector3.new(eP.X, r.Position.Y, eP.Z)) end
-        else
-            if getgenv().IsLocked then
-                getgenv().IsLocked = false; getgenv().LockedTarget = nil
-                pcall(function() TweenService:Create(getgenv().StrokeAim, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,80,255), Thickness=1.5, Transparency=0.2}):Play(); TweenService:Create(getgenv().ExecBtnAim, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play() end)
-            end
-        end
+        -- HUD SYSTEM UPDATE
+        local cbStat = "IDLE"; if getgenv().lockC then cbStat = "RUN C" elseif getgenv().lockC2 then cbStat = "RUN C2" end
+        local lkStat = "OFF"; if getgenv().IsLocked and getgenv().LockedTarget then lkStat = string.sub(getgenv().LockedTarget.Name, 1, 10) end
+        HUDTxt.Text = "⚡ SYSTEM HUD\nCOMBO: " .. cbStat .. "\nLOCK: " .. lkStat
 
         if LP.Character then
             if Config.AntiStun then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
@@ -290,4 +309,3 @@ RunService.RenderStepped:Connect(function()
         end
     end)
 end)
-RunService:BindToRenderStep("GhostDesyncFix", 150, function() if ghostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame=ghostCF; ghostCF=nil end end)
