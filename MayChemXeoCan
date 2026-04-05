@@ -1,3 +1,4 @@
+if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
@@ -9,68 +10,21 @@ local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local LP = Players.LocalPlayer
 
-pcall(function()
-    StarterGui:SetCore("SendNotification", {
-        Title = "MAYCHEMXEOCAN",
-        Text = "MACRO ENABLE",
-        Duration = 5
-    })
-end)
+pcall(function() StarterGui:SetCore("SendNotification", {Title = "MAYCHEMXEOCAN", Text = "SUCCESS ENABLE MARCRO", Duration = 5}) end)
 
-local ConfigName = "Macro_Titan_V19.json"
+local ConfigName = "Macro_Titan_V20.json"
 local Config = {
-    ComboC = "3XZ1CZ2ZX", 
-    ComboC2 = "2C1XZ",
-    ComboDelay = 0.05,
-    ActionDelay = 0.1,
-    HitboxSize = 15,
-    BtnSizeC = 60,
-    BtnSizeC2 = 60,
-    BtnSizeX = 45,
-    BtnSizeAim = 45,
-    SetupMode = false,
-    ShowC = false,
-    ShowC2 = false,
-    ShowX = false,
-    ShowAim = false,
-    FakeLag = false,
-    FakeLagTick = 3,
-    ESP = false,
-    ViewTracer = false,
-    TracerR = 0,
-    TracerG = 255,
-    TracerB = 150,
-    RenderDistance = 1500,
-    AutoHideC = false,
-    HideTimer = 1.5,
-    UnlockFPS = true,
-    AntiStun = true,
-    ShowFPS = true,
-    ShowMap = false,
-    MapSize = 100,
-    MapRange = 500,
-    TouchCast = false,
-    TouchZoneSize = 250
+    ComboC="3XZ1CZ2ZX", ComboC2="2C1XZ", ComboDelay=0.05, ActionDelay=0.1, HitboxSize=15,
+    BtnSizeC=60, BtnSizeC2=60, BtnSizeX=45, BtnSizeAim=45, SetupMode=false, ShowC=false, ShowC2=false,
+    ShowX=false, ShowAim=false, FakeLag=false, FakeLagTick=3, ESP=false, ViewTracer=false, TracerR=0, TracerG=255, TracerB=150,
+    RenderDistance=1500, AutoHideC=false, HideTimer=1.5, UnlockFPS=true, AntiStun=true, ShowFPS=true,
+    ShowMap=false, MapSize=100, MapRange=500, TouchCast=false, TouchZoneSize=250
 }
-
-pcall(function()
-    if isfile and isfile(ConfigName) then
-        local saved = HttpService:JSONDecode(readfile(ConfigName))
-        for k, v in pairs(saved) do Config[k] = v end
-    end
-end)
-
-local function SaveConfig()
-    pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end)
-end
-
+pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do Config[k]=v end end end)
+local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end) end
 pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 9999 or 60) end end)
 
-getgenv().MacroHidden = false
-getgenv().CancelCombo = false
-getgenv().SetupMode = false
-getgenv().AimFrames = 0
-getgenv().AimTarget = nil
+getgenv().MacroHidden = false; getgenv().CancelCombo = false; getgenv().SetupMode = false; getgenv().AimFrames = 0; getgenv().AimTarget = nil
 
 local UIParent = nil
 pcall(function() UIParent = gethui() end)
@@ -82,762 +36,256 @@ if oldUI then oldUI:Destroy() end
 local oldFPS = UIParent:FindFirstChild("FPSCounter")
 if oldFPS then oldFPS:Destroy() end
 
-local FPSGui = Instance.new("ScreenGui")
-FPSGui.Name = "FPSCounter"
-FPSGui.ResetOnSpawn = false
-FPSGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-FPSGui.DisplayOrder = 10000
-FPSGui.Parent = UIParent
+local FPSGui = Instance.new("ScreenGui", UIParent); FPSGui.Name = "FPSCounter"; FPSGui.ResetOnSpawn = false; FPSGui.DisplayOrder = 10000
+local FPSText = Instance.new("TextLabel", FPSGui)
+FPSText.Size = UDim2.new(0,100,0,30); FPSText.Position = UDim2.new(1,-110,0,10); FPSText.BackgroundTransparency = 1
+FPSText.TextColor3 = Color3.fromRGB(0,255,150); FPSText.Font = Enum.Font.GothamBlack; FPSText.TextSize = 16; FPSText.TextXAlignment = Enum.TextXAlignment.Right
 
-local FPSText = Instance.new("TextLabel")
-FPSText.Size = UDim2.new(0, 100, 0, 30)
-FPSText.Position = UDim2.new(1, -110, 0, 10)
-FPSText.BackgroundTransparency = 1
-FPSText.TextColor3 = Color3.fromRGB(0, 255, 150)
-FPSText.Font = Enum.Font.GothamBlack
-FPSText.TextSize = 16
-FPSText.TextStrokeTransparency = 0.3
-FPSText.TextXAlignment = Enum.TextXAlignment.Right
-FPSText.Parent = FPSGui
+local UI = Instance.new("ScreenGui", UIParent); UI.Name = "Macro"; UI.ResetOnSpawn = false; UI.DisplayOrder = 9999
+local ToggleIcon = Instance.new("ImageButton", UI)
+ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,70); ToggleIcon.BackgroundColor3 = Color3.fromRGB(15,15,18)
+ToggleIcon.Image = "rbxassetid://10709769508"; ToggleIcon.Active = true; ToggleIcon.Draggable = true
+Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); local ts = Instance.new("UIStroke", ToggleIcon); ts.Color = Color3.fromRGB(0,255,150); ts.Thickness=2
 
-local UI = Instance.new("ScreenGui")
-UI.Name = "Macro"
-UI.ResetOnSpawn = false
-UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-UI.DisplayOrder = 9999
-UI.Parent = UIParent
+local MapFrame = Instance.new("Frame", UI); MapFrame.Name = "MiniMap"; MapFrame.Size = UDim2.new(0,Config.MapSize,0,Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Color3.fromRGB(10,10,12); MapFrame.BackgroundTransparency = 0.3; MapFrame.Visible = Config.ShowMap
+Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(1,0); local ms = Instance.new("UIStroke", MapFrame); ms.Color = Color3.fromRGB(0,255,150); ms.Thickness=2
+local ring1 = Instance.new("Frame", MapFrame); ring1.Size = UDim2.new(0.5,0,0.5,0); ring1.Position = UDim2.new(0.25,0,0.25,0); ring1.BackgroundTransparency=1; Instance.new("UICorner", ring1).CornerRadius = UDim.new(1,0); local rs1 = Instance.new("UIStroke", ring1); rs1.Color = Color3.fromRGB(0,255,150); rs1.Transparency=0.8
+local hLine = Instance.new("Frame", MapFrame); hLine.Size = UDim2.new(1,0,0,1); hLine.Position = UDim2.new(0,0,0.5,0); hLine.BackgroundColor3 = Color3.fromRGB(0,255,150); hLine.BackgroundTransparency=0.8; hLine.BorderSizePixel=0
+local vLine = Instance.new("Frame", MapFrame); vLine.Size = UDim2.new(0,1,1,0); vLine.Position = UDim2.new(0.5,0,0,0); vLine.BackgroundColor3 = Color3.fromRGB(0,255,150); vLine.BackgroundTransparency=0.8; vLine.BorderSizePixel=0
+local CenterDot = Instance.new("Frame", MapFrame); CenterDot.Size = UDim2.new(0,6,0,6); CenterDot.Position = UDim2.new(0.5,-3,0.5,-3); CenterDot.BackgroundColor3 = Color3.fromRGB(0,255,255); Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1,0); CenterDot.ZIndex=3
+local CamCone = Instance.new("Frame", CenterDot); CamCone.Size = UDim2.new(0,2,0,12); CamCone.Position = UDim2.new(0.5,-1,0,-12); CamCone.BackgroundColor3 = Color3.fromRGB(255,200,0); CamCone.BorderSizePixel=0; CamCone.ZIndex=2
+local DotsContainer = Instance.new("Folder", MapFrame); DotsContainer.Name = "Dots"
 
-local ToggleIcon = Instance.new("ImageButton")
-ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
-ToggleIcon.Position = UDim2.new(0.5, -22, 0, 45)
-ToggleIcon.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-ToggleIcon.Image = "rbxassetid://10709769508"
-ToggleIcon.BorderSizePixel = 0
-ToggleIcon.Active = true
-ToggleIcon.Draggable = true
-Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
-local tStroke = Instance.new("UIStroke", ToggleIcon)
-tStroke.Color = Color3.fromRGB(0, 255, 150)
-tStroke.Thickness = 2
-ToggleIcon.Parent = UI
+local TouchZone = Instance.new("Frame", UI); TouchZone.Name = "TouchCastZone"; TouchZone.AnchorPoint = Vector2.new(0.5,0.5); TouchZone.Size = UDim2.new(0,Config.TouchZoneSize,0,Config.TouchZoneSize); TouchZone.Position = UDim2.new(0.5,0,0.5,0); TouchZone.BackgroundColor3 = Color3.fromRGB(255,50,50); TouchZone.BackgroundTransparency=0.8; TouchZone.Active=true; TouchZone.Visible=Config.TouchCast
+Instance.new("UICorner", TouchZone).CornerRadius = UDim.new(1,0); local tzs = Instance.new("UIStroke", TouchZone); tzs.Color = Color3.fromRGB(255,100,100); tzs.Thickness=2
+local tzIcon = Instance.new("Frame", TouchZone); tzIcon.Size = UDim2.new(0,10,0,10); tzIcon.Position = UDim2.new(0.5,-5,0.5,-5); tzIcon.BackgroundColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", tzIcon).CornerRadius = UDim.new(1,0)
 
-local MapFrame = Instance.new("Frame")
-MapFrame.Name = "MiniMap"
-MapFrame.Size = UDim2.new(0, Config.MapSize, 0, Config.MapSize)
-MapFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
-MapFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-MapFrame.BackgroundTransparency = 0.3
-MapFrame.Active = true
-MapFrame.Draggable = false
-MapFrame.Visible = Config.ShowMap and not getgenv().MacroHidden
-MapFrame.ClipsDescendants = true
-Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(1, 0)
-local MapStroke = Instance.new("UIStroke", MapFrame)
-MapStroke.Color = Color3.fromRGB(0, 255, 150)
-MapStroke.Thickness = 2
-MapFrame.Parent = UI
+local Menu = Instance.new("Frame", UI); Menu.Size = UDim2.new(0,480,0,310); Menu.Position = UDim2.new(0.5,-240,0.5,-155); Menu.BackgroundColor3 = Color3.fromRGB(15,15,18); Menu.Active=true; Menu.Visible=true; Menu.ClipsDescendants=true; Instance.new("UICorner", Menu).CornerRadius = UDim.new(0,8)
+local MenuStroke = Instance.new("UIStroke", Menu); MenuStroke.Color = Color3.fromRGB(40,40,50)
+local Sidebar = Instance.new("Frame", Menu); Sidebar.Size = UDim2.new(0,130,1,0); Sidebar.BackgroundColor3 = Color3.fromRGB(12,12,14); Sidebar.BorderSizePixel=0
+local ContentArea = Instance.new("Frame", Menu); ContentArea.Size = UDim2.new(1,-130,1,0); ContentArea.Position = UDim2.new(0,130,0,0); ContentArea.BackgroundTransparency=1
+local Title = Instance.new("TextLabel", Sidebar); Title.Size = UDim2.new(1,0,0,50); Title.BackgroundTransparency=1; Title.Text = "MACRO"; Title.TextColor3 = Color3.fromRGB(255,255,255); Title.Font = Enum.Font.GothamBlack; Title.TextSize=18
 
-local ring1 = Instance.new("Frame", MapFrame)
-ring1.Size = UDim2.new(0.5, 0, 0.5, 0)
-ring1.Position = UDim2.new(0.25, 0, 0.25, 0)
-ring1.BackgroundTransparency = 1
-Instance.new("UICorner", ring1).CornerRadius = UDim.new(1, 0)
-local rs1 = Instance.new("UIStroke", ring1)
-rs1.Color = Color3.fromRGB(0, 255, 150)
-rs1.Transparency = 0.8
-rs1.Thickness = 1
-
-local hLine = Instance.new("Frame", MapFrame)
-hLine.Size = UDim2.new(1, 0, 0, 1)
-hLine.Position = UDim2.new(0, 0, 0.5, 0)
-hLine.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
-hLine.BackgroundTransparency = 0.8
-hLine.BorderSizePixel = 0
-
-local vLine = Instance.new("Frame", MapFrame)
-vLine.Size = UDim2.new(0, 1, 1, 0)
-vLine.Position = UDim2.new(0.5, 0, 0, 0)
-vLine.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
-vLine.BackgroundTransparency = 0.8
-vLine.BorderSizePixel = 0
-
-local CenterDot = Instance.new("Frame")
-CenterDot.Size = UDim2.new(0, 6, 0, 6)
-CenterDot.Position = UDim2.new(0.5, -3, 0.5, -3)
-CenterDot.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
-Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1, 0)
-CenterDot.ZIndex = 3
-CenterDot.Parent = MapFrame
-
-local CamCone = Instance.new("Frame")
-CamCone.Size = UDim2.new(0, 2, 0, 12)
-CamCone.Position = UDim2.new(0.5, -1, 0, -12)
-CamCone.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-CamCone.BorderSizePixel = 0
-CamCone.ZIndex = 2
-CamCone.Parent = CenterDot
-
-local DotsContainer = Instance.new("Folder")
-DotsContainer.Name = "Dots"
-DotsContainer.Parent = MapFrame
-
-local TouchZone = Instance.new("Frame")
-TouchZone.Name = "TouchCastZone"
-TouchZone.AnchorPoint = Vector2.new(0.5, 0.5) 
-TouchZone.Size = UDim2.new(0, Config.TouchZoneSize, 0, Config.TouchZoneSize)
-TouchZone.Position = UDim2.new(0.5, 0, 0.5, 0) 
-TouchZone.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-TouchZone.BackgroundTransparency = 0.8
-TouchZone.Active = true
-TouchZone.Draggable = false
-TouchZone.Visible = Config.TouchCast and not getgenv().MacroHidden
-Instance.new("UICorner", TouchZone).CornerRadius = UDim.new(1, 0)
-local tzStroke = Instance.new("UIStroke", TouchZone)
-tzStroke.Color = Color3.fromRGB(255, 100, 100)
-tzStroke.Thickness = 2
-tzStroke.LineJoinMode = Enum.LineJoinMode.Round
-TouchZone.Parent = UI
-
-local tzIcon = Instance.new("Frame")
-tzIcon.Size = UDim2.new(0, 10, 0, 10)
-tzIcon.Position = UDim2.new(0.5, -5, 0.5, -5)
-tzIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", tzIcon).CornerRadius = UDim.new(1, 0)
-tzIcon.Parent = TouchZone
-
-local Menu = Instance.new("Frame")
-Menu.Size = UDim2.new(0, 480, 0, 310)
-Menu.Position = UDim2.new(0.5, -240, 0.5, -155)
-Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-Menu.BorderSizePixel = 0
-Menu.Active = true
-Menu.Visible = true 
-Menu.Draggable = false
-Menu.ClipsDescendants = true
-Instance.new("UICorner", Menu).CornerRadius = UDim.new(0, 8)
-local MenuStroke = Instance.new("UIStroke", Menu)
-MenuStroke.Color = Color3.fromRGB(40, 40, 50)
-MenuStroke.Thickness = 1
-Menu.Parent = UI
-
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 130, 1, 0)
-Sidebar.Position = UDim2.new(0, 0, 0, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(12, 12, 14)
-Sidebar.BorderSizePixel = 0
-Sidebar.Parent = Menu
-
-local ContentArea = Instance.new("Frame")
-ContentArea.Size = UDim2.new(1, -130, 1, 0)
-ContentArea.Position = UDim2.new(0, 130, 0, 0)
-ContentArea.BackgroundTransparency = 1
-ContentArea.Parent = Menu
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Position = UDim2.new(0, 0, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "MACRO"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 18
-Title.Parent = Sidebar
-
-local TabFrames = {}
-local TabBtns = {}
-
+local TabFrames, TabBtns = {}, {}
 local function CreateTab(name, yPos, isActive)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 40)
-    btn.Position = UDim2.new(0, 0, 0, yPos)
-    btn.BackgroundTransparency = isActive and 0.9 or 1
-    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = "   " .. name
-    btn.TextColor3 = isActive and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(130, 130, 140)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 11
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.BorderSizePixel = 0
-    btn.Parent = Sidebar
-    
-    local indicator = Instance.new("Frame")
-    indicator.Size = UDim2.new(0, 3, 1, -16)
-    indicator.Position = UDim2.new(0, 0, 0, 8)
-    indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
-    indicator.BorderSizePixel = 0
-    indicator.Visible = isActive
-    indicator.Parent = btn
-    
-    local frame = Instance.new("ScrollingFrame")
-    frame.Size = UDim2.new(1, -10, 1, -10)
-    frame.Position = UDim2.new(0, 5, 0, 5)
-    frame.BackgroundTransparency = 1
-    frame.Visible = isActive
-    frame.ScrollBarThickness = 2
-    frame.CanvasSize = UDim2.new(0, 0, 0, 500)
-    frame.Parent = ContentArea
-    
-    TabBtns[name] = {Btn = btn, Ind = indicator}
-    TabFrames[name] = frame
-    
+    local btn = Instance.new("TextButton", Sidebar); btn.Size = UDim2.new(1,0,0,40); btn.Position = UDim2.new(0,0,0,yPos); btn.BackgroundTransparency = isActive and 0.9 or 1; btn.Text = "   "..name; btn.TextColor3 = isActive and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140); btn.Font = Enum.Font.GothamBold; btn.TextSize=11; btn.TextXAlignment = Enum.TextXAlignment.Left
+    local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,3,1,-16); ind.Position = UDim2.new(0,0,0,8); ind.BackgroundColor3 = Color3.fromRGB(0,255,150); ind.BorderSizePixel=0; ind.Visible=isActive
+    local frm = Instance.new("ScrollingFrame", ContentArea); frm.Size = UDim2.new(1,-10,1,-10); frm.Position = UDim2.new(0,5,0,5); frm.BackgroundTransparency=1; frm.Visible=isActive; frm.ScrollBarThickness=2; frm.CanvasSize = UDim2.new(0,0,0,500)
+    TabBtns[name] = {Btn=btn, Ind=ind}; TabFrames[name] = frm
     btn.MouseButton1Click:Connect(function()
-        for k, v in pairs(TabFrames) do v.Visible = (k == name) end
-        for k, v in pairs(TabBtns) do
-            v.Ind.Visible = (k == name)
-            TweenService:Create(v.Btn, TweenInfo.new(0.2), {
-                BackgroundTransparency = (k == name) and 0.9 or 1,
-                TextColor3 = (k == name) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(130, 130, 140)
-            }):Play()
-        end
+        for k,v in pairs(TabFrames) do v.Visible = (k==name) end
+        for k,v in pairs(TabBtns) do v.Ind.Visible = (k==name); TweenService:Create(v.Btn, TweenInfo.new(0.2), {BackgroundTransparency = (k==name) and 0.9 or 1, TextColor3 = (k==name) and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140)}):Play() end
     end)
-    return frame
+    return frm
 end
 
-local TabCombat = CreateTab("COMBAT", 60, true)
-local TabVisual = CreateTab("VISUALS", 100, false)
-local TabSet = CreateTab("SETTINGS", 140, false)
-local TabGuide = CreateTab("GUIDE", 180, false)
+local TabCombat = CreateTab("COMBAT", 60, true); local TabVisual = CreateTab("VISUALS", 100, false); local TabSet = CreateTab("SETTINGS", 140, false); local TabGuide = CreateTab("GUIDE", 180, false)
 
 local function CreateTextInput(parent, yPos, text, configKey)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.9, 0, 0, 20)
-    lbl.Position = UDim2.new(0.05, 0, 0, yPos)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.TextSize = 11
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = parent
-    
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0.9, 0, 0, 30)
-    box.Position = UDim2.new(0.05, 0, 0, yPos + 20)
-    box.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    box.TextColor3 = Color3.fromRGB(0, 255, 150)
-    box.Font = Enum.Font.GothamBold
-    box.TextSize = 13
-    box.Text = Config[configKey]
-    box.ClearTextOnFocus = false
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
-    Instance.new("UIStroke", box).Color = Color3.fromRGB(50, 50, 60)
-    box.Parent = parent
-    
-    box.FocusLost:Connect(function() Config[configKey] = box.Text; SaveConfig() end)
+    local lbl = Instance.new("TextLabel", parent); lbl.Size = UDim2.new(0.9,0,0,20); lbl.Position = UDim2.new(0.05,0,0,yPos); lbl.BackgroundTransparency=1; lbl.Text=text; lbl.TextColor3=Color3.fromRGB(200,200,200); lbl.Font=Enum.Font.GothamMedium; lbl.TextSize=11; lbl.TextXAlignment=Enum.TextXAlignment.Left
+    local box = Instance.new("TextBox", parent); box.Size = UDim2.new(0.9,0,0,30); box.Position = UDim2.new(0.05,0,0,yPos+20); box.BackgroundColor3=Color3.fromRGB(20,20,25); box.TextColor3=Color3.fromRGB(0,255,150); box.Font=Enum.Font.GothamBold; box.TextSize=13; box.Text=Config[configKey]; Instance.new("UICorner", box).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", box).Color=Color3.fromRGB(50,50,60)
+    box.FocusLost:Connect(function() Config[configKey]=box.Text; SaveConfig() end)
 end
-
-CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC")
-CreateTextInput(TabCombat, 65, "Sequence C2:", "ComboC2")
 
 getgenv().MCXC_ActiveSlider = nil
-
 local function CreateSlider(parent, yPos, text, min, max, configKey, isInt, btnRef)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 45)
-    frame.Position = UDim2.new(0, 0, 0, yPos)
-    frame.BackgroundTransparency = 1
-    frame.Parent = parent
-
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.9, 0, 0, 20)
-    lbl.Position = UDim2.new(0.05, 0, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text .. ": " .. tostring(Config[configKey])
-    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.TextSize = 10
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = frame
-
-    local bg = Instance.new("Frame")
-    bg.Size = UDim2.new(0.9, 0, 0, 6)
-    bg.Position = UDim2.new(0.05, 0, 0, 25)
-    bg.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
-    bg.Parent = frame
-
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new((Config[configKey] - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-    fill.Parent = bg
-
-    local touchArea = Instance.new("TextButton")
-    touchArea.Size = UDim2.new(1, 0, 0, 16) 
-    touchArea.Position = UDim2.new(0, 0, 0.5, -8)
-    touchArea.BackgroundTransparency = 1
-    touchArea.Text = ""
-    touchArea.Parent = bg
-
+    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(1,0,0,45); frame.Position = UDim2.new(0,0,0,yPos); frame.BackgroundTransparency=1
+    local lbl = Instance.new("TextLabel", frame); lbl.Size = UDim2.new(0.9,0,0,20); lbl.Position = UDim2.new(0.05,0,0,0); lbl.BackgroundTransparency=1; lbl.Text = text..": "..tostring(Config[configKey]); lbl.TextColor3=Color3.fromRGB(200,200,200); lbl.Font=Enum.Font.GothamMedium; lbl.TextSize=10; lbl.TextXAlignment=Enum.TextXAlignment.Left
+    local bg = Instance.new("Frame", frame); bg.Size = UDim2.new(0.9,0,0,6); bg.Position = UDim2.new(0.05,0,0,25); bg.BackgroundColor3=Color3.fromRGB(35,35,40); Instance.new("UICorner", bg).CornerRadius=UDim.new(1,0)
+    local fill = Instance.new("Frame", bg); fill.Size = UDim2.new((Config[configKey]-min)/(max-min),0,1,0); fill.BackgroundColor3=Color3.fromRGB(0,255,150); Instance.new("UICorner", fill).CornerRadius=UDim.new(1,0)
+    local touchArea = Instance.new("TextButton", bg); touchArea.Size = UDim2.new(1,0,0,16); touchArea.Position = UDim2.new(0,0,0.5,-8); touchArea.BackgroundTransparency=1; touchArea.Text=""
     local dragging = false
-    touchArea.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if not getgenv().MCXC_ActiveSlider then 
-                getgenv().MCXC_ActiveSlider = configKey; dragging = true 
-            end
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if dragging and getgenv().MCXC_ActiveSlider == configKey then 
-                dragging = false; getgenv().MCXC_ActiveSlider = nil; SaveConfig() 
-            end
-        end
-    end)
+    touchArea.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then if not getgenv().MCXC_ActiveSlider then getgenv().MCXC_ActiveSlider=configKey; dragging=true end end end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then if dragging and getgenv().MCXC_ActiveSlider==configKey then dragging=false; getgenv().MCXC_ActiveSlider=nil; SaveConfig() end end end)
     RunService.RenderStepped:Connect(function()
-        if dragging and getgenv().MCXC_ActiveSlider == configKey then
-            local mousePos = UserInputService:GetMouseLocation().X
-            local relPos = mousePos - bg.AbsolutePosition.X
-            local pct = math.clamp(relPos / bg.AbsoluteSize.X, 0, 1)
-            local val = min + (max - min) * pct
-            if isInt then val = math.floor(val) else val = math.floor(val * 100) / 100 end
-            fill.Size = UDim2.new(pct, 0, 1, 0)
-            lbl.Text = text .. ": " .. tostring(val)
-            Config[configKey] = val
-            
-            if btnRef then
-                btnRef.Size = UDim2.new(0, val, 0, val)
-                btnRef.TextSize = math.clamp(val * 0.4, 15, 45)
-            end
-            if configKey == "MapSize" then MapFrame.Size = UDim2.new(0, val, 0, val) end
-            if configKey == "TouchZoneSize" then TouchZone.Size = UDim2.new(0, val, 0, val) end
+        if dragging and getgenv().MCXC_ActiveSlider==configKey then
+            local pct = math.clamp((UserInputService:GetMouseLocation().X - bg.AbsolutePosition.X)/bg.AbsoluteSize.X, 0, 1)
+            local val = min + (max-min)*pct; if isInt then val=math.floor(val) else val=math.floor(val*100)/100 end
+            fill.Size = UDim2.new(pct,0,1,0); lbl.Text = text..": "..tostring(val); Config[configKey]=val
+            if btnRef then btnRef.Size=UDim2.new(0,val,0,val); btnRef.TextSize=math.clamp(val*0.4,15,45) end
+            if configKey=="MapSize" then MapFrame.Size=UDim2.new(0,val,0,val) end
+            if configKey=="TouchZoneSize" then TouchZone.Size=UDim2.new(0,val,0,val) end
         end
     end)
 end
 
-local function CleanVisuals()
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v.Name:sub(1,4) == "ESP_" or v.Name:sub(1,11) == "TracerLine_" then v:Destroy() end
-    end
-end
+local function CleanVisuals() for _,v in ipairs(workspace:GetDescendants()) do if v.Name:sub(1,4)=="ESP_" or v.Name:sub(1,11)=="TracerLine_" then v:Destroy() end end end
 
 local function CreateToggle(parent, x, y, text, configKey, cb)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.42, 0, 0, 30)
-    btn.Position = UDim2.new(x, 0, 0, y)
-    btn.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(20, 20, 25)
-    btn.Text = text
-    btn.TextColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 9
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-    local stroke = Instance.new("UIStroke", btn)
-    stroke.Color = Config[configKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(50, 50, 60)
-    btn.Parent = parent
-    
+    local btn = Instance.new("TextButton", parent); btn.Size = UDim2.new(0.42,0,0,30); btn.Position = UDim2.new(x,0,0,y); btn.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25); btn.Text = text; btn.TextColor3 = Config[configKey] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160); btn.Font=Enum.Font.GothamBold; btn.TextSize=9; Instance.new("UICorner", btn).CornerRadius=UDim.new(0,4)
+    local stroke = Instance.new("UIStroke", btn); stroke.Color = Config[configKey] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)
     btn.MouseButton1Click:Connect(function()
-        Config[configKey] = not Config[configKey]
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(20, 20, 25), TextColor3 = Config[configKey] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Config[configKey] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(50, 50, 60)}):Play()
-        SaveConfig()
+        Config[configKey] = not Config[configKey]; TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Config[configKey] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25), TextColor3 = Config[configKey] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160)}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Config[configKey] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)}):Play(); SaveConfig()
         if cb then cb(Config[configKey]) end
     end)
 end
 
-CreateToggle(TabCombat, 0.05, 125, "ANTI-STUN", "AntiStun")
-CreateToggle(TabCombat, 0.53, 125, "TETHER FAKE LAG", "FakeLag")
+CreateTextInput(TabCombat, 5, "Sequence C:", "ComboC"); CreateTextInput(TabCombat, 65, "Sequence C2:", "ComboC2")
+CreateToggle(TabCombat, 0.05, 125, "ANTI-STUN", "AntiStun"); CreateToggle(TabCombat, 0.53, 125, "TETHER FAKE LAG", "FakeLag")
 CreateSlider(TabCombat, 165, "Fake Lag Freq", 2, 20, "FakeLagTick", true, nil)
-CreateToggle(TabCombat, 0.05, 215, "TOUCH-CAST ZONE", "TouchCast", function(v) TouchZone.Visible = v and not getgenv().MacroHidden end)
+CreateToggle(TabCombat, 0.05, 215, "TOUCH-CAST ZONE", "TouchCast", function(v) TouchZone.Visible=v and not getgenv().MacroHidden end)
 CreateSlider(TabCombat, 255, "Touch-Cast Size", 100, 400, "TouchZoneSize", true, nil)
-CreateToggle(TabCombat, 0.05, 305, "SHOW AIM SNAP", "ShowAim", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnAim.Visible = v end end)
+CreateToggle(TabCombat, 0.05, 305, "SHOW AIM SNAP", "ShowAim", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnAim.Visible=v end end)
 CreateToggle(TabCombat, 0.53, 305, "AUTO HIDE C", "AutoHideC")
 CreateSlider(TabCombat, 345, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil)
-CreateToggle(TabCombat, 0.05, 395, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
-CreateToggle(TabCombat, 0.53, 395, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
-CreateToggle(TabCombat, 0.05, 435, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then ExecBtnX.Visible = v end end)
+CreateToggle(TabCombat, 0.05, 395, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC.Visible=v end end)
+CreateToggle(TabCombat, 0.53, 395, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC2.Visible=v end end)
+CreateToggle(TabCombat, 0.05, 435, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnX.Visible=v end end)
 
-CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true, nil)
-CreateSlider(TabVisual, 55, "Tracer R", 0, 255, "TracerR", true, nil)
-CreateSlider(TabVisual, 105, "Tracer G", 0, 255, "TracerG", true, nil)
-CreateSlider(TabVisual, 155, "Tracer B", 0, 255, "TracerB", true, nil)
-CreateToggle(TabVisual, 0.05, 205, "HITBOX", "Hitbox")
-CreateToggle(TabVisual, 0.53, 205, "VIEW TRACER", "ViewTracer", function(v) if not v then CleanVisuals() end end)
-CreateToggle(TabVisual, 0.05, 245, "ESP RADAR", "ESP", function(v) if not v then CleanVisuals() end end)
-CreateToggle(TabVisual, 0.53, 245, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible = v and not getgenv().MacroHidden end)
+CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true, nil); CreateSlider(TabVisual, 55, "Tracer R", 0, 255, "TracerR", true, nil); CreateSlider(TabVisual, 105, "Tracer G", 0, 255, "TracerG", true, nil); CreateSlider(TabVisual, 155, "Tracer B", 0, 255, "TracerB", true, nil)
+CreateToggle(TabVisual, 0.05, 205, "HITBOX", "Hitbox"); CreateToggle(TabVisual, 0.53, 205, "VIEW TRACER", "ViewTracer", function(v) if not v then CleanVisuals() end end)
+CreateToggle(TabVisual, 0.05, 245, "ESP RADAR", "ESP", function(v) if not v then CleanVisuals() end end); CreateToggle(TabVisual, 0.53, 245, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v and not getgenv().MacroHidden end)
 CreateSlider(TabVisual, 285, "Minimap Range", 500, 5000, "MapRange", true, nil)
 
-CreateSlider(TabSet, 5, "Size C", 40, 120, "BtnSizeC", true, ExecBtnC)
-CreateSlider(TabSet, 55, "Size C2", 40, 120, "BtnSizeC2", true, ExecBtnC2)
-CreateSlider(TabSet, 105, "Size X", 30, 100, "BtnSizeX", true, ExecBtnX)
-CreateSlider(TabSet, 155, "Size AIM", 30, 100, "BtnSizeAim", true, getgenv().ExecBtnAim)
-
+CreateSlider(TabSet, 5, "Size C", 40, 120, "BtnSizeC", true, nil); CreateSlider(TabSet, 55, "Size C2", 40, 120, "BtnSizeC2", true, nil)
+CreateSlider(TabSet, 105, "Size X", 30, 100, "BtnSizeX", true, nil); CreateSlider(TabSet, 155, "Size AIM", 30, 100, "BtnSizeAim", true, nil)
 CreateToggle(TabSet, 0.05, 205, "SETUP UI (MOVE)", "SetupMode", function(v)
-    getgenv().SetupMode = v
-    ExecBtnC.Draggable = v; ExecBtnC2.Draggable = v; ExecBtnX.Draggable = v; getgenv().ExecBtnAim.Draggable = v
-    Menu.Draggable = v; MapFrame.Draggable = v; TouchZone.Draggable = v
+    getgenv().SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; TouchZone.Draggable=v
+    if getgenv().ExecBtnC then getgenv().ExecBtnC.Draggable=v end; if getgenv().ExecBtnC2 then getgenv().ExecBtnC2.Draggable=v end
+    if getgenv().ExecBtnX then getgenv().ExecBtnX.Draggable=v end; if getgenv().ExecBtnAim then getgenv().ExecBtnAim.Draggable=v end
 end)
 CreateToggle(TabSet, 0.53, 205, "UNLOCK MAX FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
-CreateToggle(TabSet, 0.05, 245, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible = v end)
-
-local FixBtn = Instance.new("TextButton")
-FixBtn.Size = UDim2.new(0.42, 0, 0, 30)
-FixBtn.Position = UDim2.new(0.53, 0, 0, 245)
-FixBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-FixBtn.Text = "FIX LAG (MAX FPS)"
-FixBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-FixBtn.Font = Enum.Font.GothamBold
-FixBtn.TextSize = 9
-Instance.new("UICorner", FixBtn).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", FixBtn).Color = Color3.fromRGB(50, 50, 60)
-FixBtn.Parent = TabSet
-
-local HideBtn = Instance.new("TextButton")
-HideBtn.Size = UDim2.new(0.9, 0, 0, 35)
-HideBtn.Position = UDim2.new(0.05, 0, 0, 285)
-HideBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-HideBtn.Text = "HIDE ALL UI"
-HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HideBtn.Font = Enum.Font.GothamBold
-HideBtn.TextSize = 11
-Instance.new("UICorner", HideBtn).CornerRadius = UDim.new(0, 6)
-HideBtn.Parent = TabSet
-
-local InstTxt = Instance.new("TextLabel")
-InstTxt.Size = UDim2.new(1, -10, 1, -10)
-InstTxt.Position = UDim2.new(0, 5, 0, 5)
-InstTxt.BackgroundTransparency = 1
+CreateToggle(TabSet, 0.05, 245, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible=v end)
+local FixBtn = Instance.new("TextButton", TabSet); FixBtn.Size = UDim2.new(0.42,0,0,30); FixBtn.Position = UDim2.new(0.53,0,0,245); FixBtn.BackgroundColor3 = Color3.fromRGB(20,20,25); FixBtn.Text = "FIX LAG"; FixBtn.TextColor3 = Color3.fromRGB(200,200,200); FixBtn.Font=Enum.Font.GothamBold; FixBtn.TextSize=9; Instance.new("UICorner", FixBtn).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", FixBtn).Color=Color3.fromRGB(50,50,60)
+local HideBtn = Instance.new("TextButton", TabSet); HideBtn.Size = UDim2.new(0.9,0,0,35); HideBtn.Position = UDim2.new(0.05,0,0,285); HideBtn.BackgroundColor3 = Color3.fromRGB(200,40,40); HideBtn.Text = "HIDE ALL UI"; HideBtn.TextColor3 = Color3.fromRGB(255,255,255); HideBtn.Font=Enum.Font.GothamBold; HideBtn.TextSize=11; Instance.new("UICorner", HideBtn).CornerRadius=UDim.new(0,6)
+local InstTxt = Instance.new("TextLabel", TabGuide); InstTxt.Size = UDim2.new(1,-10,1,-10); InstTxt.Position = UDim2.new(0,5,0,5); InstTxt.BackgroundTransparency=1; InstTxt.TextColor3=Color3.fromRGB(200,200,200); InstTxt.TextWrapped=true; InstTxt.Font=Enum.Font.GothamMedium; InstTxt.TextSize=10; InstTxt.TextXAlignment=Enum.TextXAlignment.Left; InstTxt.TextYAlignment=Enum.TextYAlignment.Top
 InstTxt.Text = "HOW TO\n\n1. NÚT C & SETUP COMBO\n- Nhập chuỗi chiêu vào ô (VD: 3XZ1C). Số (1,2,3,4) để rút vũ khí, Chữ (Z,X,C,V,F) để tung chiêu. Hệ thống cực kỳ SETUPui: Tinh Chỉnh vị trí nút C,C2,X,Minimap .\n\n2. NÚT X (HỦY ComBo)\n- Khi đang xả combo mà địch né được, bấm X để ngắt luồng combo ngay lập tức.\n\n3. TETHER FAKE LAG\n- Bật Fake Lag: sẽ tạo ảo ảnh giật lag đánh lừa server KHI BẠN DI CHUYỂN. Địch không thể bắt combo .\n- Thanh trượt 'Fake Lag Freq': Chỉnh tần số giật (khuyên dùng mức 3-6). Số càng nhỏ giật càng nhanh.\n- CAC.\n\n4. FIX LAG (MAX FPS)\n- Bấm nút FIX LAG để ép đồ họa môi trường xuống đáy, xóa bóng râm. Tuy nhiên VẪN GIỮ LẠI hiệu ứng kỹ năng để PvP cực mượt.\n\n5. ẨN VÀ GỌI LẠI MENU\n- Bấm HIDE ALL UI để dọn sạch màn hình.\n- ĐỂ BẬT LẠI: Mở khung Chat của Roblox, gõ đúng chữ 'MCXC' rồi gửi, hệ thống sẽ hiện lên trở lại\n\n6. AIM & TOUCH-CAST (NO SHIFT-LOCK)\n- NÚT AIM: Tự động xoay Camera và nhân vật khóa chặt kẻ địch gần nhất.\n- TOUCH-CAST: Vòng tròn ảo trên màn hình. Bấm vào điểm bất kỳ trong vòng tròn, nhân vật sẽ quay mặt về hướng đó và TỰ ĐỘNG XẢ COMBO C. Giúp nhắm chiêu không cần Shift Lock!"
-InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
-InstTxt.TextWrapped = true
-InstTxt.Font = Enum.Font.GothamMedium
-InstTxt.TextSize = 10
-InstTxt.TextXAlignment = Enum.TextXAlignment.Left
-InstTxt.TextYAlignment = Enum.TextYAlignment.Top
-InstTxt.Parent = TabGuide
 
 local function CreateActionBtnEx(name, xPos, yPos, color, showKey, sizeKey)
-    local btn = Instance.new("TextButton")
-    local sz = Config[sizeKey]
-    btn.Size = UDim2.new(0, sz, 0, sz)
-    btn.Position = UDim2.new(xPos, 0, yPos, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-    btn.BackgroundTransparency = 0.2
-    btn.Text = name
-    btn.TextColor3 = color
-    btn.Font = Enum.Font.GothamBlack
-    btn.TextSize = math.clamp(sz * 0.4, 15, 45)
-    btn.Visible = Config[showKey] and not getgenv().MacroHidden
-    btn.Active = true
-    btn.Selectable = false
-    btn.Draggable = false 
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-    local stroke = Instance.new("UIStroke", btn)
-    stroke.Color = color
-    stroke.Thickness = 2
-    btn.Parent = UI
-    return btn, stroke
+    local btn = Instance.new("TextButton", UI); btn.Size = UDim2.new(0,Config[sizeKey],0,Config[sizeKey]); btn.Position = UDim2.new(xPos,0,yPos,0); btn.BackgroundColor3 = Color3.fromRGB(18,18,22); btn.BackgroundTransparency=0.2; btn.Text=name; btn.TextColor3=color; btn.Font=Enum.Font.GothamBlack; btn.TextSize=math.clamp(Config[sizeKey]*0.4,15,45); btn.Visible=Config[showKey] and not getgenv().MacroHidden; btn.Active=true; btn.Selectable=false; btn.Draggable=false; Instance.new("UICorner", btn).CornerRadius=UDim.new(1,0); local stk=Instance.new("UIStroke", btn); stk.Color=color; stk.Thickness=2
+    return btn, stk
 end
+getgenv().ExecBtnC, getgenv().StrokeC = CreateActionBtnEx("C", 0.8, 0.4, Color3.fromRGB(255,60,60), "ShowC", "BtnSizeC")
+getgenv().ExecBtnC2, getgenv().StrokeC2 = CreateActionBtnEx("C2", 0.8, 0.55, Color3.fromRGB(60,180,255), "ShowC2", "BtnSizeC2")
+getgenv().ExecBtnX, getgenv().StrokeX = CreateActionBtnEx("X", 0.8, 0.7, Color3.fromRGB(255,180,30), "ShowX", "BtnSizeX")
+getgenv().ExecBtnAim, getgenv().StrokeAim = CreateActionBtnEx("AIM", 0.8, 0.25, Color3.fromRGB(255,50,255), "ShowAim", "BtnSizeAim")
 
-ExecBtnC, StrokeC = CreateActionBtnEx("C", 0.8, 0.4, Color3.fromRGB(255, 60, 60), "ShowC", "BtnSizeC")
-ExecBtnC2, StrokeC2 = CreateActionBtnEx("C2", 0.8, 0.55, Color3.fromRGB(60, 180, 255), "ShowC2", "BtnSizeC2")
-ExecBtnX, StrokeX = CreateActionBtnEx("X", 0.8, 0.7, Color3.fromRGB(255, 180, 30), "ShowX", "BtnSizeX")
-getgenv().ExecBtnAim = CreateActionBtnEx("AIM", 0.8, 0.25, Color3.fromRGB(255, 50, 255), "ShowAim", "BtnSizeAim")
-
-HideBtn.MouseButton1Click:Connect(function() getgenv().MacroHidden = true; UI.Enabled = false end)
+-- Các chức năng Menu
+HideBtn.MouseButton1Click:Connect(function() getgenv().MacroHidden=true; UI.Enabled=false end)
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
-
-FPSText.Visible = Config.ShowFPS
-local sec = tick()
-local frames = 0
-local lagTick = 0
-local ghostCF = nil
-
-RunService.RenderStepped:Connect(function()
-    frames = frames + 1
-    if tick() - sec >= 1 then FPSText.Text = "FPS: " .. frames; frames = 0; sec = tick() end
+FixBtn.MouseButton1Click:Connect(function()
+    pcall(function() settings().Rendering.QualityLevel=1; for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then v.Material=Enum.Material.SmoothPlastic; v.CastShadow=false; v.Reflectance=0 elseif (v:IsA("Decal") or v:IsA("Texture")) and not v.Parent:FindFirstChild("Humanoid") then v.Transparency=1 end end; Lighting.GlobalShadows=false; Lighting.FogEnd=9e9; for _,v in ipairs(Lighting:GetChildren()) do if v:IsA("PostEffect") then v.Enabled=false end end end)
+    FixBtn.Text="LAG FIXED!"; FixBtn.TextColor3=Color3.fromRGB(50,255,50)
 end)
 
-LP.Chatted:Connect(function(msg)
-    if string.upper(msg) == "MCXC" then getgenv().MacroHidden = false; UI.Enabled = true end
-end)
+local sec, frames, lagTick, ghostCF = tick(), 0, 0, nil
+RunService.RenderStepped:Connect(function() frames=frames+1; if tick()-sec>=1 then FPSText.Text="FPS: "..frames; frames=0; sec=tick() end end)
+LP.Chatted:Connect(function(msg) if string.upper(msg)=="MCXC" then getgenv().MacroHidden=false; UI.Enabled=true end end)
 
 local function GetToolType(tool)
     if not tool then return "0" end
-    local n, v = string.lower(tool.Name), ""
-    local tt = tool:FindFirstChild("ToolTip")
-    if tt then v = tostring(tt.Value) end
-    local vl = string.lower(v)
-    if string.find(vl, "melee") or string.find(v, "Cận") or string.find(v, "võ") or string.find(n, "human") or string.find(n, "art") or string.find(n, "claw") or string.find(n, "step") or (string.find(n, "dragon") and string.find(n, "talon")) then return "1" end
-    if string.find(vl, "fruit") or string.find(v, "Trái") or string.find(v, "quỷ") or (string.find(n, "dragon") and not string.find(n, "talon") and not string.find(n, "trident")) or string.find(n, "kitsune") or string.find(n, "dough") or string.find(n, "leopard") or string.find(n, "buddha") or string.find(n, "portal") or string.find(n, "rumble") then return "2" end
-    if string.find(vl, "sword") or string.find(v, "Kiếm") or string.find(v, "đao") or string.find(n, "katana") or string.find(n, "blade") or string.find(n, "sword") or string.find(n, "tushita") or string.find(n, "yama") or string.find(n, "saber") or string.find(n, "anchor") or string.find(n, "dark") or string.find(n, "cdk") or string.find(n, "trident") then return "3" end
-    if string.find(vl, "gun") or string.find(v, "Súng") or string.find(v, "pháo") or string.find(n, "rifle") or string.find(n, "gun") or string.find(n, "soul") or string.find(n, "kabucha") or string.find(n, "serpent") or string.find(n, "guitar") then return "4" end
+    local n, v = string.lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt then v = tostring(tt.Value) end; local vl = string.lower(v)
+    if string.find(vl, "melee") or string.find(v, "cận") or string.find(n, "human") or string.find(n, "art") or string.find(n, "claw") or string.find(n, "step") or (string.find(n, "dragon") and string.find(n, "talon")) then return "1" end
+    if string.find(vl, "fruit") or string.find(v, "trái") or string.find(v, "quỷ") or (string.find(n, "dragon") and not string.find(n, "talon") and not string.find(n, "trident")) or string.find(n, "kitsune") or string.find(n, "dough") or string.find(n, "leopard") or string.find(n, "buddha") or string.find(n, "portal") then return "2" end
+    if string.find(vl, "sword") or string.find(v, "kiếm") or string.find(v, "đao") or string.find(n, "katana") or string.find(n, "blade") or string.find(n, "sword") or string.find(n, "tushita") or string.find(n, "yama") or string.find(n, "cdk") or string.find(n, "trident") then return "3" end
+    if string.find(vl, "gun") or string.find(v, "súng") or string.find(v, "pháo") or string.find(n, "rifle") or string.find(n, "kabucha") or string.find(n, "serpent") or string.find(n, "guitar") then return "4" end
     return "0"
 end
 
 local function IsSkillBusy(char)
     if not char then return false end
-    for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("BoolValue") and v.Value == true then
-            local n = string.lower(v.Name)
-            if string.find(n, "busy") or string.find(n, "usingskill") or string.find(n, "charging") or string.find(n, "holding") or string.find(n, "power") or string.find(n, "action") or string.find(n, "attack") or string.find(n, "cast") then return true end
-        end
-    end
+    for _, v in ipairs(char:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name), "busy") or string.find(string.lower(v.Name), "using") or string.find(string.lower(v.Name), "cast")) then return true end end
     return false
 end
 
-local function ClearEnemyStun(char)
-    if not char then return end
-    local stuns = {"stun", "cant", "nodash", "nojump"} 
-    for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("BoolValue") and v.Value == true then
-            local n = string.lower(v.Name)
-            for _, tag in ipairs(stuns) do if string.find(n, tag) then v.Value = false end end
-        end
-    end
-end
-
-local function SetBtnActiveState(btn, stroke, color, isActive)
-    if isActive then
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(255, 255, 255), Thickness = 3}):Play()
-    else
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = color, Thickness = 2}):Play()
-    end
-end
-
 local function ExecuteForceCombo(comboStr, btnRef, stroke, baseColor)
-    SetBtnActiveState(btnRef, stroke, baseColor, true)
-    if Config.AutoHideC and btnRef.Visible then
-        btnRef.Visible = false
-        task.delay(Config.HideTimer, function()
-            if not getgenv().MacroHidden and ((btnRef == ExecBtnC and Config.ShowC) or (btnRef == ExecBtnC2 and Config.ShowC2)) then btnRef.Visible = true end
-        end)
-    end
+    TweenService:Create(btnRef, TweenInfo.new(0.2), {BackgroundTransparency=0}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,255,255), Thickness=3}):Play()
+    if Config.AutoHideC and btnRef.Visible then btnRef.Visible=false; task.delay(Config.HideTimer, function() if not getgenv().MacroHidden and ((btnRef==getgenv().ExecBtnC and Config.ShowC) or (btnRef==getgenv().ExecBtnC2 and Config.ShowC2)) then btnRef.Visible=true end end) end
     task.spawn(function()
-        task.wait(0.01)
-        local s = string.upper(comboStr)
-        local firstChar = string.sub(s, 1, 1)
-        if firstChar == "1" or firstChar == "2" or firstChar == "3" or firstChar == "4" then
-            local curTool = LP.Character:FindFirstChildOfClass("Tool")
-            if curTool and GetToolType(curTool) == firstChar then s = string.sub(s, 2) end
-        end
-        for i = 1, #s do
+        task.wait(0.01); local s = string.upper(comboStr); local firstChar = string.sub(s,1,1)
+        local cTool = LP.Character:FindFirstChildOfClass("Tool")
+        if (firstChar=="1" or firstChar=="2" or firstChar=="3" or firstChar=="4") and cTool and GetToolType(cTool)==firstChar then s=string.sub(s,2) end
+        for i=1, #s do
             if getgenv().CancelCombo then break end
-            local char = string.sub(s, i, i)
-            if char == "1" or char == "2" or char == "3" or char == "4" then
-                local curTool = LP.Character:FindFirstChildOfClass("Tool")
-                if not curTool or GetToolType(curTool) ~= char then
-                    local kc = Enum.KeyCode.One
-                    if char == "2" then kc = Enum.KeyCode.Two elseif char == "3" then kc = Enum.KeyCode.Three elseif char == "4" then kc = Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game)
-                    task.wait(0.02)
-                    VIM:SendKeyEvent(false, kc, false, game)
-                    local w = tick()
-                    while tick() - w < 0.3 do
-                        if getgenv().CancelCombo then break end
-                        local t = LP.Character:FindFirstChildOfClass("Tool")
-                        if t and GetToolType(t) == char then break end
-                        RunService.Heartbeat:Wait()
-                    end
-                    task.wait(0.05)
+            local char = string.sub(s,i,i)
+            if char=="1" or char=="2" or char=="3" or char=="4" then
+                local tTool = LP.Character:FindFirstChildOfClass("Tool")
+                if not tTool or GetToolType(tTool)~=char then
+                    local kc = Enum.KeyCode.One; if char=="2" then kc=Enum.KeyCode.Two elseif char=="3" then kc=Enum.KeyCode.Three elseif char=="4" then kc=Enum.KeyCode.Four end
+                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game)
+                    local w=tick(); while tick()-w<0.3 do if getgenv().CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==char then break end; RunService.Heartbeat:Wait() end; task.wait(0.05)
                 end
-            elseif char == "Z" or char == "X" or char == "C" or char == "V" or char == "F" then
-                local kc = Enum.KeyCode[char]
-                VIM:SendKeyEvent(true, kc, false, game)
-                task.wait(0.05)
-                VIM:SendKeyEvent(false, kc, false, game)
-                local waitReg = tick()
-                local triggered = false
-                while tick() - waitReg < 0.4 do
-                    if getgenv().CancelCombo then break end
-                    if IsSkillBusy(LP.Character) then triggered = true; break end
-                    RunService.Heartbeat:Wait()
-                end
-                if triggered then
-                    local waitAnim = tick()
-                    while IsSkillBusy(LP.Character) and tick() - waitAnim < 3.0 do
-                        if getgenv().CancelCombo then break end
-                        RunService.Heartbeat:Wait()
-                    end
-                    task.wait(tonumber(Config.ActionDelay) or 0.1)
-                else
-                    task.wait(tonumber(Config.ComboDelay) or 0.05)
-                end
+            elseif char=="Z" or char=="X" or char=="C" or char=="V" or char=="F" then
+                local kc = Enum.KeyCode[char]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game)
+                local waitReg=tick(); local trg=false; while tick()-waitReg<0.4 do if getgenv().CancelCombo then break end; if IsSkillBusy(LP.Character) then trg=true; break end; RunService.Heartbeat:Wait() end
+                if trg then local wAnim=tick(); while IsSkillBusy(LP.Character) and tick()-wAnim<3.0 do if getgenv().CancelCombo then break end; RunService.Heartbeat:Wait() end; task.wait(tonumber(Config.ActionDelay) or 0.1) else task.wait(tonumber(Config.ComboDelay) or 0.05) end
             end
         end
-        SetBtnActiveState(btnRef, stroke, baseColor, false)
-        if btnRef == ExecBtnC2 then getgenv().lockC2 = false else getgenv().lockC = false end
-        getgenv().CancelCombo = false
+        TweenService:Create(btnRef, TweenInfo.new(0.2), {BackgroundTransparency=0.2}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color=baseColor, Thickness=2}):Play()
+        if btnRef==getgenv().ExecBtnC2 then getgenv().lockC2=false else getgenv().lockC=false end; getgenv().CancelCombo=false
     end)
 end
 
-getgenv().lockC = false
-getgenv().lockC2 = false
+getgenv().ExecBtnC.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC then getgenv().lockC=true; ExecuteForceCombo(Config.ComboC, getgenv().ExecBtnC, getgenv().StrokeC, Color3.fromRGB(255,60,60)) end end)
+getgenv().ExecBtnC2.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC2 then getgenv().lockC2=true; ExecuteForceCombo(Config.ComboC2, getgenv().ExecBtnC2, getgenv().StrokeC2, Color3.fromRGB(60,180,255)) end end)
+getgenv().ExecBtnX.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then getgenv().CancelCombo=true; getgenv().lockC=false; getgenv().lockC2=false; TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.2), {BackgroundTransparency=0}):Play(); TweenService:Create(getgenv().StrokeX, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,255,255), Thickness=3}):Play(); task.delay(0.2, function() TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.2), {BackgroundTransparency=0.2}):Play(); TweenService:Create(getgenv().StrokeX, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,180,30), Thickness=2}):Play() end) end end)
 
-ExecBtnC.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if getgenv().SetupMode or getgenv().lockC then return end
-        getgenv().lockC = true; ExecuteForceCombo(Config.ComboC, ExecBtnC, StrokeC, Color3.fromRGB(255, 50, 50))
+getgenv().ExecBtnAim.InputBegan:Connect(function(inp)
+    if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then
+        local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myRoot then return end
+        local near, mDist = nil, math.huge
+        for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then local d=(p.Character.HumanoidRootPart.Position-myRoot.Position).Magnitude; if d<mDist then mDist=d; near=p end end end
+        if near then getgenv().AimTarget=near; getgenv().AimFrames=15 end
     end
 end)
 
-ExecBtnC2.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if getgenv().SetupMode or getgenv().lockC2 then return end
-        getgenv().lockC2 = true; ExecuteForceCombo(Config.ComboC2, ExecBtnC2, StrokeC2, Color3.fromRGB(50, 180, 255))
+TouchZone.InputBegan:Connect(function(inp)
+    if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then
+        local cam = workspace.CurrentCamera; local ray = cam:ScreenPointToRay(inp.Position.X, inp.Position.Y); local hPos = ray.Origin + ray.Direction*1000; local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if myRoot then myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(hPos.X, myRoot.Position.Y, hPos.Z)); if not getgenv().lockC then getgenv().lockC=true; ExecuteForceCombo(Config.ComboC, getgenv().ExecBtnC, getgenv().StrokeC, Color3.fromRGB(255,60,60)) end end
     end
 end)
-
-ExecBtnX.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if getgenv().SetupMode then return end
-        getgenv().CancelCombo = true; getgenv().lockC = false; getgenv().lockC2 = false
-        SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 180, 30), true)
-        task.delay(0.2, function() SetBtnActiveState(ExecBtnX, StrokeX, Color3.fromRGB(255, 180, 30), false) end)
-    end
-end)
-
-getgenv().ExecBtnAim.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if getgenv().SetupMode then return end
-        local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        if not myRoot then return end
-        local nearest, minDist = nil, math.huge
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-                local dist = (plr.Character.HumanoidRootPart.Position - myRoot.Position).Magnitude
-                if dist < minDist then minDist = dist; nearest = plr end
-            end
-        end
-        if nearest then
-            getgenv().AimTarget = nearest
-            getgenv().AimFrames = 15 -- Ép khóa camera trong 15 frame liên tiếp để chống khựng
-        end
-    end
-end)
-
-TouchZone.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if getgenv().SetupMode then return end
-        local cam = workspace.CurrentCamera
-        local ray = cam:ScreenPointToRay(input.Position.X, input.Position.Y)
-        local hitPos = ray.Origin + ray.Direction * 1000
-        local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        if myRoot then
-            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(hitPos.X, myRoot.Position.Y, hitPos.Z))
-            if not getgenv().lockC then
-                getgenv().lockC = true
-                ExecuteForceCombo(Config.ComboC, ExecBtnC, StrokeC, Color3.fromRGB(255, 50, 50))
-            end
-        end
-    end
-end)
-
-local function SafeGetPlayerInfo(plr)
-    local lvl, hp, mhp = "?", 0, 0
-    pcall(function()
-        if plr:FindFirstChild("Data") and plr.Data:FindFirstChild("Level") then lvl = tostring(plr.Data.Level.Value) end
-        if plr.Character and plr.Character:FindFirstChild("Humanoid") then
-            hp = math.floor(plr.Character.Humanoid.Health)
-            mhp = math.floor(plr.Character.Humanoid.MaxHealth)
-        end
-    end)
-    return lvl, hp, mhp
-end
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
-        if getgenv().AimFrames and getgenv().AimFrames > 0 and getgenv().AimTarget and getgenv().AimTarget.Character and getgenv().AimTarget.Character:FindFirstChild("HumanoidRootPart") then
-            local cam = workspace.CurrentCamera
-            local ePos = getgenv().AimTarget.Character.HumanoidRootPart.Position
-            local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-            cam.CFrame = CFrame.lookAt(cam.CFrame.Position, ePos)
-            if myRoot then
-                myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(ePos.X, myRoot.Position.Y, ePos.Z))
-            end
-            getgenv().AimFrames = getgenv().AimFrames - 1
+        if getgenv().AimFrames>0 and getgenv().AimTarget and getgenv().AimTarget.Character and getgenv().AimTarget.Character:FindFirstChild("HumanoidRootPart") then
+            local cam=workspace.CurrentCamera; local eP=getgenv().AimTarget.Character.HumanoidRootPart.Position; local r=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            cam.CFrame = CFrame.lookAt(cam.CFrame.Position, eP); if r then r.CFrame = CFrame.lookAt(r.Position, Vector3.new(eP.X, r.Position.Y, eP.Z)) end
+            getgenv().AimFrames = getgenv().AimFrames-1
         end
 
         if LP.Character then
-            if Config.AntiStun then ClearEnemyStun(LP.Character) end
-            local isMoving = false
-            local hum = LP.Character:FindFirstChild("Humanoid")
-            if hum and hum.MoveDirection.Magnitude > 0 then isMoving = true end
-            local isComboing = getgenv().lockC or getgenv().lockC2
-            
-            if Config.FakeLag and isMoving and not isComboing and LP.Character:FindFirstChild("HumanoidRootPart") then
-                lagTick = lagTick + 1
-                if lagTick >= (tonumber(Config.FakeLagTick) or 6) then
-                    local hrp = LP.Character.HumanoidRootPart
-                    ghostCF = hrp.CFrame
-                    local randX = math.random(-150, 150)
-                    local randZ = math.random(-150, 150)
-                    hrp.CFrame = ghostCF * CFrame.new(randX, 0, randZ)
-                    lagTick = 0
-                end
-            else
-                lagTick = 0
-            end
-            
+            if Config.AntiStun then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
+            local isMv=false; local hm=LP.Character:FindFirstChild("Humanoid"); if hm and hm.MoveDirection.Magnitude>0 then isMv=true end
+            if Config.FakeLag and isMv and not (getgenv().lockC or getgenv().lockC2) and LP.Character:FindFirstChild("HumanoidRootPart") then
+                lagTick=lagTick+1; if lagTick>=(tonumber(Config.FakeLagTick) or 3) then local hr=LP.Character.HumanoidRootPart; ghostCF=hr.CFrame; hr.CFrame=ghostCF*CFrame.new(math.random(-150,150), 0, math.random(-150,150)); lagTick=0 end
+            else lagTick=0 end
+
             if Config.ShowMap and not getgenv().MacroHidden then
-                for _, v in ipairs(DotsContainer:GetChildren()) do v:Destroy() end
-                local cam = workspace.CurrentCamera
-                local myRoot = LP.Character:FindFirstChild("HumanoidRootPart")
+                for _,v in ipairs(DotsContainer:GetChildren()) do v:Destroy() end
+                local cam, myRoot = workspace.CurrentCamera, LP.Character:FindFirstChild("HumanoidRootPart")
                 if myRoot then
-                    local camLook = cam.CFrame.LookVector
-                    local camRight = cam.CFrame.RightVector
-                    local camFwd2D = Vector2.new(camLook.X, camLook.Z).Unit
-                    local camRight2D = Vector2.new(camRight.X, camRight.Z).Unit
-                    for _, plr in ipairs(Players:GetPlayers()) do
-                        if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-                            local eRoot = plr.Character.HumanoidRootPart
-                            local dist3D = (eRoot.Position - myRoot.Position)
-                            local dist = dist3D.Magnitude
-                            local maxRange = tonumber(Config.MapRange) or 700
-                            if dist <= maxRange then
-                                local offset2D = Vector2.new(dist3D.X, dist3D.Z)
-                                local x = offset2D:Dot(camRight2D)
-                                local y = offset2D:Dot(camFwd2D)
-                                local r = (tonumber(Config.MapSize) or 130) / 2
-                                local scale = r / maxRange
-                                local uiX = x * scale
-                                local uiY = -y * scale 
-                                local dot = Instance.new("Frame")
-                                dot.Name = "EnemyDot"; dot.Size = UDim2.new(0, 6, 0, 6); dot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                                dot.Position = UDim2.new(0.5, uiX - 3, 0.5, uiY - 3)
-                                Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-                                dot.ZIndex = 4; dot.Parent = DotsContainer
+                    local cF2 = Vector2.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Z).Unit; local cR2 = Vector2.new(cam.CFrame.RightVector.X, cam.CFrame.RightVector.Z).Unit
+                    for _,p in ipairs(Players:GetPlayers()) do
+                        if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then
+                            local d3 = p.Character.HumanoidRootPart.Position - myRoot.Position; local dst = d3.Magnitude; local maxR = tonumber(Config.MapRange) or 700
+                            if dst<=maxR then
+                                local of2 = Vector2.new(d3.X, d3.Z); local sc = ((tonumber(Config.MapSize) or 130)/2)/maxR; local uX = of2:Dot(cR2)*sc; local uY = -of2:Dot(cF2)*sc
+                                local dot = Instance.new("Frame", DotsContainer); dot.Size=UDim2.new(0,6,0,6); dot.BackgroundColor3=Color3.fromRGB(255,50,50); dot.Position=UDim2.new(0.5,uX-3,0.5,uY-3); Instance.new("UICorner",dot).CornerRadius=UDim.new(1,0); dot.ZIndex=4
                             end
                         end
                     end
                 end
             end
-            
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local root = plr.Character.HumanoidRootPart
-                    local dist = (root.Position - LP.Character.HumanoidRootPart.Position).Magnitude
-                    local maxDist = tonumber(Config.RenderDistance) or 1500
-                    if Config.Hitbox and not getgenv().MacroHidden then
-                        local hs = tonumber(Config.HitboxSize) or 15
-                        root.Size = Vector3.new(hs, hs, hs); root.Transparency = 0.8; root.CanCollide = false
-                    else
-                        if root.Size.X > 5 then root.Size = Vector3.new(2,2,1); root.Transparency = 1 end
-                    end
-                    local espId = "ESP_" .. plr.Name
-                    local espGui = root:FindFirstChild(espId)
-                    if Config.ESP and dist <= maxDist and not getgenv().MacroHidden then
-                        if not espGui then
-                            espGui = Instance.new("BillboardGui", root)
-                            espGui.Name = espId; espGui.Size = UDim2.new(0, 200, 0, 50); espGui.StudsOffset = Vector3.new(0, 3, 0); espGui.AlwaysOnTop = true
-                            local txt = Instance.new("TextLabel", espGui)
-                            txt.Name = "TextNode"; txt.Size = UDim2.new(1, 0, 1, 0); txt.BackgroundTransparency = 1; txt.Font = Enum.Font.GothamBold; txt.TextSize = 11; txt.TextStrokeTransparency = 0.5
-                        end
-                        local lvl, hp, mhp = SafeGetPlayerInfo(plr)
-                        local weap = plr.Character:FindFirstChildOfClass("Tool")
-                        weap = weap and weap.Name or "None"
-                        local txtNode = espGui:FindFirstChild("TextNode")
-                        if txtNode then
-                            txtNode.Text = string.format("[Lv.%s] %s\nHP: %d/%d | W: %s\nDist: %dm", lvl, plr.Name, hp, mhp, string.sub(weap, 1, 15), math.floor(dist))
-                            txtNode.TextColor3 = (mhp > 0 and hp / mhp < 0.4) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
-                        end
-                    else
-                        if espGui then espGui:Destroy() end
-                    end
-                    local lineId = "TracerLine_" .. plr.Name
-                    local line = root:FindFirstChild(lineId)
-                    if Config.ViewTracer and dist <= maxDist and not getgenv().MacroHidden then
-                        if not line then
-                            line = Instance.new("LineHandleAdornment", root)
-                            line.Name = lineId; line.Adornee = root; line.Thickn
+
+            for _,p in ipairs(Players:GetPlayers()) do
+                if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local rt = p.Character.HumanoidRootPart; local dst = (rt.Position - LP.Character.HumanoidRootPart.Position).Magnitude
+                    if Config.Hitbox and not getgenv().MacroHidden then local hs=tonumber(Config.HitboxSize) or 15; rt.Size=Vector3.new(hs,hs,hs); rt.Transparency=0.8; rt.CanCollide=false else if rt.Size.X>5 then rt.Size=Vector3.new(2,2,1); rt.Transparency=1 end end
+                    local espG = rt:FindFirstChild("ESP_"..p.Name)
+                    if Config.ESP and dst<=(tonumber(Config.RenderDistance) or 1500) and not getgenv().MacroHidden then
+                        if not espG then espG=Instance.new("BillboardGui", rt); espG.Name="ESP_"..p.Name; espG.Size=UDim2.new(0,200,0,50); espG.StudsOffset=Vector3.new(0,3,0); espG.AlwaysOnTop=true; local tx=Instance.new("TextLabel",espG); tx.Name="TextNode"; tx.Size=UDim2.new(1,0,1,0); tx.BackgroundTransparency=1; tx.Font=Enum.Font.GothamBold; tx.TextSize=11; tx.TextStrokeTransparency=0.5 end
+                        local hp, mhp = 0,0; pcall(function() hp=math.floor(p.Character.Humanoid.Health); mhp=math.floor(p.Character.Humanoid.MaxHealth) end); local w=p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"
+                        local tn=espG:FindFirstChild("TextNode"); if tn then tn.Text=string.format("%s\nHP: %d/%d | W: %s\nDist: %dm", p.Name, hp, mhp, string.sub(w,1,15), math.floor(dst)); tn.TextColor3=(mhp>0 and hp/mhp<0.4) and Color3.fromRGB(255,50,50) or Color3.fromRGB(255,255,255) end
+                    else if espG then espG:Destroy() end end
+                    local lin = rt:FindFirstChild("TracerLine_"..p.Name)
+                    if Config.ViewTracer and dst<=(tonumber(Config.RenderDistance) or 1500) and not getgenv().MacroHidden then
+                        if not lin then lin=Instance.new("LineHandleAdornment", rt); lin.Name="TracerLine_"..p.Name; lin.Adornee=rt; lin.Thickness=5; lin.Length=50; lin.ZIndex=5; lin.Transparency=0.2; lin.AlwaysOnTop=true end
+                        lin.Color3=Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
+                    else if lin then lin:Destroy() end end
+                end
+            end
+        end
+    end)
+end)
+RunService:BindToRenderStep("GhostDesyncFix", 150, function() if ghostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame=ghostCF; ghostCF=nil end end)
