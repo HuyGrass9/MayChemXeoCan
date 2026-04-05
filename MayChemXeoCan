@@ -9,20 +9,20 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V24.json"
+local ConfigName = "Macro_Titan_V25.json"
 local Config = {
     ComboC="3XZ1CZ2ZX", ComboC2="2C1XZ", ComboDelay=0.05, ActionDelay=0.1, HitboxSize=15,
     BtnSizeC=60, BtnSizeC2=60, BtnSizeX=45, BtnSizeAim=45, SetupMode=false, ShowC=false, ShowC2=false,
-    ShowX=false, ShowAim=false, FakeLag=false, FakeLagTick=2, ESP=false, ViewTracer=false,
+    ShowX=false, ShowAim=false, FakeLag=false, FakeLagTick=4, ESP=false, ViewTracer=false,
     RenderDistance=1500, AutoHideC=false, HideTimer=1.5, UnlockFPS=true, AntiStun=true, ShowFPS=true,
-    ShowMap=false, MapSize=100, MapRange=500, TouchCast=false, TouchZoneSize=250, LockTime=2.0
+    ShowMap=false, MapSize=100, MapRange=500, TouchCast=false, TouchZoneSize=250
 }
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end) end
 pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 9999 or 60) end end)
 
 getgenv().MacroHidden = false; getgenv().CancelCombo = false; getgenv().SetupMode = false
-getgenv().LockedTarget = nil; getgenv().LockEndTime = 0
+getgenv().IsLocked = false; getgenv().LockedTarget = nil
 
 local UIParent = nil
 pcall(function() UIParent = gethui() end)
@@ -66,9 +66,7 @@ local function CreateTab(name, yPos, isActive)
     local btn = Instance.new("TextButton", Sidebar); btn.Size = UDim2.new(1,0,0,40); btn.Position = UDim2.new(0,0,0,yPos); btn.BackgroundTransparency = isActive and 0.9 or 1; btn.Text = "   "..name; btn.TextColor3 = isActive and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140); btn.Font = Enum.Font.GothamBold; btn.TextSize=11; btn.TextXAlignment = Enum.TextXAlignment.Left
     local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,3,1,-16); ind.Position = UDim2.new(0,0,0,8); ind.BackgroundColor3 = Color3.fromRGB(0,255,150); ind.BorderSizePixel=0; ind.Visible=isActive
     local frm = Instance.new("ScrollingFrame", ContentArea); frm.Size = UDim2.new(1,-10,1,-10); frm.Position = UDim2.new(0,5,0,5); frm.BackgroundTransparency=1; frm.Visible=isActive; frm.ScrollBarThickness=2; frm.CanvasSize = UDim2.new(0,0,0,0); frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    
-    local layout = Instance.new("UIListLayout", frm)
-    layout.Padding = UDim.new(0, 8); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    local layout = Instance.new("UIListLayout", frm); layout.Padding = UDim.new(0, 8); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     local pad = Instance.new("UIPadding", frm); pad.PaddingTop = UDim.new(0, 5)
     
     TabBtns[name] = {Btn=btn, Ind=ind}; TabFrames[name] = frm
@@ -124,30 +122,40 @@ local function CreateToggle(parent, text, configKey, cb)
 end
 
 CreateTextInput(TabCombat, "Sequence C:", "ComboC"); CreateTextInput(TabCombat, "Sequence C2:", "ComboC2")
-CreateToggle(TabCombat, "ANTI-STUN", "AntiStun")
-local tglFL = CreateToggle(TabCombat, "TETHER FAKE LAG", "FakeLag"); local sldFL = CreateSlider(TabCombat, "Fake Lag Freq", 2, 20, "FakeLagTick", true, nil); sldFL.Visible = Config.FakeLag; tglFL.MouseButton1Click:Connect(function() sldFL.Visible = Config.FakeLag end)
-local tglTC = CreateToggle(TabCombat, "TOUCH-CAST ZONE", "TouchCast", function(v) TouchZone.Visible=v and not getgenv().MacroHidden end); local sldTC = CreateSlider(TabCombat, "Touch-Cast Size", 100, 400, "TouchZoneSize", true, nil); sldTC.Visible = Config.TouchCast; tglTC.MouseButton1Click:Connect(function() sldTC.Visible = Config.TouchCast end)
-local tglAH = CreateToggle(TabCombat, "AUTO HIDE C", "AutoHideC"); local sldAH = CreateSlider(TabCombat, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil); sldAH.Visible = Config.AutoHideC; tglAH.MouseButton1Click:Connect(function() sldAH.Visible = Config.AutoHideC end)
+CreateToggle(TabCombat, "MACRO", "AntiStun")
+local sldFL = CreateSlider(TabCombat, "Fake Lag Freq", 2, 20, "FakeLagTick", true, nil); sldFL.Visible = Config.FakeLag
+CreateToggle(TabCombat, "TETHER FAKE LAG", "FakeLag", function(v) sldFL.Visible = v end)
 
-local tglHB = CreateToggle(TabVisual, "HITBOX", "Hitbox"); local sldHB = CreateSlider(TabVisual, "Hitbox Size", 5, 30, "HitboxSize", true, nil); sldHB.Visible = Config.Hitbox; tglHB.MouseButton1Click:Connect(function() sldHB.Visible = Config.Hitbox end)
+local sldTC = CreateSlider(TabCombat, "Touch-Cast Size", 100, 400, "TouchZoneSize", true, nil); sldTC.Visible = Config.TouchCast
+CreateToggle(TabCombat, "TOUCH-CAST ZONE", "TouchCast", function(v) TouchZone.Visible=v and not getgenv().MacroHidden; sldTC.Visible=v end)
+
+local sldAH = CreateSlider(TabCombat, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil); sldAH.Visible = Config.AutoHideC
+CreateToggle(TabCombat, "AUTO HIDE C", "AutoHideC", function(v) sldAH.Visible = v end)
+
+local sldHB = CreateSlider(TabVisual, "Hitbox Size", 5, 30, "HitboxSize", true, nil); sldHB.Visible = Config.Hitbox
+CreateToggle(TabVisual, "HITBOX", "Hitbox", function(v) sldHB.Visible = v end)
 CreateToggle(TabVisual, "ESP RADAR", "ESP", function(v) if not v then CleanVisuals() end end)
 CreateToggle(TabVisual, "VIEW TRACER", "ViewTracer", function(v) if not v then CleanVisuals() end end)
-local tglMap = CreateToggle(TabVisual, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v and not getgenv().MacroHidden end); local sldMap1 = CreateSlider(TabVisual, "Minimap Range", 500, 5000, "MapRange", true, nil); local sldMap2 = CreateSlider(TabVisual, "Minimap Size", 80, 250, "MapSize", true, nil); sldMap1.Visible = Config.ShowMap; sldMap2.Visible = Config.ShowMap
-tglMap.MouseButton1Click:Connect(function() sldMap1.Visible = Config.ShowMap; sldMap2.Visible = Config.ShowMap end)
+local sldMap1 = CreateSlider(TabVisual, "Minimap Range", 500, 5000, "MapRange", true, nil); local sldMap2 = CreateSlider(TabVisual, "Minimap Size", 80, 250, "MapSize", true, nil); sldMap1.Visible = Config.ShowMap; sldMap2.Visible = Config.ShowMap
+CreateToggle(TabVisual, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v and not getgenv().MacroHidden; sldMap1.Visible=v; sldMap2.Visible=v end)
 CreateSlider(TabVisual, "Render Distance", 500, 5000, "RenderDistance", true, nil)
+
+local sldC = CreateSlider(TabSet, "Size C", 40, 120, "BtnSizeC", true, nil); sldC.Visible = Config.ShowC
+CreateToggle(TabSet, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC.Visible=v end; sldC.Visible = v end)
+local sldC2 = CreateSlider(TabSet, "Size C2", 40, 120, "BtnSizeC2", true, nil); sldC2.Visible = Config.ShowC2
+CreateToggle(TabSet, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC2.Visible=v end; sldC2.Visible = v end)
+local sldX = CreateSlider(TabSet, "Size X", 30, 100, "BtnSizeX", true, nil); sldX.Visible = Config.ShowX
+CreateToggle(TabSet, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnX.Visible=v end; sldX.Visible = v end)
+local sldAim = CreateSlider(TabSet, "Size LOCK", 30, 100, "BtnSizeAim", true, nil); sldAim.Visible = Config.ShowAim
+CreateToggle(TabSet, "SHOW LOCK", "ShowAim", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnAim.Visible=v end; sldAim.Visible = v end)
 
 CreateToggle(TabSet, "SETUP UI (MOVE)", "SetupMode", function(v) getgenv().SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; TouchZone.Draggable=v; if getgenv().ExecBtnC then getgenv().ExecBtnC.Draggable=v end; if getgenv().ExecBtnC2 then getgenv().ExecBtnC2.Draggable=v end; if getgenv().ExecBtnX then getgenv().ExecBtnX.Draggable=v end; if getgenv().ExecBtnAim then getgenv().ExecBtnAim.Draggable=v end end)
 CreateToggle(TabSet, "UNLOCK MAX FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
 CreateToggle(TabSet, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible=v end)
-local tglC = CreateToggle(TabSet, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC.Visible=v end end); local sldC = CreateSlider(TabSet, "Size C", 40, 120, "BtnSizeC", true, nil); sldC.Visible = Config.ShowC; tglC.MouseButton1Click:Connect(function() sldC.Visible = Config.ShowC end)
-local tglC2 = CreateToggle(TabSet, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC2.Visible=v end end); local sldC2 = CreateSlider(TabSet, "Size C2", 40, 120, "BtnSizeC2", true, nil); sldC2.Visible = Config.ShowC2; tglC2.MouseButton1Click:Connect(function() sldC2.Visible = Config.ShowC2 end)
-local tglX = CreateToggle(TabSet, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnX.Visible=v end end); local sldX = CreateSlider(TabSet, "Size X", 30, 100, "BtnSizeX", true, nil); sldX.Visible = Config.ShowX; tglX.MouseButton1Click:Connect(function() sldX.Visible = Config.ShowX end)
-local tglAim = CreateToggle(TabSet, "SHOW LOCK", "ShowAim", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnAim.Visible=v end end); local sldAim = CreateSlider(TabSet, "Size LOCK", 30, 100, "BtnSizeAim", true, nil); local sldLTime = CreateSlider(TabSet, "Lock Duration (Sec)", 0.5, 5.0, "LockTime", false, nil); sldAim.Visible = Config.ShowAim; sldLTime.Visible = Config.ShowAim; tglAim.MouseButton1Click:Connect(function() sldAim.Visible = Config.ShowAim; sldLTime.Visible = Config.ShowAim end)
-
 local FixBtn = Instance.new("TextButton", TabSet); FixBtn.Size = UDim2.new(0.95,0,0,30); FixBtn.BackgroundColor3 = Color3.fromRGB(20,20,25); FixBtn.Text = "FIX LAG (MAX FPS)"; FixBtn.TextColor3 = Color3.fromRGB(200,200,200); FixBtn.Font=Enum.Font.GothamBold; FixBtn.TextSize=10; Instance.new("UICorner", FixBtn).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", FixBtn).Color=Color3.fromRGB(50,50,60)
 local HideBtn = Instance.new("TextButton", TabSet); HideBtn.Size = UDim2.new(0.95,0,0,35); HideBtn.BackgroundColor3 = Color3.fromRGB(200,40,40); HideBtn.Text = "HIDE ALL UI"; HideBtn.TextColor3 = Color3.fromRGB(255,255,255); HideBtn.Font=Enum.Font.GothamBold; HideBtn.TextSize=11; Instance.new("UICorner", HideBtn).CornerRadius=UDim.new(0,4)
 local InstTxt = Instance.new("TextLabel", TabGuide); InstTxt.Size = UDim2.new(1,-10,1,-10); InstTxt.Position = UDim2.new(0,5,0,5); InstTxt.BackgroundTransparency=1; InstTxt.TextColor3=Color3.fromRGB(200,200,200); InstTxt.TextWrapped=true; InstTxt.Font=Enum.Font.GothamMedium; InstTxt.TextSize=10; InstTxt.TextXAlignment=Enum.TextXAlignment.Left; InstTxt.TextYAlignment=Enum.TextYAlignment.Top
-InstTxt.Text = "HOW TO\n\n1. NÚT C & SETUP COMBO\n- Nhập chuỗi chiêu vào ô (VD: 3XZ1C). Tự bỏ số rút đồ nếu tay đang cầm sẵn.\n- Bật các nút chức năng để thanh trượt hiện ra mượt mà bên dưới.\n\n2. NÚT X & LOCK\n- NÚT X: Hủy khẩn cấp luồng combo đang chạy.\n- NÚT LOCK: Khóa camera cực mượt vào kẻ địch gần nhất. Không chuyển mục tiêu trong thời gian Lock Time.\n\n3. TETHER FAKE LAG\n- Tạo bóng ma giật ngang khi di chuyển để né đòn. Tự động 'thả neo' đóng cọc tọa độ thật khi đứng lại xả chiêu để trúng 100%.\n\n4. TOUCH-CAST\n- Vòng tròn ảo trung tâm màn hình. Bấm vào điểm bất kỳ trong vòng tròn để quay mặt và tự động tung Combo C (Hỗ trợ cực tốt cho Mobile không dùng Shift Lock).\n\n5. ESP ĐỘC TÔN\n- Kẻ địch gần nhất sẽ được hệ thống bôi màu VÀNG chói để dễ nhận diện!"
+InstTxt.Text = "HOW TO\n\n1. NÚT C & SETUP COMBO\n- Nhập chuỗi chiêu vào ô (VD: 3XZ1C). Tự bỏ số rút đồ nếu tay đang cầm sẵn.\n- Nút C, C2, X ẩn mặc định, hãy vào Settings để bật.\n\n2. NÚT X & LOCK\n- NÚT X: Hủy khẩn cấp luồng combo đang chạy.\n- NÚT LOCK: Bấm 1 lần khóa cứng camera vào kẻ địch gần nhất. Bấm lần 2 để tắt khóa.\n\n3. TETHER FAKE LAG\n- Tạo bóng ma giật ngang khi di chuyển để né đòn. Tự động 'thả neo' đóng cọc tọa độ thật khi đứng lại xả chiêu để trúng 100%.\n\n4. TOUCH-CAST\n- Vòng tròn ảo trung tâm màn hình. Bấm vào điểm bất kỳ trong vòng tròn để quay mặt và tự động tung Combo C (Hỗ trợ cực tốt cho Mobile không dùng Shift Lock).\n\n5. ESP ĐỘC TÔN\n- Kẻ địch gần nhất sẽ được hệ thống bôi màu VÀNG chói để dễ nhận diện!"
 
 local function CreateActionBtnEx(name, xPos, yPos, color, showKey, sizeKey)
     local btn = Instance.new("TextButton", UI); btn.Size = UDim2.new(0,Config[sizeKey],0,Config[sizeKey]); btn.Position = UDim2.new(xPos,0,yPos,0); btn.BackgroundColor3 = Color3.fromRGB(12,12,12); btn.BackgroundTransparency=0.3; btn.Text=name; btn.TextColor3=color; btn.Font=Enum.Font.GothamBlack; btn.TextSize=math.clamp(Config[sizeKey]*0.4,12,35); btn.Visible=Config[showKey] and not getgenv().MacroHidden; btn.Active=true; btn.Selectable=false; btn.Draggable=false; Instance.new("UICorner", btn).CornerRadius=UDim.new(0.3,0); local stk=Instance.new("UIStroke", btn); stk.Color=color; stk.Thickness=1.5; stk.Transparency=0.2
@@ -197,29 +205,43 @@ getgenv().ExecBtnC.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.
 getgenv().ExecBtnC2.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC2 then getgenv().lockC2=true; ExCombo(Config.ComboC2, getgenv().ExecBtnC2, getgenv().StrokeC2, Color3.fromRGB(80,200,255)) end end)
 getgenv().ExecBtnX.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then getgenv().CancelCombo=true; getgenv().lockC=false; getgenv().lockC2=false; TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.1), {BackgroundTransparency=0.1}):Play(); task.delay(0.2, function() TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play() end) end end)
 
+-- LOCK TOGGLE TỐI THƯỢNG
 getgenv().ExecBtnAim.InputBegan:Connect(function(inp)
     if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then
-        local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myRoot then return end
-        if getgenv().LockedTarget and tick() < getgenv().LockEndTime then getgenv().LockedTarget = nil; getgenv().LockEndTime = 0; return end
-        local near, mD = nil, math.huge
-        for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then local d=(p.Character.HumanoidRootPart.Position-myRoot.Position).Magnitude; if d<mD then mD=d; near=p end end end
-        if near then getgenv().LockedTarget=near; getgenv().LockEndTime = tick() + (tonumber(Config.LockTime) or 2.0) end
+        getgenv().IsLocked = not getgenv().IsLocked
+        if getgenv().IsLocked then
+            local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if myRoot then
+                local near, mD = nil, math.huge
+                for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then local d=(p.Character.HumanoidRootPart.Position-myRoot.Position).Magnitude; if d<mD then mD=d; near=p end end end
+                if near then
+                    getgenv().LockedTarget = near
+                    TweenService:Create(getgenv().StrokeAim, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,255,255), Thickness=3, Transparency=0}):Play()
+                    TweenService:Create(getgenv().ExecBtnAim, TweenInfo.new(0.2), {BackgroundTransparency=0.1}):Play()
+                else getgenv().IsLocked = false end
+            else getgenv().IsLocked = false end
+        else
+            getgenv().LockedTarget = nil
+            pcall(function() TweenService:Create(getgenv().StrokeAim, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,80,255), Thickness=1.5, Transparency=0.2}):Play(); TweenService:Create(getgenv().ExecBtnAim, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play() end)
+        end
     end
 end)
 
 TouchZone.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then local cam = workspace.CurrentCamera; local r = cam:ScreenPointToRay(inp.Position.X, inp.Position.Y); local hP = r.Origin + r.Direction*1000; local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if myR then myR.CFrame = CFrame.lookAt(myR.Position, Vector3.new(hP.X, myR.Position.Y, hP.Z)); if not getgenv().lockC then getgenv().lockC=true; ExCombo(Config.ComboC, getgenv().ExecBtnC, getgenv().StrokeC, Color3.fromRGB(255,80,80)) end end end end)
 
-RunService.Heartbeat:Connect(function()
+RunService.RenderStepped:Connect(function()
     pcall(function()
-        if getgenv().LockedTarget and tick() < getgenv().LockEndTime then
-            local tC = getgenv().LockedTarget.Character
-            if tC and tC:FindFirstChild("HumanoidRootPart") and tC:FindFirstChild("Humanoid") and tC.Humanoid.Health>0 then
-                local cam, eP = workspace.CurrentCamera, tC.HumanoidRootPart.Position; local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(cam.CFrame.Position, eP), 0.2)
-                if r then r.CFrame = r.CFrame:Lerp(CFrame.lookAt(r.Position, Vector3.new(eP.X, r.Position.Y, eP.Z)), 0.3) end
-            else getgenv().LockedTarget = nil end
-        else getgenv().LockedTarget = nil end
+        if getgenv().IsLocked and getgenv().LockedTarget and getgenv().LockedTarget.Character and getgenv().LockedTarget.Character:FindFirstChild("HumanoidRootPart") and getgenv().LockedTarget.Character:FindFirstChild("Humanoid") and getgenv().LockedTarget.Character.Humanoid.Health>0 then
+            local cam, eP = workspace.CurrentCamera, getgenv().LockedTarget.Character.HumanoidRootPart.Position; local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            cam.CFrame = CFrame.lookAt(cam.CFrame.Position, eP)
+            if r then r.CFrame = CFrame.lookAt(r.Position, Vector3.new(eP.X, r.Position.Y, eP.Z)) end
+        else
+            if getgenv().IsLocked then
+                getgenv().IsLocked = false; getgenv().LockedTarget = nil
+                pcall(function() TweenService:Create(getgenv().StrokeAim, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,80,255), Thickness=1.5, Transparency=0.2}):Play(); TweenService:Create(getgenv().ExecBtnAim, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play() end)
+            end
+        end
 
         if LP.Character then
             if Config.AntiStun then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
