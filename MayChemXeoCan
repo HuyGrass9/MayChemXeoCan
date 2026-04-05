@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V11.json"
+local ConfigName = "Macro_Titan_V12.json"
 local Config = {
     ComboC = "3XZ1CZ2ZX", 
     ComboC2 = "2C1XZ",
@@ -23,7 +23,7 @@ local Config = {
     ShowC2 = false,
     ShowX = false,
     FakeLag = false,
-    FakeLagTick = 10,
+    FakeLagTick = 6,
     ESP = false,
     ViewTracer = false,
     TracerR = 0,
@@ -311,7 +311,7 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt, btnR
     lbl.Parent = frame
 
     local bg = Instance.new("Frame")
-    bg.Size = UDim2.new(0.9, 0, 0, 8)
+    bg.Size = UDim2.new(0.9, 0, 0, 6)
     bg.Position = UDim2.new(0.05, 0, 0, 25)
     bg.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
@@ -324,8 +324,8 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt, btnR
     fill.Parent = bg
 
     local touchArea = Instance.new("TextButton")
-    touchArea.Size = UDim2.new(1, 0, 3, 0) 
-    touchArea.Position = UDim2.new(0, 0, -1, 0)
+    touchArea.Size = UDim2.new(1, 0, 0, 24) 
+    touchArea.Position = UDim2.new(0, 0, 0.5, -12)
     touchArea.BackgroundTransparency = 1
     touchArea.Text = ""
     touchArea.Parent = bg
@@ -408,8 +408,8 @@ end
 
 CreateToggle(TabCombat, 0.05, 125, "ANTI-STUN", "AntiStun")
 CreateToggle(TabCombat, 0.53, 125, "AUTO HIDE C", "AutoHideC")
-CreateToggle(TabCombat, 0.05, 165, "FAKE LAG (GHOST)", "FakeLag")
-CreateSlider(TabCombat, 205, "Ghost Pulse Freq", 5, 40, "FakeLagTick", true, nil)
+CreateToggle(TabCombat, 0.05, 165, "GOD DESYNC (FAKE LAG)", "FakeLag")
+CreateSlider(TabCombat, 205, "Desync Tick Freq", 2, 20, "FakeLagTick", true, nil)
 CreateToggle(TabCombat, 0.05, 255, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
 CreateToggle(TabCombat, 0.53, 255, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
 CreateToggle(TabCombat, 0.05, 295, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then ExecBtnX.Visible = v end end)
@@ -466,7 +466,7 @@ local InstTxt = Instance.new("TextLabel")
 InstTxt.Size = UDim2.new(1, -10, 1, -10)
 InstTxt.Position = UDim2.new(0, 5, 0, 5)
 InstTxt.BackgroundTransparency = 1
-InstTxt.Text = "SỔ TAY CẤM THUẬT\n\n1. LÕI COMBO (C/C2): Bỏ qua thao tác rút đồ thừa nếu đang cầm sẵn vũ khí.\n2. NÚT X: Ngắt luồng combo tức thì.\n3. FAKE LAG (GHOST DESYNC): Lợi dụng khe hở đồng bộ Render. Màn hình của bạn HOÀN TOÀN MƯỢT MÀ, không bị khựng đơ. Nhưng server sẽ nhận tọa độ sai, khiến bạn chớp nháy loạn xạ trong mắt kẻ địch.\n4. ESP DỌN RÁC: Đã khắc phục lỗi tàng hình. ESP và Tracer bị hủy diệt 100% khi ấn tắt.\n5. MINIMAP: Bắt radar liên tục, hiện hướng nhìn Camera cực chuẩn xác để PvP."
+InstTxt.Text = "SỔ TAY CẤM THUẬT\n\n1. LÕI COMBO (C/C2): Bỏ qua thao tác rút đồ thừa nếu đang cầm sẵn.\n2. NÚT X: Ngắt luồng combo tức thì.\n3. GOD DESYNC (FAKE LAG): Bản nâng cấp tối thượng! Ném tọa độ thật của bạn ra xa hàng trăm mét rồi kéo về trong 1 khung hình. Màn hình bạn MƯỢT 100%, nhưng địch đánh 100% trượt!\n4. ESP DỌN RÁC: Khắc phục triệt để lỗi kẹt hình. Tắt là dọn dẹp sạch sẽ.\n5. MINIMAP: Bắt radar liên tục, hiện hướng nhìn Camera cực chuẩn xác để PvP."
 InstTxt.TextColor3 = Color3.fromRGB(200, 200, 200)
 InstTxt.TextWrapped = true
 InstTxt.Font = Enum.Font.GothamMedium
@@ -714,7 +714,7 @@ local function SafeGetPlayerInfo(plr)
     return lvl, hp, mhp
 end
 
--- CẤM THUẬT GHOST DESYNC: Gửi CFrame sai lên Server ở luồng Heartbeat
+-- GOD DESYNC ENGINE
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
@@ -722,10 +722,11 @@ RunService.Heartbeat:Connect(function()
             
             if Config.FakeLag and LP.Character:FindFirstChild("HumanoidRootPart") then
                 lagTick = lagTick + 1
-                if lagTick >= (tonumber(Config.FakeLagTick) or 10) then
+                if lagTick >= (tonumber(Config.FakeLagTick) or 6) then
                     local hrp = LP.Character.HumanoidRootPart
                     ghostCF = hrp.CFrame
-                    hrp.CFrame = ghostCF * CFrame.new(math.random(-25,25), math.random(10,30), math.random(-25,25))
+                    -- Quăng hit box đi siêu xa (150-400 mét) để né sạch skill AoE to
+                    hrp.CFrame = ghostCF * CFrame.new(math.random(-150, 150), math.random(100, 400), math.random(-150, 150))
                     lagTick = 0
                 end
             end
@@ -834,6 +835,7 @@ RunService.Heartbeat:Connect(function()
     end)
 end)
 
+-- Trả lại tọa độ chuẩn xác để Camera không giật trước khi vẽ hình (Render 150)
 RunService:BindToRenderStep("GhostDesyncFix", 150, function()
     if ghostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
         LP.Character.HumanoidRootPart.CFrame = ghostCF
