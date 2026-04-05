@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V16.json"
+local ConfigName = "Macro_Titan_V18.json"
 local Config = {
     ComboC = "3XZ1CZ2ZX", 
     ComboC2 = "2C1XZ",
@@ -60,6 +60,8 @@ pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 9999 or 60) en
 getgenv().MacroHidden = false
 getgenv().CancelCombo = false
 getgenv().SetupMode = false
+getgenv().AimFrames = 0
+getgenv().AimTarget = nil
 
 local UIParent = nil
 pcall(function() UIParent = gethui() end)
@@ -148,8 +150,9 @@ DotsContainer.Name = "Dots"; DotsContainer.Parent = MapFrame
 
 local TouchZone = Instance.new("Frame")
 TouchZone.Name = "TouchCastZone"
+TouchZone.AnchorPoint = Vector2.new(0.5, 0.5) 
 TouchZone.Size = UDim2.new(0, Config.TouchZoneSize, 0, Config.TouchZoneSize)
-TouchZone.Position = UDim2.new(0.6, 0, 0.3, 0)
+TouchZone.Position = UDim2.new(0.5, 0, 0.5, 0) 
 TouchZone.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
 TouchZone.BackgroundTransparency = 0.8
 TouchZone.Active = true
@@ -327,8 +330,8 @@ local function CreateSlider(parent, yPos, text, min, max, configKey, isInt, btnR
     fill.Parent = bg
 
     local touchArea = Instance.new("TextButton")
-    touchArea.Size = UDim2.new(1, 0, 0, 24) 
-    touchArea.Position = UDim2.new(0, 0, 0.5, -12)
+    touchArea.Size = UDim2.new(1, 0, 0, 16) 
+    touchArea.Position = UDim2.new(0, 0, 0.5, -8)
     touchArea.BackgroundTransparency = 1
     touchArea.Text = ""
     touchArea.Parent = bg
@@ -408,6 +411,7 @@ CreateToggle(TabCombat, 0.53, 305, "AUTO HIDE C", "AutoHideC")
 CreateSlider(TabCombat, 345, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil)
 CreateToggle(TabCombat, 0.05, 395, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then ExecBtnC.Visible = v end end)
 CreateToggle(TabCombat, 0.53, 395, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then ExecBtnC2.Visible = v end end)
+CreateToggle(TabCombat, 0.05, 435, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then ExecBtnX.Visible = v end end)
 
 CreateSlider(TabVisual, 5, "Hitbox Size", 5, 30, "HitboxSize", true, nil)
 CreateSlider(TabVisual, 55, "Tracer R", 0, 255, "TracerR", true, nil)
@@ -656,8 +660,7 @@ getgenv().ExecBtnAim.InputBegan:Connect(function(input)
         if getgenv().SetupMode then return end
         local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot then return end
-        local nearest = nil
-        local minDist = math.huge
+        local nearest, minDist = nil, math.huge
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LP and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
                 local dist = (plr.Character.HumanoidRootPart.Position - myRoot.Position).Magnitude
@@ -665,9 +668,8 @@ getgenv().ExecBtnAim.InputBegan:Connect(function(input)
             end
         end
         if nearest then
-            local cam = workspace.CurrentCamera
-            cam.CFrame = CFrame.lookAt(cam.CFrame.Position, nearest.Character.HumanoidRootPart.Position)
-            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(nearest.Character.HumanoidRootPart.Position.X, myRoot.Position.Y, nearest.Character.HumanoidRootPart.Position.Z))
+            getgenv().AimTarget = nearest
+            getgenv().AimFrames = 15 -- Ép khóa camera trong 15 frame liên tiếp để chống khựng
         end
     end
 end)
@@ -703,6 +705,17 @@ end
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
+        if getgenv().AimFrames and getgenv().AimFrames > 0 and getgenv().AimTarget and getgenv().AimTarget.Character and getgenv().AimTarget.Character:FindFirstChild("HumanoidRootPart") then
+            local cam = workspace.CurrentCamera
+            local ePos = getgenv().AimTarget.Character.HumanoidRootPart.Position
+            local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            cam.CFrame = CFrame.lookAt(cam.CFrame.Position, ePos)
+            if myRoot then
+                myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(ePos.X, myRoot.Position.Y, ePos.Z))
+            end
+            getgenv().AimFrames = getgenv().AimFrames - 1
+        end
+
         if LP.Character then
             if Config.AntiStun then ClearEnemyStun(LP.Character) end
             local isMoving = false
@@ -715,10 +728,9 @@ RunService.Heartbeat:Connect(function()
                 if lagTick >= (tonumber(Config.FakeLagTick) or 6) then
                     local hrp = LP.Character.HumanoidRootPart
                     ghostCF = hrp.CFrame
-                    local randX = math.random(-250, 250)
-                    local randZ = math.random(-250, 250)
-                    local randAngle = math.random(-314, 314) / 100
-                    hrp.CFrame = ghostCF * CFrame.new(randX, 0, randZ) * CFrame.Angles(0, randAngle, 0)
+                    local randX = math.random(-150, 150)
+                    local randZ = math.random(-150, 150)
+                    hrp.CFrame = ghostCF * CFrame.new(randX, 0, randZ)
                     lagTick = 0
                 end
             else
@@ -795,14 +807,4 @@ RunService.Heartbeat:Connect(function()
                     if Config.ViewTracer and dist <= maxDist and not getgenv().MacroHidden then
                         if not line then
                             line = Instance.new("LineHandleAdornment", root)
-                            line.Name = lineId; line.Adornee = root; line.Thickness = 5; line.Length = 50; line.ZIndex = 5; line.Transparency = 0.2; line.AlwaysOnTop = true
-                        end
-                        line.Color3 = Color3.fromRGB(Config.TracerR, Config.TracerG, Config.TracerB)
-                    else
-                        if line then line:Destroy() end
-                    end
-                end
-            end
-        end
-    end)
-end)
+                            line.Name = lineId; line.Adornee = root; line.Thickn
