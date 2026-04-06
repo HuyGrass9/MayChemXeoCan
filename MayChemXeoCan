@@ -5,34 +5,29 @@ local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
-local Stats = game:GetService("Stats")
 local UserInputService = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
 
-local Macro = {
+local Titan = {
     Config = {
-        ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", BaseDelay = 0.05, ActionDelay = 0.1,
-        HitboxSize = 15, RenderDist = 1500, Prediction = 0.16, Smoothness = 0.25,
-        ESP = false, FakeLag = false, AutoAim = false, FakeLagTick = 4, ShowMap = false,
-        BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, AntiStun = true, MapSize = 100, MapRange = 500
+        ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", BaseDelay = 0.05, ActionDelay = 0.15,
+        HitboxSize = 15, RenderDist = 1500, Prediction = 0.18, Smoothness = 0.3,
+        ESP = false, FakeLag = false, FakeLagTick = 4, ShowMap = false, MapSize = 120, MapRange = 600,
+        BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, BtnSizeAim = 45,
+        ShowC = false, ShowC2 = false, ShowX = false, ShowAim = false, Macro = true
     },
     State = {
-        IsCombo = false, Target = nil, Ping = 0.05, EditSettings = false,
-        MenuOpen = false, LastTick = tick(), LagTick = 0, GhostCF = nil, SetupMode = false
+        IsCombo = false, Target = nil, MenuOpen = false, LastTick = tick(), LagTick = 0,
+        GhostCF = nil, SetupMode = false, EditSettings = false, IsLocked = false, LockedTarget = nil
     },
     Cache = { ESP = {}, MapDots = {} }
 }
 
-local ConfigName = "Macro_Titan_V35.json"
-pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do Macro.Config[k]=v end end end)
-local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(Macro.Config)) end) end
+local ConfigName = "Macro_Titan_V37.json"
+pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do Titan.Config[k]=v end end end)
+local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(Titan.Config)) end) end
 
 local Utils = {}
-function Utils.GetPing()
-    pcall(function() Macro.State.Ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000 end)
-    return math.clamp(Macro.State.Ping, 0.02, 0.3)
-end
-function Utils.HumanDelay(base) return base + Utils.GetPing() + (math.random(10, 30) / 1000) end
 function Utils.Tween(obj, props, time) local tw = TweenService:Create(obj, TweenInfo.new(time or 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props); tw:Play(); return tw end
 
 local TargetEngine = {}
@@ -43,145 +38,126 @@ function TargetEngine.GetValidEnemy()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
             local dist = (p.Character.HumanoidRootPart.Position - myR.Position).Magnitude
-            if dist < Macro.Config.RenderDist and dist < minD then minD = dist; bestTarg = p end
+            if dist < Titan.Config.RenderDist and dist < minD then minD = dist; bestTarg = p end
         end
     end
     return bestTarg
 end
 
-function TargetEngine.ApplyPrediction(target)
-    if not target or not target.Character then return end
-    local tR = target.Character:FindFirstChild("HumanoidRootPart")
-    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not tR or not myR then return end
-    local vel = tR.Velocity
-    local sway = Vector3.new(math.sin(tick()*5)*0.5, math.cos(tick()*3)*0.2, math.sin(tick()*4)*0.5)
-    local predPos = tR.Position + (vel * (Utils.GetPing() + Macro.Config.Prediction)) + sway
-    local cam = workspace.CurrentCamera
-    cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(cam.CFrame.Position, predPos), Macro.Config.Smoothness)
-    myR.CFrame = myR.CFrame:Lerp(CFrame.lookAt(myR.Position, Vector3.new(predPos.X, myR.Position.Y, predPos.Z)), Macro.Config.Smoothness + 0.1)
-end
-
 local Combat = {}
-function Combat.IsBusy(char)
-    if not char then return false end
-    for _, v in ipairs(char:GetChildren()) do if v:IsA("BoolValue") and v.Value and string.match(string.lower(v.Name), "busy|using|cast") then return true end end
-    return false
-end
-
 function Combat.ExecuteCombo(comboStr, btnRef, stroke)
-    if Macro.State.IsCombo then return end
-    Macro.State.IsCombo = true; Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.2); Utils.Tween(stroke, {Thickness=2.5, Color=Color3.fromRGB(255,255,255)}, 0.2)
+    if Titan.State.IsCombo then return end
+    Titan.State.IsCombo = true; Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.1); Utils.Tween(stroke, {Thickness=2.5, Color=Color3.fromRGB(255,255,255)}, 0.1)
     task.spawn(function()
-        task.wait(Utils.HumanDelay(0.01)); local seq = string.upper(comboStr)
+        task.wait(0.01); local seq = string.upper(comboStr)
         for i = 1, #seq do
-            if not Macro.State.IsCombo then break end
+            if not Titan.State.IsCombo then break end
             local key = string.sub(seq, i, i)
-            if Macro.Config.AutoAim then TargetEngine.ApplyPrediction(Macro.State.Target) end
             if string.match(key, "[1-4]") then
                 local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
-                VIM:SendKeyEvent(true, kc, false, game); task.wait(Utils.HumanDelay(0.02)); VIM:SendKeyEvent(false, kc, false, game)
-                task.wait(Utils.HumanDelay(0.1))
+                VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); task.wait(0.05)
             elseif string.match(key, "[ZXCVF]") then
-                local kc = Enum.KeyCode[key]; VIM:SendKeyEvent(true, kc, false, game); task.wait(Utils.HumanDelay(0.04)); VIM:SendKeyEvent(false, kc, false, game)
-                local wR = tick(); local trg = false
-                while tick()-wR < 0.4 do if not Macro.State.IsCombo then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; task.wait() end
-                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3 do if not Macro.State.IsCombo then break end; task.wait() end; task.wait(Utils.HumanDelay(Macro.Config.ActionDelay)) else task.wait(Utils.HumanDelay(Macro.Config.BaseDelay)) end
+                local kc = Enum.KeyCode[key]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game)
+                task.wait(Titan.Config.ActionDelay)
             end
         end
-        Macro.State.IsCombo = false; Utils.Tween(btnRef, {BackgroundTransparency=0.3}, 0.2); Utils.Tween(stroke, {Thickness=1.5, Color=Color3.fromRGB(255,80,80)}, 0.2)
+        Titan.State.IsCombo = false; Utils.Tween(btnRef, {BackgroundTransparency=0.3}, 0.2); Utils.Tween(stroke, {Thickness=1.5, Color=Color3.fromRGB(255,80,80)}, 0.2)
     end)
 end
 
 local UIParent = pcall(gethui) and gethui() or CoreGui
-if UIParent:FindFirstChild("MacroV35") then UIParent.MacroV35:Destroy() end
+if UIParent:FindFirstChild("TitanV37") then UIParent.TitanV37:Destroy() end
 
-local UI = Instance.new("ScreenGui", UIParent); UI.Name = "MacroV35"; UI.DisplayOrder = 10000; UI.ResetOnSpawn = false; UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-local ToggleIcon = Instance.new("ImageButton", UI); ToggleIcon.Size = UDim2.new(0,40,0,40); ToggleIcon.Position = UDim2.new(0.5,-20,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Color3.fromRGB(15,15,18); ToggleIcon.BackgroundTransparency = 0.2; ToggleIcon.Active = true; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", ToggleIcon).Color = Color3.fromRGB(0,255,150)
-local Menu = Instance.new("Frame", UI); Menu.Size = UDim2.new(0,440,0,280); Menu.Position = UDim2.new(0.5,-220,0.5,-140); Menu.BackgroundColor3 = Color3.fromRGB(15,15,18); Menu.ClipsDescendants = true; Menu.Visible = false; Instance.new("UICorner", Menu).CornerRadius = UDim.new(0,6); Instance.new("UIStroke", Menu).Color = Color3.fromRGB(40,40,50)
-local Sidebar = Instance.new("Frame", Menu); Sidebar.Size = UDim2.new(0,120,1,0); Sidebar.BackgroundColor3 = Color3.fromRGB(12,12,14); Sidebar.BorderSizePixel = 0
-local Content = Instance.new("Frame", Menu); Content.Size = UDim2.new(1,-120,1,0); Content.Position = UDim2.new(0,120,0,0); Content.BackgroundTransparency = 1
-local Title = Instance.new("TextLabel", Sidebar); Title.Size = UDim2.new(1,0,0,45); Title.BackgroundTransparency = 1; Title.Text = "MACRO V35"; Title.TextColor3 = Color3.fromRGB(0,255,150); Title.Font = Enum.Font.GothamBlack; Title.TextSize = 14
+local UI = Instance.new("ScreenGui", UIParent); UI.Name = "TitanV37"; UI.DisplayOrder = 10000; UI.ResetOnSpawn = false; UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local ToggleIcon = Instance.new("ImageButton", UI); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://10636248378"; ToggleIcon.BackgroundTransparency = 1; ToggleIcon.Active = true; ToggleIcon.ZIndex = 10
+local Menu = Instance.new("Frame", UI); Menu.Size = UDim2.new(0,460,0,290); Menu.Position = UDim2.new(0.5,-230,0.5,-145); Menu.BackgroundColor3 = Color3.fromRGB(15,15,18); Menu.ClipsDescendants = true; Menu.Visible = false; Menu.ZIndex = 9; Instance.new("UICorner", Menu).CornerRadius = UDim.new(0,8); Instance.new("UIStroke", Menu).Color = Color3.fromRGB(40,40,50)
+local Sidebar = Instance.new("Frame", Menu); Sidebar.Size = UDim2.new(0,130,1,0); Sidebar.BackgroundColor3 = Color3.fromRGB(12,12,14); Sidebar.BorderSizePixel = 0
+local Content = Instance.new("Frame", Menu); Content.Size = UDim2.new(1,-130,1,0); Content.Position = UDim2.new(0,130,0,0); Content.BackgroundTransparency = 1
+local Title = Instance.new("TextLabel", Sidebar); Title.Size = UDim2.new(1,0,0,45); Title.BackgroundTransparency = 1; Title.Text = "TITAN V37"; Title.TextColor3 = Color3.fromRGB(0,255,150); Title.Font = Enum.Font.GothamBlack; Title.TextSize = 15
 
-local MapFrame = Instance.new("Frame", UI); MapFrame.Size = UDim2.new(0,Macro.Config.MapSize,0,Macro.Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Color3.fromRGB(10,10,12); MapFrame.BackgroundTransparency = 0.3; MapFrame.Visible = Macro.Config.ShowMap; Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", MapFrame).Color = Color3.fromRGB(0,255,150)
+local MapFrame = Instance.new("Frame", UI); MapFrame.Size = UDim2.new(0,Titan.Config.MapSize,0,Titan.Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Color3.fromRGB(15,15,18); MapFrame.BackgroundTransparency = 0.2; MapFrame.Visible = Titan.Config.ShowMap; MapFrame.ClipsDescendants = true; Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(0.5,0); Instance.new("UIStroke", MapFrame).Color = Color3.fromRGB(0,255,150); Instance.new("UIStroke", MapFrame).Thickness = 2
+local MapCenter = Instance.new("Frame", MapFrame); MapCenter.Size = UDim2.new(0,6,0,6); MapCenter.Position = UDim2.new(0.5,-3,0.5,-3); MapCenter.BackgroundColor3 = Color3.fromRGB(0,255,255); MapCenter.ZIndex = 5; Instance.new("UICorner", MapCenter).CornerRadius = UDim.new(1,0)
 local DotsContainer = Instance.new("Folder", MapFrame)
 
 local TabFrames, TabBtns = {}, {}
 local function CreateTab(name, yPos, active)
-    local btn = Instance.new("TextButton", Sidebar); btn.Size = UDim2.new(1,0,0,35); btn.Position = UDim2.new(0,0,0,yPos); btn.BackgroundTransparency = active and 0.9 or 1; btn.Text = "  "..name; btn.TextColor3 = active and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140); btn.Font = Enum.Font.GothamBold; btn.TextSize = 10; btn.TextXAlignment = Enum.TextXAlignment.Left
-    local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,2,1,-14); ind.Position = UDim2.new(0,0,0,7); ind.BackgroundColor3 = Color3.fromRGB(0,255,150); ind.BorderSizePixel = 0; ind.Visible = active
-    local frm = Instance.new("ScrollingFrame", Content); frm.Size = UDim2.new(1,-10,1,-10); frm.Position = UDim2.new(0,5,0,5); frm.BackgroundTransparency = 1; frm.Visible = active; frm.ScrollBarThickness = 1; frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local lay = Instance.new("UIListLayout", frm); lay.Padding = UDim.new(0,6); lay.HorizontalAlignment = Enum.HorizontalAlignment.Center; Instance.new("UIPadding", frm).PaddingTop = UDim.new(0,5)
+    local btn = Instance.new("TextButton", Sidebar); btn.Size = UDim2.new(1,0,0,38); btn.Position = UDim2.new(0,0,0,yPos); btn.BackgroundTransparency = active and 0.9 or 1; btn.Text = "  "..name; btn.TextColor3 = active and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140); btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left
+    local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,3,1,-14); ind.Position = UDim2.new(0,0,0,7); ind.BackgroundColor3 = Color3.fromRGB(0,255,150); ind.BorderSizePixel = 0; ind.Visible = active
+    local frm = Instance.new("ScrollingFrame", Content); frm.Size = UDim2.new(1,-10,1,-10); frm.Position = UDim2.new(0,5,0,5); frm.BackgroundTransparency = 1; frm.Visible = active; frm.ScrollBarThickness = 2; frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    local lay = Instance.new("UIListLayout", frm); lay.Padding = UDim.new(0,8); lay.HorizontalAlignment = Enum.HorizontalAlignment.Center; Instance.new("UIPadding", frm).PaddingTop = UDim.new(0,5)
     TabBtns[name] = {Btn=btn, Ind=ind}; TabFrames[name] = frm
     btn.MouseButton1Click:Connect(function() for k,v in pairs(TabFrames) do v.Visible = (k==name) end; for k,v in pairs(TabBtns) do v.Ind.Visible = (k==name); Utils.Tween(v.Btn, {BackgroundTransparency = (k==name) and 0.9 or 1, TextColor3 = (k==name) and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140)}, 0.2) end end)
     return frm
 end
 
-local TabC = CreateTab("COMBAT", 55, true); local TabV = CreateTab("VISUALS", 90, false); local TabI = CreateTab("INTERFACE", 125, false)
+local TabC = CreateTab("COMBAT", 55, true); local TabV = CreateTab("VISUALS", 95, false); local TabI = CreateTab("INTERFACE", 135, false)
 
 local function CreateInput(parent, text, key)
-    local c = Instance.new("Frame", parent); c.Size = UDim2.new(0.95,0,0,40); c.BackgroundTransparency = 1
-    local l = Instance.new("TextLabel", c); l.Size = UDim2.new(1,0,0,15); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Color3.fromRGB(200,200,200); l.Font = Enum.Font.GothamMedium; l.TextSize = 9; l.TextXAlignment = Enum.TextXAlignment.Left
-    local b = Instance.new("TextBox", c); b.Size = UDim2.new(1,0,0,25); b.Position = UDim2.new(0,0,0,15); b.BackgroundColor3 = Color3.fromRGB(20,20,25); b.TextColor3 = Color3.fromRGB(0,255,150); b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = Macro.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,60)
-    b.FocusLost:Connect(function() Macro.Config[key] = b.Text; SaveConfig() end)
+    local c = Instance.new("Frame", parent); c.Size = UDim2.new(0.95,0,0,45); c.BackgroundTransparency = 1
+    local l = Instance.new("TextLabel", c); l.Size = UDim2.new(1,0,0,15); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Color3.fromRGB(200,200,200); l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextXAlignment = Enum.TextXAlignment.Left
+    local b = Instance.new("TextBox", c); b.Size = UDim2.new(1,0,0,28); b.Position = UDim2.new(0,0,0,17); b.BackgroundColor3 = Color3.fromRGB(20,20,25); b.TextColor3 = Color3.fromRGB(0,255,150); b.Font = Enum.Font.GothamBold; b.TextSize = 12; b.Text = Titan.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,60)
+    b.FocusLost:Connect(function() Titan.Config[key] = b.Text; SaveConfig() end)
 end
 
 local SettingsList = {}
 local function CreateSlider(parent, text, min, max, key, isInt)
-    local f = Instance.new("Frame", parent); f.Size = UDim2.new(0.95,0,0,35); f.BackgroundTransparency = 1; f.Visible = false; table.insert(SettingsList, f)
-    local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,0,15); l.BackgroundTransparency = 1; l.Text = text..": "..tostring(Macro.Config[key]); l.TextColor3 = Color3.fromRGB(200,200,200); l.Font = Enum.Font.GothamMedium; l.TextSize = 9; l.TextXAlignment = Enum.TextXAlignment.Left
-    local bg = Instance.new("Frame", f); bg.Size = UDim2.new(1,0,0,3); bg.Position = UDim2.new(0,0,0,20); bg.BackgroundColor3 = Color3.fromRGB(35,35,40); Instance.new("UICorner", bg).CornerRadius = UDim.new(1,0)
-    local fill = Instance.new("Frame", bg); fill.Size = UDim2.new((Macro.Config[key]-min)/(max-min),0,1,0); fill.BackgroundColor3 = Color3.fromRGB(0,255,150); Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
-    local tArea = Instance.new("TextButton", bg); tArea.Size = UDim2.new(1,0,0,16); tArea.Position = UDim2.new(0,0,0.5,-8); tArea.BackgroundTransparency = 1; tArea.Text = ""
+    local f = Instance.new("Frame", parent); f.Size = UDim2.new(0.95,0,0,40); f.BackgroundTransparency = 1; f.Visible = false; table.insert(SettingsList, f)
+    local l = Instance.new("TextLabel", f); l.Size = UDim2.new(1,0,0,15); l.BackgroundTransparency = 1; l.Text = text..": "..tostring(Titan.Config[key]); l.TextColor3 = Color3.fromRGB(200,200,200); l.Font = Enum.Font.GothamMedium; l.TextSize = 10; l.TextXAlignment = Enum.TextXAlignment.Left
+    local bg = Instance.new("Frame", f); bg.Size = UDim2.new(1,0,0,6); bg.Position = UDim2.new(0,0,0,22); bg.BackgroundColor3 = Color3.fromRGB(35,35,40); Instance.new("UICorner", bg).CornerRadius = UDim.new(1,0)
+    local fill = Instance.new("Frame", bg); fill.Size = UDim2.new((Titan.Config[key]-min)/(max-min),0,1,0); fill.BackgroundColor3 = Color3.fromRGB(0,255,150); Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
+    local tArea = Instance.new("TextButton", f); tArea.Size = UDim2.new(1,0,1,0); tArea.BackgroundTransparency = 1; tArea.Text = ""
     local drag = false
-    tArea.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then Macro.State.EditSlider=key; drag=true end end)
-    UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then if drag and Macro.State.EditSlider==key then drag=false; Macro.State.EditSlider=nil; SaveConfig() end end end)
-    RunService.RenderStepped:Connect(function()
-        if drag and Macro.State.EditSlider==key then
-            local pct = math.clamp((UserInputService:GetMouseLocation().X - bg.AbsolutePosition.X)/bg.AbsoluteSize.X, 0, 1)
-            local val = min + (max-min)*pct; if isInt then val = math.floor(val) else val = math.floor(val*100)/100 end
-            fill.Size = UDim2.new(pct,0,1,0); l.Text = text..": "..tostring(val); Macro.Config[key] = val
-            if key=="BtnSizeC" and getgenv().BtnC then getgenv().BtnC.Size=UDim2.new(0,val,0,val) end
-            if key=="BtnSizeC2" and getgenv().BtnC2 then getgenv().BtnC2.Size=UDim2.new(0,val,0,val) end
-            if key=="BtnSizeX" and getgenv().BtnX then getgenv().BtnX.Size=UDim2.new(0,val,0,val) end
-            if key=="MapSize" then MapFrame.Size=UDim2.new(0,val,0,val) end
-        end
-    end)
+    
+    local function update(inp)
+        local pct = math.clamp((inp.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+        local val = min + (max-min)*pct; if isInt then val = math.floor(val) else val = math.floor(val*100)/100 end
+        fill.Size = UDim2.new(pct,0,1,0); l.Text = text..": "..tostring(val); Titan.Config[key] = val
+        if key=="BtnSizeC" and getgenv().BtnC then getgenv().BtnC.Size=UDim2.new(0,val,0,val) end; if key=="BtnSizeC2" and getgenv().BtnC2 then getgenv().BtnC2.Size=UDim2.new(0,val,0,val) end
+        if key=="BtnSizeX" and getgenv().BtnX then getgenv().BtnX.Size=UDim2.new(0,val,0,val) end; if key=="BtnSizeAim" and getgenv().BtnAim then getgenv().BtnAim.Size=UDim2.new(0,val,0,val) end
+        if key=="MapSize" then MapFrame.Size=UDim2.new(0,val,0,val) end
+    end
+    
+    tArea.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; update(i) end end)
+    UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then update(i) end end)
+    UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then if drag then drag=false; SaveConfig() end end end)
     return f
 end
 
 local function CreateToggle(parent, text, key, cb)
-    local b = Instance.new("TextButton", parent); b.Size = UDim2.new(0.95,0,0,28); b.BackgroundColor3 = Macro.Config[key] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25); b.Text = text; b.TextColor3 = Macro.Config[key] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160); b.Font = Enum.Font.GothamBold; b.TextSize = 9; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4)
-    local s = Instance.new("UIStroke", b); s.Color = Macro.Config[key] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)
-    b.MouseButton1Click:Connect(function() Macro.Config[key] = not Macro.Config[key]; Utils.Tween(b, {BackgroundColor3 = Macro.Config[key] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25), TextColor3 = Macro.Config[key] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160)}, 0.2); Utils.Tween(s, {Color = Macro.Config[key] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)}, 0.2); SaveConfig(); if cb then cb(Macro.Config[key]) end end)
+    local b = Instance.new("TextButton", parent); b.Size = UDim2.new(0.95,0,0,32); b.BackgroundColor3 = Titan.Config[key] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25); b.Text = text; b.TextColor3 = Titan.Config[key] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160); b.Font = Enum.Font.GothamBold; b.TextSize = 10; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4)
+    local s = Instance.new("UIStroke", b); s.Color = Titan.Config[key] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)
+    b.MouseButton1Click:Connect(function() Titan.Config[key] = not Titan.Config[key]; Utils.Tween(b, {BackgroundColor3 = Titan.Config[key] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25), TextColor3 = Titan.Config[key] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160)}, 0.2); Utils.Tween(s, {Color = Titan.Config[key] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)}, 0.2); SaveConfig(); if cb then cb(Titan.Config[key]) end end)
     return b
 end
 
 CreateInput(TabC, "Sequence C:", "ComboC"); CreateInput(TabC, "Sequence C2:", "ComboC2")
-local editBtn = Instance.new("TextButton", TabC); editBtn.Size = UDim2.new(0.95,0,0,25); editBtn.BackgroundColor3 = Color3.fromRGB(40,40,45); editBtn.Text = "[ EDIT SETTINGS: OFF ]"; editBtn.TextColor3 = Color3.fromRGB(255,255,255); editBtn.Font = Enum.Font.GothamBold; editBtn.TextSize = 9; Instance.new("UICorner", editBtn).CornerRadius = UDim.new(0,4)
-editBtn.MouseButton1Click:Connect(function() Macro.State.EditSettings = not Macro.State.EditSettings; editBtn.Text = Macro.State.EditSettings and "[ EDIT SETTINGS: ON ]" or "[ EDIT SETTINGS: OFF ]"; editBtn.BackgroundColor3 = Macro.State.EditSettings and Color3.fromRGB(0,150,100) or Color3.fromRGB(40,40,45); for _,v in ipairs(SettingsList) do v.Visible = Macro.State.EditSettings end end)
+local editBtn = Instance.new("TextButton", TabC); editBtn.Size = UDim2.new(0.95,0,0,25); editBtn.BackgroundColor3 = Color3.fromRGB(40,40,45); editBtn.Text = "[ EDIT SETTINGS: OFF ]"; editBtn.TextColor3 = Color3.fromRGB(255,255,255); editBtn.Font = Enum.Font.GothamBold; editBtn.TextSize = 10; Instance.new("UICorner", editBtn).CornerRadius = UDim.new(0,4)
+editBtn.MouseButton1Click:Connect(function() Titan.State.EditSettings = not Titan.State.EditSettings; editBtn.Text = Titan.State.EditSettings and "[ EDIT SETTINGS: ON ]" or "[ EDIT SETTINGS: OFF ]"; editBtn.BackgroundColor3 = Titan.State.EditSettings and Color3.fromRGB(0,150,100) or Color3.fromRGB(40,40,45); for _,v in ipairs(SettingsList) do v.Visible = Titan.State.EditSettings end end)
 
-CreateToggle(TabC, "PREDICTION AIM", "AutoAim")
-local sldPred = CreateSlider(TabC, "Prediction Factor", 0.05, 0.4, "Prediction", false); sldPred.Visible = Macro.Config.AutoAim and Macro.State.EditSettings
-local sldFL = CreateSlider(TabC, "Fake Lag Tick", 2, 15, "FakeLagTick", true); sldFL.Visible = Macro.Config.FakeLag and Macro.State.EditSettings
-CreateToggle(TabC, "GHOST DESYNC (LAG)", "FakeLag", function(v) if Macro.State.EditSettings then sldFL.Visible = v end end)
+CreateToggle(TabC, "MACRO", "Macro")
+local sldDelay = CreateSlider(TabC, "Action Delay", 0.05, 0.4, "ActionDelay", false); sldDelay.Visible = Titan.State.EditSettings
+local sldPred = CreateSlider(TabC, "Prediction Factor", 0.05, 0.4, "Prediction", false); sldPred.Visible = Titan.State.EditSettings
+local sldFL = CreateSlider(TabC, "Fake Lag Tick", 2, 15, "FakeLagTick", true); sldFL.Visible = Titan.Config.FakeLag and Titan.State.EditSettings
+CreateToggle(TabC, "GHOST DESYNC (LAG)", "FakeLag", function(v) if Titan.State.EditSettings then sldFL.Visible = v end end)
 
-local sldHB = CreateSlider(TabV, "Hitbox Overrider", 5, 25, "HitboxSize", true); sldHB.Visible = Macro.Config.Hitbox and Macro.State.EditSettings
-CreateToggle(TabV, "HITBOX", "Hitbox", function(v) if Macro.State.EditSettings then sldHB.Visible = v end end)
-CreateToggle(TabV, "ESP RADAR", "ESP", function(v) if not v then for _,c in pairs(Macro.Cache.ESP) do if c then c:Destroy() end end; Macro.Cache.ESP={} end end)
-local sldMap1 = CreateSlider(TabV, "Minimap Range", 500, 3000, "MapRange", true); local sldMap2 = CreateSlider(TabV, "Minimap Size", 80, 200, "MapSize", true); sldMap1.Visible = Macro.Config.ShowMap and Macro.State.EditSettings; sldMap2.Visible = Macro.Config.ShowMap and Macro.State.EditSettings
-CreateToggle(TabV, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v; if Macro.State.EditSettings then sldMap1.Visible=v; sldMap2.Visible=v end end)
+local sldHB = CreateSlider(TabV, "Hitbox Size", 5, 25, "HitboxSize", true); sldHB.Visible = Titan.Config.Hitbox and Titan.State.EditSettings
+CreateToggle(TabV, "HITBOX OVERRIDER", "Hitbox", function(v) if Titan.State.EditSettings then sldHB.Visible = v end end)
+CreateToggle(TabV, "ESP RADAR", "ESP", function(v) if not v then for _,c in pairs(Titan.Cache.ESP) do if c then c:Destroy() end end; Titan.Cache.ESP={} end end)
+local sldMap1 = CreateSlider(TabV, "Minimap Range", 500, 3000, "MapRange", true); local sldMap2 = CreateSlider(TabV, "Minimap Size", 80, 200, "MapSize", true); sldMap1.Visible = Titan.Config.ShowMap and Titan.State.EditSettings; sldMap2.Visible = Titan.Config.ShowMap and Titan.State.EditSettings
+CreateToggle(TabV, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v; if Titan.State.EditSettings then sldMap1.Visible=v; sldMap2.Visible=v end end)
 
-CreateToggle(TabI, "SETUP UI", "SetupMode", function(v) Macro.State.SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; if getgenv().BtnC then getgenv().BtnC.Draggable=v end; if getgenv().BtnC2 then getgenv().BtnC2.Draggable=v end; if getgenv().BtnX then getgenv().BtnX.Draggable=v end end)
-local sldC = CreateSlider(TabI, "Size C", 40, 100, "BtnSizeC", true); sldC.Visible = Macro.Config.ShowC and Macro.State.EditSettings
-CreateToggle(TabI, "SHOW C", "ShowC", function(v) if getgenv().BtnC then getgenv().BtnC.Visible=v end; if Macro.State.EditSettings then sldC.Visible=v end end)
-local sldC2 = CreateSlider(TabI, "Size C2", 40, 100, "BtnSizeC2", true); sldC2.Visible = Macro.Config.ShowC2 and Macro.State.EditSettings
-CreateToggle(TabI, "SHOW C2", "ShowC2", function(v) if getgenv().BtnC2 then getgenv().BtnC2.Visible=v end; if Macro.State.EditSettings then sldC2.Visible=v end end)
-local sldX = CreateSlider(TabI, "Size X", 30, 80, "BtnSizeX", true); sldX.Visible = Macro.Config.ShowX and Macro.State.EditSettings
-CreateToggle(TabI, "SHOW X", "ShowX", function(v) if getgenv().BtnX then getgenv().BtnX.Visible=v end; if Macro.State.EditSettings then sldX.Visible=v end end)
+CreateToggle(TabI, "SETUP UI (DRAG)", "SetupMode", function(v) Titan.State.SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; if getgenv().BtnC then getgenv().BtnC.Draggable=v end; if getgenv().BtnC2 then getgenv().BtnC2.Draggable=v end; if getgenv().BtnX then getgenv().BtnX.Draggable=v end; if getgenv().BtnAim then getgenv().BtnAim.Draggable=v end end)
+local sldC = CreateSlider(TabI, "Size C", 40, 100, "BtnSizeC", true); sldC.Visible = Titan.Config.ShowC and Titan.State.EditSettings
+CreateToggle(TabI, "SHOW C", "ShowC", function(v) if getgenv().BtnC then getgenv().BtnC.Visible=v end; if Titan.State.EditSettings then sldC.Visible=v end end)
+local sldC2 = CreateSlider(TabI, "Size C2", 40, 100, "BtnSizeC2", true); sldC2.Visible = Titan.Config.ShowC2 and Titan.State.EditSettings
+CreateToggle(TabI, "SHOW C2", "ShowC2", function(v) if getgenv().BtnC2 then getgenv().BtnC2.Visible=v end; if Titan.State.EditSettings then sldC2.Visible=v end end)
+local sldX = CreateSlider(TabI, "Size X", 30, 80, "BtnSizeX", true); sldX.Visible = Titan.Config.ShowX and Titan.State.EditSettings
+CreateToggle(TabI, "SHOW X", "ShowX", function(v) if getgenv().BtnX then getgenv().BtnX.Visible=v end; if Titan.State.EditSettings then sldX.Visible=v end end)
+local sldAim = CreateSlider(TabI, "Size LOCK", 30, 80, "BtnSizeAim", true); sldAim.Visible = Titan.Config.ShowAim and Titan.State.EditSettings
+CreateToggle(TabI, "SHOW LOCK", "ShowAim", function(v) if getgenv().BtnAim then getgenv().BtnAim.Visible=v end; if Titan.State.EditSettings then sldAim.Visible=v end end)
 
 local function CreateActionBtn(name, x, y, color, showKey, sizeKey)
-    local b = Instance.new("TextButton", UI); b.Size = UDim2.new(0,Macro.Config[sizeKey],0,Macro.Config[sizeKey]); b.Position = UDim2.new(x,0,y,0); b.BackgroundColor3 = Color3.fromRGB(15,15,15); b.BackgroundTransparency = 0.3; b.Text = name; b.TextColor3 = color; b.Font = Enum.Font.GothamBlack; b.TextSize = math.clamp(Macro.Config[sizeKey]*0.4, 12, 35); b.Visible = Macro.Config[showKey]; b.Active = true; b.Selectable = false; b.Draggable = false; b.ZIndex = 5; Instance.new("UICorner", b).CornerRadius = UDim.new(0.3,0)
+    local b = Instance.new("TextButton", UI); b.Size = UDim2.new(0,Titan.Config[sizeKey],0,Titan.Config[sizeKey]); b.Position = UDim2.new(x,0,y,0); b.BackgroundColor3 = Color3.fromRGB(15,15,15); b.BackgroundTransparency = 0.3; b.Text = name; b.TextColor3 = color; b.Font = Enum.Font.GothamBlack; b.TextSize = math.clamp(Titan.Config[sizeKey]*0.4, 12, 35); b.Visible = Titan.Config[showKey]; b.Active = true; b.Selectable = false; b.Draggable = false; b.ZIndex = 5; Instance.new("UICorner", b).CornerRadius = UDim.new(0.3,0)
     local s = Instance.new("UIStroke", b); s.Color = color; s.Thickness = 1.5; s.Transparency = 0.2
     return b, s
 end
@@ -189,56 +165,63 @@ end
 getgenv().BtnC, getgenv().StrC = CreateActionBtn("C", 0.8, 0.4, Color3.fromRGB(255,80,80), "ShowC", "BtnSizeC")
 getgenv().BtnC2, getgenv().StrC2 = CreateActionBtn("C2", 0.8, 0.55, Color3.fromRGB(80,200,255), "ShowC2", "BtnSizeC2")
 getgenv().BtnX, getgenv().StrX = CreateActionBtn("X", 0.8, 0.7, Color3.fromRGB(255,200,50), "ShowX", "BtnSizeX")
+getgenv().BtnAim, getgenv().StrAim = CreateActionBtn("LOCK", 0.8, 0.25, Color3.fromRGB(255,80,255), "ShowAim", "BtnSizeAim")
 
-getgenv().BtnC.InputBegan:Connect(function(i) if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not Macro.State.SetupMode then Combat.ExecuteCombo(Macro.Config.ComboC, getgenv().BtnC, getgenv().StrC) end end)
-getgenv().BtnC2.InputBegan:Connect(function(i) if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not Macro.State.SetupMode then Combat.ExecuteCombo(Macro.Config.ComboC2, getgenv().BtnC2, getgenv().StrC2) end end)
-getgenv().BtnX.InputBegan:Connect(function(i) if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not Macro.State.SetupMode then Macro.State.IsCombo=false; Utils.Tween(getgenv().BtnX, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(getgenv().BtnX, {BackgroundTransparency=0.3}, 0.2) end) end end)
+getgenv().BtnC.InputBegan:Connect(function(i) if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not Titan.State.SetupMode then Combat.ExecuteCombo(Titan.Config.ComboC, getgenv().BtnC, getgenv().StrC) end end)
+getgenv().BtnC2.InputBegan:Connect(function(i) if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not Titan.State.SetupMode then Combat.ExecuteCombo(Titan.Config.ComboC2, getgenv().BtnC2, getgenv().StrC2) end end)
+getgenv().BtnX.InputBegan:Connect(function(i) if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not Titan.State.SetupMode then Titan.State.IsCombo=false; Utils.Tween(getgenv().BtnX, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(getgenv().BtnX, {BackgroundTransparency=0.3}, 0.2) end) end end)
 
-local function ToggleMenu()
-    Macro.State.MenuOpen = not Macro.State.MenuOpen
-    if Macro.State.MenuOpen then Menu.Visible = true; Menu.Size = UDim2.new(0,440,0,0); Utils.Tween(Menu, {Size = UDim2.new(0,440,0,280)}, 0.25)
-    else local tw = Utils.Tween(Menu, {Size = UDim2.new(0,440,0,0)}, 0.2); tw.Completed:Wait(); Menu.Visible = false end
-end
-
-local dragIcon = false; local dragStart; local startPos
-ToggleIcon.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then dragIcon=true; dragStart=i.Position; startPos=ToggleIcon.Position end end)
-UserInputService.InputChanged:Connect(function(i) if dragIcon and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then local delta=i.Position-dragStart; ToggleIcon.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y) end end)
-ToggleIcon.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then if dragIcon then dragIcon=false; if (i.Position-dragStart).Magnitude < 10 then ToggleMenu() end end end end)
-
-Players.PlayerRemoving:Connect(function(p) 
-    if Macro.Cache.ESP[p.Name] then Macro.Cache.ESP[p.Name]:Destroy(); Macro.Cache.ESP[p.Name] = nil end 
-    if Macro.Cache.MapDots[p.Name] then Macro.Cache.MapDots[p.Name]:Destroy(); Macro.Cache.MapDots[p.Name] = nil end
+getgenv().BtnAim.InputBegan:Connect(function(i)
+    if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not Titan.State.SetupMode then
+        Titan.State.IsLocked = not Titan.State.IsLocked
+        if Titan.State.IsLocked then
+            local t = TargetEngine.GetValidEnemy()
+            if t then Titan.State.LockedTarget = t; Utils.Tween(getgenv().BtnAim, {BackgroundTransparency=0.1}, 0.1); Utils.Tween(getgenv().StrAim, {Color=Color3.fromRGB(255,255,255), Thickness=2.5}, 0.1)
+            else Titan.State.IsLocked = false end
+        else Titan.State.LockedTarget = nil; Utils.Tween(getgenv().BtnAim, {BackgroundTransparency=0.3}, 0.1); Utils.Tween(getgenv().StrAim, {Color=Color3.fromRGB(255,80,255), Thickness=1.5}, 0.1) end
+    end
 end)
 
-RunService:BindToRenderStep("MacroGhost", 199, function() if Macro.State.GhostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame = Macro.State.GhostCF; Macro.State.GhostCF = nil end end)
+local dragIcon = false; local startPos; local dragStart
+ToggleIcon.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then dragIcon=true; dragStart=i.Position; startPos=ToggleIcon.Position end end)
+UserInputService.InputChanged:Connect(function(i) if dragIcon and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then local delta = i.Position - dragStart; ToggleIcon.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+ToggleIcon.InputEnded:Connect(function(i)
+    if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
+        if dragIcon then dragIcon=false; if (i.Position - dragStart).Magnitude < 10 then Titan.State.MenuOpen = not Titan.State.MenuOpen; if Titan.State.MenuOpen then Menu.Visible=true; Menu.Size=UDim2.new(0,460,0,0); Utils.Tween(Menu, {Size=UDim2.new(0,460,0,290)}, 0.25) else local tw = Utils.Tween(Menu, {Size=UDim2.new(0,460,0,0)}, 0.2); tw.Completed:Wait(); Menu.Visible=false end end end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(p) if Titan.Cache.ESP[p.Name] then Titan.Cache.ESP[p.Name]:Destroy(); Titan.Cache.ESP[p.Name] = nil end; if Titan.Cache.MapDots[p.Name] then Titan.Cache.MapDots[p.Name]:Destroy(); Titan.Cache.MapDots[p.Name] = nil end end)
+RunService:BindToRenderStep("TitanGhost", 199, function() if Titan.State.GhostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame = Titan.State.GhostCF; Titan.State.GhostCF = nil end end)
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
-        local now = tick()
-        local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        local now = tick(); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if not myR then return end
         
-        Macro.State.Target = TargetEngine.GetValidEnemy()
-        if Macro.Config.AutoAim and Macro.State.Target and Macro.State.IsCombo then TargetEngine.ApplyPrediction(Macro.State.Target) end
-        
-        if Macro.Config.AntiStun then
-            for _,v in ipairs(LP.Character:GetChildren()) do
-                if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end
-            end
+        if Titan.State.IsLocked and Titan.State.LockedTarget and Titan.State.LockedTarget.Character and Titan.State.LockedTarget.Character:FindFirstChild("HumanoidRootPart") and Titan.State.LockedTarget.Character:FindFirstChild("Humanoid") and Titan.State.LockedTarget.Character.Humanoid.Health>0 then
+            local tR = Titan.State.LockedTarget.Character.HumanoidRootPart
+            local vel = tR.Velocity; local predPos = tR.Position + (vel * Titan.Config.Prediction)
+            local cam = workspace.CurrentCamera; cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(cam.CFrame.Position, predPos), Titan.Config.Smoothness)
+            myR.CFrame = myR.CFrame:Lerp(CFrame.lookAt(myR.Position, Vector3.new(predPos.X, myR.Position.Y, predPos.Z)), Titan.Config.Smoothness + 0.1)
+        else
+            if Titan.State.IsLocked then Titan.State.IsLocked=false; Titan.State.LockedTarget=nil; Utils.Tween(getgenv().BtnAim, {BackgroundTransparency=0.3}, 0.1); Utils.Tween(getgenv().StrAim, {Color=Color3.fromRGB(255,80,255), Thickness=1.5}, 0.1) end
         end
+
+        if Titan.Config.Macro then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
         
         local isMv = LP.Character:FindFirstChild("Humanoid") and LP.Character.Humanoid.MoveDirection.Magnitude > 0
-        if Macro.Config.FakeLag and isMv and not Macro.State.IsCombo then
-            Macro.State.LagTick = Macro.State.LagTick + 1
-            if Macro.State.LagTick >= Macro.Config.FakeLagTick then
-                Macro.State.GhostCF = myR.CFrame
-                myR.CFrame = Macro.State.GhostCF * CFrame.new(math.random(-8,8), math.random(0,2), math.random(-8,8))
-                Macro.State.LagTick = 0
+        if Titan.Config.FakeLag and isMv and not Titan.State.IsCombo then
+            Titan.State.LagTick = Titan.State.LagTick + 1
+            if Titan.State.LagTick >= Titan.Config.FakeLagTick then
+                Titan.State.GhostCF = myR.CFrame
+                myR.CFrame = Titan.State.GhostCF * CFrame.new(math.random(-150,150), 0, math.random(-150,150))
+                Titan.State.LagTick = 0
             end
-        else Macro.State.LagTick = 0 end
+        else Titan.State.LagTick = 0 end
         
-        if now - Macro.State.LastTick >= 0.1 then
-            Macro.State.LastTick = now
+        if now - Titan.State.LastTick >= 0.1 then
+            Titan.State.LastTick = now
             local cam = workspace.CurrentCamera
             local cF2, cR2 = Vector2.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Z).Unit, Vector2.new(cam.CFrame.RightVector.X, cam.CFrame.RightVector.Z).Unit
             
@@ -246,31 +229,22 @@ RunService.Heartbeat:Connect(function()
                 if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
                     local tR = p.Character.HumanoidRootPart
                     local dist = (tR.Position - myR.Position).Magnitude
-                    local isTarg = (p == Macro.State.Target)
-                    
-                    if Macro.Config.Hitbox then tR.Size = Vector3.new(Macro.Config.HitboxSize, Macro.Config.HitboxSize, Macro.Config.HitboxSize); tR.Transparency = 0.8; tR.CanCollide = false
-                    else if tR.Size.X > 5 then tR.Size = Vector3.new(2,2,1); tR.Transparency = 1 end end
-                    
-                    if Macro.Config.ShowMap then
-                        if dist <= Macro.Config.MapRange then
+                    if Titan.Config.Hitbox then tR.Size = Vector3.new(Titan.Config.HitboxSize, Titan.Config.HitboxSize, Titan.Config.HitboxSize); tR.Transparency = 0.8; tR.CanCollide = false else if tR.Size.X > 5 then tR.Size = Vector3.new(2,2,1); tR.Transparency = 1 end end
+                    if Titan.Config.ShowMap then
+                        if dist <= Titan.Config.MapRange then
                             local of2 = Vector2.new(tR.Position.X - myR.Position.X, tR.Position.Z - myR.Position.Z)
-                            local sc = (Macro.Config.MapSize / 2) / Macro.Config.MapRange
+                            local sc = (Titan.Config.MapSize / 2) / Titan.Config.MapRange
                             local uX, uY = of2:Dot(cR2) * sc, -of2:Dot(cF2) * sc
-                            if not Macro.Cache.MapDots[p.Name] then local d = Instance.new("Frame", DotsContainer); d.Size = UDim2.new(0,6,0,6); Instance.new("UICorner",d).CornerRadius = UDim.new(1,0); d.ZIndex = 4; Macro.Cache.MapDots[p.Name] = d end
-                            local dot = Macro.Cache.MapDots[p.Name]; dot.BackgroundColor3 = isTarg and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,50,50); dot.Position = UDim2.new(0.5, uX-3, 0.5, uY-3); dot.Visible = true
-                        elseif Macro.Cache.MapDots[p.Name] then Macro.Cache.MapDots[p.Name].Visible = false end
-                    else if Macro.Cache.MapDots[p.Name] then Macro.Cache.MapDots[p.Name].Visible = false end end
-                    
-                    if Macro.Config.ESP and dist <= Macro.Config.RenderDist then
-                        if not Macro.Cache.ESP[p.Name] then
-                            local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,150,0,40); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3,0)
-                            local txt = Instance.new("TextLabel", bg); txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1; txt.Font = Enum.Font.GothamBold; txt.TextSize = 11; txt.TextStrokeTransparency = 0.2; Macro.Cache.ESP[p.Name] = bg
-                        end
-                        local gui = Macro.Cache.ESP[p.Name]; gui.Adornee = tR; gui.TextLabel.Text = string.format("%s\n[%dm]", p.Name, math.floor(dist)); gui.TextLabel.TextColor3 = isTarg and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,255,255); gui.Enabled = true
-                    elseif Macro.Cache.ESP[p.Name] then Macro.Cache.ESP[p.Name].Enabled = false end
+                            if not Titan.Cache.MapDots[p.Name] then local d = Instance.new("Frame", DotsContainer); d.Size = UDim2.new(0,6,0,6); Instance.new("UICorner",d).CornerRadius = UDim.new(1,0); d.ZIndex = 4; Titan.Cache.MapDots[p.Name] = d end
+                            local dot = Titan.Cache.MapDots[p.Name]; dot.BackgroundColor3 = (p==Titan.State.LockedTarget) and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,50,50); dot.Position = UDim2.new(0.5, uX-3, 0.5, uY-3); dot.Visible = true
+                        elseif Titan.Cache.MapDots[p.Name] then Titan.Cache.MapDots[p.Name].Visible = false end
+                    else if Titan.Cache.MapDots[p.Name] then Titan.Cache.MapDots[p.Name].Visible = false end end
+                    if Titan.Config.ESP and dist <= Titan.Config.RenderDist then
+                        if not Titan.Cache.ESP[p.Name] then local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,150,0,40); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3,0); local txt = Instance.new("TextLabel", bg); txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1; txt.Font = Enum.Font.GothamBold; txt.TextSize = 11; txt.TextStrokeTransparency = 0.2; Titan.Cache.ESP[p.Name] = bg end
+                        local gui = Titan.Cache.ESP[p.Name]; gui.Adornee = tR; gui.TextLabel.Text = string.format("%s\n[%dm]", p.Name, math.floor(dist)); gui.TextLabel.TextColor3 = (p==Titan.State.LockedTarget) and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,255,255); gui.Enabled = true
+                    elseif Titan.Cache.ESP[p.Name] then Titan.Cache.ESP[p.Name].Enabled = false end
                 else
-                    if Macro.Cache.MapDots[p.Name] then Macro.Cache.MapDots[p.Name].Visible = false end
-                    if Macro.Cache.ESP[p.Name] then Macro.Cache.ESP[p.Name].Enabled = false end
+                    if Titan.Cache.MapDots[p.Name] then Titan.Cache.MapDots[p.Name].Visible = false end; if Titan.Cache.ESP[p.Name] then Titan.Cache.ESP[p.Name].Enabled = false end
                 end
             end
         end
