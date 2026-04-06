@@ -29,10 +29,10 @@ local MCXC = {
 local Theme = {
     BG = Color3.fromRGB(15, 15, 18), Sidebar = Color3.fromRGB(10, 10, 12), ElementBG = Color3.fromRGB(22, 22, 26),
     Accent = Color3.fromRGB(0, 170, 255), Text = Color3.fromRGB(255, 255, 255), TextDark = Color3.fromRGB(120, 120, 130), 
-    Danger = Color3.fromRGB(255, 50, 70), Target = Color3.fromRGB(255, 210, 0)
+    Danger = Color3.fromRGB(255, 50, 70), Target = Color3.fromRGB(255, 210, 0), Safe = Color3.fromRGB(0, 255, 100)
 }
 
-local ConfigName = "Macro_MCXC_V52.json"
+local ConfigName = "Macro_MCXC_V53.json"
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(MCXC.Config)) end) end
 
@@ -87,6 +87,8 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
         Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2); Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.2)
     end)
 end
+
+function MCXC.BuyRemote(...) pcall(function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(...) end) end
 
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
@@ -177,6 +179,7 @@ end
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
 local TabC = Win:CreateTab("Combat")
 local TabV = Win:CreateTab("Visuals")
+local TabShop = Win:CreateTab("Shop Beta")
 local TabS = Win:CreateTab("Settings")
 
 TabC:CreateInput("Combo C", "ComboC")
@@ -192,6 +195,18 @@ local sldMap1 = TabV:CreateSlider("Minimap Range", 500, 3000, "MapRange", true)
 local sldMap2 = TabV:CreateSlider("Minimap Size", 80, 200, "MapSize", true)
 TabV:CreateToggle("Show Minimap (Radar)", "ShowMap", function(v) if getgenv().MapFrame then getgenv().MapFrame.Visible=v end; sldMap1.Visible=v; sldMap2.Visible=v end)
 sldMap1.Visible = MCXC.Config.ShowMap; sldMap2.Visible = MCXC.Config.ShowMap
+
+TabShop:CreateButton("Equip Sanguine Art", Theme.Danger, function() MCXC.BuyRemote("BuyMartialArt", "Sanguine Art") end)
+TabShop:CreateButton("Equip Godhuman", Theme.Accent, function() MCXC.BuyRemote("BuyMartialArt", "Godhuman") end)
+TabShop:CreateButton("Equip Sharkman Karate", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Sharkman Karate") end)
+TabShop:CreateButton("Equip Electric Claw", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Electric Claw") end)
+TabShop:CreateButton("Equip Dragon Talon", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Dragon Talon") end)
+TabShop:CreateButton("Equip Death Step", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Death Step") end)
+TabShop:CreateButton("Equip Superhuman", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Superhuman") end)
+TabShop:CreateButton("Reset Stats (Frags)", Theme.Target, function() MCXC.BuyRemote("BlackbeardReward", "Refund", "1"); MCXC.BuyRemote("BlackbeardReward", "Refund", "2") end)
+TabShop:CreateButton("Reroll Race (Frags)", Theme.Target, function() MCXC.BuyRemote("BlackbeardReward", "Reroll", "1"); MCXC.BuyRemote("BlackbeardReward", "Reroll", "2") end)
+TabShop:CreateButton("Change to Cyborg", Theme.Safe, function() MCXC.BuyRemote("CyborgTrainer", "Buy") end)
+TabShop:CreateButton("Change to Ghoul", Theme.Danger, function() MCXC.BuyRemote("GhoulBlood", "Buy") end)
 
 local sldC = TabS:CreateSlider("Size C", 40, 100, "BtnSizeC", true)
 TabS:CreateToggle("Show C", "ShowC", function(v) if getgenv().BtnC then getgenv().BtnC.Visible=v end; sldC.Visible=v end)
