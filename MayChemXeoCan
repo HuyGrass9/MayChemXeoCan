@@ -9,19 +9,23 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
-local ConfigName = "Macro_Titan_V30.json"
+-- [ CONFIG SYSTEM ]
+local ConfigName = "Macro_Titan_V31.json"
 local Config = {
     ComboC="3XZ1CZ2ZX", ComboC2="2C1XZ", ComboDelay=0.05, ActionDelay=0.1, HitboxSize=15,
     BtnSizeC=60, BtnSizeC2=60, BtnSizeX=45, SetupMode=false, ShowC=true, ShowC2=false, ShowX=true,
     FakeLag=false, FakeLagTick=4, ESP=false, ViewTracer=false, RenderDistance=1500, AutoHideC=false, HideTimer=1.5,
-    UnlockFPS=true, AntiStun=true, ShowFPS=true, ShowMap=false, MapSize=100, MapRange=500
+    UnlockFPS=true, AntiStun=true, ShowFPS=true, ShowMap=false, MapSize=100, MapRange=500, PredictionFactor=0.15
 }
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end) end
 pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 9999 or 60) end end)
 
+-- [ STATE SYSTEM ]
 getgenv().MacroHidden = false; getgenv().CancelCombo = false; getgenv().SetupMode = false
+getgenv().IsLocked = false; getgenv().LockedTarget = nil; getgenv().EditSettings = false
 
+-- [ UI INITIALIZATION ]
 local UIParent = nil
 pcall(function() UIParent = gethui() end)
 if not UIParent then pcall(function() UIParent = CoreGui end) end
@@ -82,8 +86,9 @@ local function CreateTextInput(parent, text, configKey)
 end
 
 getgenv().MCXC_ActiveSlider = nil
+local SettingsList = {}
 local function CreateSlider(parent, text, min, max, configKey, isInt, btnRef)
-    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(0.95,0,0,40); frame.BackgroundTransparency=1; frame.Visible = false
+    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(0.95,0,0,40); frame.BackgroundTransparency=1; frame.Visible = false; table.insert(SettingsList, frame)
     local lbl = Instance.new("TextLabel", frame); lbl.Size = UDim2.new(1,0,0,15); lbl.Position = UDim2.new(0.05,0,0,0); lbl.BackgroundTransparency=1; lbl.Text = text..": "..tostring(Config[configKey]); lbl.TextColor3=Color3.fromRGB(200,200,200); lbl.Font=Enum.Font.GothamMedium; lbl.TextSize=9; lbl.TextXAlignment=Enum.TextXAlignment.Left
     local bg = Instance.new("Frame", frame); bg.Size = UDim2.new(1,0,0,4); bg.Position = UDim2.new(0,0,0,25); bg.BackgroundColor3=Color3.fromRGB(35,35,40); Instance.new("UICorner", bg).CornerRadius=UDim.new(1,0)
     local fill = Instance.new("Frame", bg); fill.Size = UDim2.new((Config[configKey]-min)/(max-min),0,1,0); fill.BackgroundColor3=Color3.fromRGB(0,255,150); Instance.new("UICorner", fill).CornerRadius=UDim.new(1,0)
@@ -116,36 +121,40 @@ local function CreateToggle(parent, text, configKey, cb)
     return btn
 end
 
+-- TABS POPULATION
 CreateTextInput(TabCombat, "Sequence C:", "ComboC"); CreateTextInput(TabCombat, "Sequence C2:", "ComboC2")
-CreateToggle(TabCombat, "MACRO (ANTI-STUN)", "AntiStun")
-local sldFL = CreateSlider(TabCombat, "Fake Lag Freq", 2, 20, "FakeLagTick", true, nil); sldFL.Visible = Config.FakeLag
-CreateToggle(TabCombat, "TETHER FAKE LAG", "FakeLag", function(v) sldFL.Visible = v end)
+local editBtn = Instance.new("TextButton", TabCombat); editBtn.Size=UDim2.new(0.95,0,0,25); editBtn.BackgroundColor3=Color3.fromRGB(40,40,45); editBtn.Text="[ EDIT SETTINGS: OFF ]"; editBtn.TextColor3=Color3.fromRGB(255,255,255); editBtn.Font=Enum.Font.GothamBold; editBtn.TextSize=10; Instance.new("UICorner",editBtn).CornerRadius=UDim.new(0,4)
+editBtn.MouseButton1Click:Connect(function() getgenv().EditSettings = not getgenv().EditSettings; editBtn.Text = getgenv().EditSettings and "[ EDIT SETTINGS: ON ]" or "[ EDIT SETTINGS: OFF ]"; editBtn.BackgroundColor3 = getgenv().EditSettings and Color3.fromRGB(0,150,100) or Color3.fromRGB(40,40,45); for _,v in ipairs(SettingsList) do v.Visible = getgenv().EditSettings end end)
 
-local sldHB = CreateSlider(TabVisual, "Hitbox Size", 5, 30, "HitboxSize", true, nil); sldHB.Visible = Config.Hitbox
-CreateToggle(TabVisual, "HITBOX", "Hitbox", function(v) sldHB.Visible = v end)
+CreateToggle(TabCombat, "MACRO (ANTI-STUN)", "AntiStun")
+local sldPred = CreateSlider(TabCombat, "Prediction Strength", 0.05, 0.4, "PredictionFactor", false, nil); sldPred.Visible = getgenv().EditSettings
+local sldFL = CreateSlider(TabCombat, "Fake Lag Freq", 2, 20, "FakeLagTick", true, nil); sldFL.Visible = Config.FakeLag and getgenv().EditSettings
+CreateToggle(TabCombat, "TETHER FAKE LAG", "FakeLag", function(v) if getgenv().EditSettings then sldFL.Visible = v end end)
+
+local sldHB = CreateSlider(TabVisual, "Hitbox Size", 5, 30, "HitboxSize", true, nil); sldHB.Visible = Config.Hitbox and getgenv().EditSettings
+CreateToggle(TabVisual, "HITBOX", "Hitbox", function(v) if getgenv().EditSettings then sldHB.Visible = v end end)
 CreateToggle(TabVisual, "ESP RADAR", "ESP", function(v) if not v then CleanVisuals() end end)
 CreateToggle(TabVisual, "VIEW TRACER", "ViewTracer", function(v) if not v then CleanVisuals() end end)
-local sldMap1 = CreateSlider(TabVisual, "Minimap Range", 500, 5000, "MapRange", true, nil); local sldMap2 = CreateSlider(TabVisual, "Minimap Size", 80, 250, "MapSize", true, nil); sldMap1.Visible = Config.ShowMap; sldMap2.Visible = Config.ShowMap
-CreateToggle(TabVisual, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v and not getgenv().MacroHidden; sldMap1.Visible=v; sldMap2.Visible=v end)
-CreateSlider(TabVisual, "Render Distance", 500, 5000, "RenderDistance", true, nil); sldMap1.Visible=true -- force visible as independent
+local sldMap1 = CreateSlider(TabVisual, "Minimap Range", 500, 5000, "MapRange", true, nil); local sldMap2 = CreateSlider(TabVisual, "Minimap Size", 80, 250, "MapSize", true, nil); sldMap1.Visible = Config.ShowMap and getgenv().EditSettings; sldMap2.Visible = Config.ShowMap and getgenv().EditSettings
+CreateToggle(TabVisual, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v and not getgenv().MacroHidden; if getgenv().EditSettings then sldMap1.Visible=v; sldMap2.Visible=v end end)
+CreateSlider(TabVisual, "Render Distance", 500, 5000, "RenderDistance", true, nil)
 
 CreateToggle(TabInt, "SETUP UI (MOVE)", "SetupMode", function(v) getgenv().SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; if getgenv().ExecBtnC then getgenv().ExecBtnC.Draggable=v end; if getgenv().ExecBtnC2 then getgenv().ExecBtnC2.Draggable=v end; if getgenv().ExecBtnX then getgenv().ExecBtnX.Draggable=v end end)
-local sldC = CreateSlider(TabInt, "Size C", 40, 120, "BtnSizeC", true, nil); sldC.Visible = Config.ShowC
-CreateToggle(TabInt, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC.Visible=v end; sldC.Visible = v end)
-local sldC2 = CreateSlider(TabInt, "Size C2", 40, 120, "BtnSizeC2", true, nil); sldC2.Visible = Config.ShowC2
-CreateToggle(TabInt, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC2.Visible=v end; sldC2.Visible = v end)
-local sldX = CreateSlider(TabInt, "Size X", 30, 100, "BtnSizeX", true, nil); sldX.Visible = Config.ShowX
-CreateToggle(TabInt, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnX.Visible=v end; sldX.Visible = v end)
-
-local sldAH = CreateSlider(TabInt, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil); sldAH.Visible = Config.AutoHideC
-CreateToggle(TabInt, "AUTO HIDE C", "AutoHideC", function(v) sldAH.Visible = v end)
+local sldC = CreateSlider(TabInt, "Size C", 40, 120, "BtnSizeC", true, nil); sldC.Visible = Config.ShowC and getgenv().EditSettings
+CreateToggle(TabInt, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC.Visible=v end; if getgenv().EditSettings then sldC.Visible = v end end)
+local sldC2 = CreateSlider(TabInt, "Size C2", 40, 120, "BtnSizeC2", true, nil); sldC2.Visible = Config.ShowC2 and getgenv().EditSettings
+CreateToggle(TabInt, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC2.Visible=v end; if getgenv().EditSettings then sldC2.Visible = v end end)
+local sldX = CreateSlider(TabInt, "Size X", 30, 100, "BtnSizeX", true, nil); sldX.Visible = Config.ShowX and getgenv().EditSettings
+CreateToggle(TabInt, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnX.Visible=v end; if getgenv().EditSettings then sldX.Visible = v end end)
+local sldAH = CreateSlider(TabInt, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil); sldAH.Visible = Config.AutoHideC and getgenv().EditSettings
+CreateToggle(TabInt, "AUTO HIDE C", "AutoHideC", function(v) if getgenv().EditSettings then sldAH.Visible = v end end)
 CreateToggle(TabInt, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible=v end)
 CreateToggle(TabInt, "UNLOCK MAX FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
 
 local FixBtn = Instance.new("TextButton", TabInt); FixBtn.Size = UDim2.new(0.95,0,0,30); FixBtn.BackgroundColor3 = Color3.fromRGB(20,20,25); FixBtn.Text = "FIX LAG (MAX FPS)"; FixBtn.TextColor3 = Color3.fromRGB(200,200,200); FixBtn.Font=Enum.Font.GothamBold; FixBtn.TextSize=10; Instance.new("UICorner", FixBtn).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", FixBtn).Color=Color3.fromRGB(50,50,60)
 local HideBtn = Instance.new("TextButton", TabInt); HideBtn.Size = UDim2.new(0.95,0,0,35); HideBtn.BackgroundColor3 = Color3.fromRGB(200,40,40); HideBtn.Text = "HIDE ALL UI"; HideBtn.TextColor3 = Color3.fromRGB(255,255,255); HideBtn.Font=Enum.Font.GothamBold; HideBtn.TextSize=11; Instance.new("UICorner", HideBtn).CornerRadius=UDim.new(0,4)
 local InstTxt = Instance.new("TextLabel", TabGuide); InstTxt.Size = UDim2.new(1,-10,1,-10); InstTxt.Position = UDim2.new(0,5,0,5); InstTxt.BackgroundTransparency=1; InstTxt.TextColor3=Color3.fromRGB(200,200,200); InstTxt.TextWrapped=true; InstTxt.Font=Enum.Font.GothamMedium; InstTxt.TextSize=10; InstTxt.TextXAlignment=Enum.TextXAlignment.Left; InstTxt.TextYAlignment=Enum.TextYAlignment.Top
-InstTxt.Text = "HOW TO\n\n1. NÚT C & SETUP COMBO\n- Nhập chuỗi chiêu vào ô. Tự bỏ số rút đồ nếu tay đang cầm sẵn.\n- Nút C, C2, X mặc định ẩn, qua tab INTERFACE để bật và chỉnh Size.\n\n2. NÚT X (HỦY COMBO)\n- Hủy khẩn cấp luồng combo đang chạy.\n\n3. TETHER FAKE LAG\n- Tạo bóng ma giật ngang khi di chuyển để né đòn. Tự động 'thả neo' tọa độ thật khi đứng lại xả chiêu để trúng 100%.\n\n4. ESP ĐỘC TÔN\n- Kẻ địch gần nhất sẽ được bôi màu VÀNG chói để nhận diện!\n\n5. ẨN GIAO DIỆN\n- Chat 'MCXC' để gọi lại bảng Menu nếu đã ấn Hide."
+InstTxt.Text = "HOW TO (V31 PREDICTION)\n\n1. COMBAT SYSTEM\n- Nhập Combo vào ô. Tự bỏ số rút vũ khí nếu tay đang cầm sẵn.\n- Bật EDIT SETTINGS để chỉnh thông số.\n\n2. PREDICTION AIM (NGẮM TRƯỚC)\n- Giữ/Bấm kỹ năng (VD đè chữ Z), Lõi tự động dùng Toán học Vector đọc Vận tốc (Velocity) của địch để hướng Camera tới VỊ TRÍ TƯƠNG LAI. Địch Dash là đón đầu!\n\n3. TETHER FAKE LAG\n- Giật ngang tàng hình khi di chuyển. Đóng cọc khi xả chiêu để tỷ lệ trúng là 100%.\n\n4. ESP ĐỘC TÔN\n- Kẻ địch GẦN NHẤT sẽ bị hệ thống bôi màu VÀNG CHÓI để nhận diện làm mục tiêu bị săn đuổi!"
 
 local function CreateActionBtnEx(name, xPos, yPos, color, showKey, sizeKey)
     local btn = Instance.new("TextButton", UI); btn.Size = UDim2.new(0,Config[sizeKey],0,Config[sizeKey]); btn.Position = UDim2.new(xPos,0,yPos,0); btn.BackgroundColor3 = Color3.fromRGB(12,12,12); btn.BackgroundTransparency=0.3; btn.Text=name; btn.TextColor3=color; btn.Font=Enum.Font.GothamBlack; btn.TextSize=math.clamp(Config[sizeKey]*0.4,12,35); btn.Visible=Config[showKey] and not getgenv().MacroHidden; btn.Active=true; btn.Selectable=false; btn.Draggable=false; Instance.new("UICorner", btn).CornerRadius=UDim.new(0.3,0); local stk=Instance.new("UIStroke", btn); stk.Color=color; stk.Thickness=1.5; stk.Transparency=0.2
@@ -167,22 +176,50 @@ local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","k
 local function GetToolType(tool) if not tool then return "0" end; local n, v = string.lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt then v = string.lower(tostring(tt.Value)) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if string.find(n,k) or string.find(v,k) then return tostring(i) end end end; return "0" end
 local function IsBusy(char) if not char then return false end; for _, v in ipairs(char:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name), "busy") or string.find(string.lower(v.Name), "using") or string.find(string.lower(v.Name), "cast")) then return true end end; return false end
 
+-- [ MODULE: TARGET & PREDICTION ]
+local function GetBestTarget()
+    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return nil end
+    local nPlr, minD = nil, math.huge
+    for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then local d=(p.Character.HumanoidRootPart.Position-myR.Position).Magnitude; if d<minD then minD=d; nPlr=p end end end
+    return nPlr
+end
+
+local function AimWithPrediction()
+    local t = GetBestTarget()
+    if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+        local cam = workspace.CurrentCamera
+        local tRoot = t.Character.HumanoidRootPart
+        local tVel = tRoot.Velocity
+        -- [ PREDICTION MATH: Pos + (Velocity * Factor) ]
+        local predFactor = tonumber(Config.PredictionFactor) or 0.15
+        local predPos = tRoot.Position + (tVel * predFactor)
+        cam.CFrame = CFrame.lookAt(cam.CFrame.Position, predPos)
+        
+        local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if myR then myR.CFrame = CFrame.lookAt(myR.Position, Vector3.new(predPos.X, myR.Position.Y, predPos.Z)) end
+    end
+end
+
+-- [ MODULE: COMBAT TASK CONTROL ]
 local function ExCombo(comboStr, btnRef, stroke, baseColor)
     TweenService:Create(btnRef, TweenInfo.new(0.2), {BackgroundTransparency=0.1}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,255,255), Thickness=2.5, Transparency=0}):Play()
     if Config.AutoHideC and btnRef.Visible then btnRef.Visible=false; task.delay(Config.HideTimer, function() if not getgenv().MacroHidden and ((btnRef==getgenv().ExecBtnC and Config.ShowC) or (btnRef==getgenv().ExecBtnC2 and Config.ShowC2)) then btnRef.Visible=true end end) end
+    
     task.spawn(function()
         task.wait(0.01); local s = string.upper(comboStr); local first = string.sub(s,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then s=string.sub(s,2) end
+        
         for i=1, #s do
             if getgenv().CancelCombo then break end; local char = string.sub(s,i,i)
             if char=="1" or char=="2" or char=="3" or char=="4" then
                 local tT = LP.Character:FindFirstChildOfClass("Tool"); if not tT or GetToolType(tT)~=char then
                     local kc = Enum.KeyCode.One; if char=="2" then kc=Enum.KeyCode.Two elseif char=="3" then kc=Enum.KeyCode.Three elseif char=="4" then kc=Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if getgenv().CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==char then break end; RunService.Heartbeat:Wait() end; task.wait(0.05)
+                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if getgenv().CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==char then break end; task.wait() end; task.wait(0.05)
                 end
             elseif char=="Z" or char=="X" or char=="C" or char=="V" or char=="F" then
-                local kc = Enum.KeyCode[char]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game); local wR=tick(); local trg=false; while tick()-wR<0.4 do if getgenv().CancelCombo then break end; if IsBusy(LP.Character) then trg=true; break end; RunService.Heartbeat:Wait() end
-                if trg then local wA=tick(); while IsBusy(LP.Character) and tick()-wA<3.0 do if getgenv().CancelCombo then break end; RunService.Heartbeat:Wait() end; task.wait(tonumber(Config.ActionDelay) or 0.1) else task.wait(tonumber(Config.ComboDelay) or 0.05) end
+                AimWithPrediction() -- Áp dụng Prediction ngay trước khi nhả chiêu
+                local kc = Enum.KeyCode[char]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game); local wR=tick(); local trg=false; while tick()-wR<0.4 do if getgenv().CancelCombo then break end; if IsBusy(LP.Character) then trg=true; break end; task.wait() end
+                if trg then local wA=tick(); while IsBusy(LP.Character) and tick()-wA<3.0 do if getgenv().CancelCombo then break end; task.wait() end; task.wait(tonumber(Config.ActionDelay) or 0.1) else task.wait(tonumber(Config.ComboDelay) or 0.05) end
             end
         end
         TweenService:Create(btnRef, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color=baseColor, Thickness=1.5, Transparency=0.2}):Play()
@@ -205,8 +242,8 @@ RunService.Heartbeat:Connect(function()
                 lagTick=lagTick+1; if lagTick>=(tonumber(Config.FakeLagTick) or 4) then local hr=LP.Character.HumanoidRootPart; ghostCF=hr.CFrame; hr.CFrame=ghostCF*CFrame.new(math.random(-150,150), 0, math.random(-150,150)); lagTick=0 end
             else lagTick=0 end
             
-            local myR = LP.Character:FindFirstChild("HumanoidRootPart"); local nPlr, minD = nil, math.huge
-            for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then local d=(p.Character.HumanoidRootPart.Position-myR.Position).Magnitude; if d<minD then minD=d; nPlr=p end end end
+            local myR = LP.Character:FindFirstChild("HumanoidRootPart")
+            local nPlr = GetBestTarget()
             
             if Config.ShowMap and not getgenv().MacroHidden then
                 for _,v in ipairs(DotsContainer:GetChildren()) do v:Destroy() end
@@ -227,7 +264,7 @@ RunService.Heartbeat:Connect(function()
             
             for _,p in ipairs(Players:GetPlayers()) do
                 if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local rt = p.Character.HumanoidRootPart; local dst = (rt.Position-myR.Position).Magnitude; local isNear = (p == nPlr)
+                    local rt = p.Character.HumanoidRootPart; local dst = myR and (rt.Position-myR.Position).Magnitude or 0; local isNear = (p == nPlr)
                     if Config.Hitbox and not getgenv().MacroHidden then local hs=tonumber(Config.HitboxSize) or 15; rt.Size=Vector3.new(hs,hs,hs); rt.Transparency=0.8; rt.CanCollide=false else if rt.Size.X>5 then rt.Size=Vector3.new(2,2,1); rt.Transparency=1 end end
                     local espG = rt:FindFirstChild("ESP_"..p.Name)
                     if Config.ESP and dst<=(tonumber(Config.RenderDistance) or 1500) and not getgenv().MacroHidden then
