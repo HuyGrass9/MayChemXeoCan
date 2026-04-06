@@ -10,7 +10,7 @@ local LP = Players.LocalPlayer
 
 local MCXC = {
     Config = {
-        ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", BaseDelay = 0.05, ActionDelay = 0.15,
+        ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", ComboDelay = 0.05, ActionDelay = 0.1,
         HitboxSize = 15, RenderDist = 1500, Prediction = 0.18, Smoothness = 0.3,
         ESP = false, ViewTracer = false, FakeLag = false, FakeLagTick = 4, ShowMap = false, MapSize = 120, MapRange = 600,
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, BtnSizeAim = 45,
@@ -20,10 +20,10 @@ local MCXC = {
         IsCombo = false, CancelCombo = false, Target = nil, MenuOpen = false, LastTick = tick(), LagTick = 0,
         GhostCF = nil, SetupMode = false, EditSettings = false, IsLocked = false, LockedTarget = nil
     },
-    Cache = { ESP = {}, MapDots = {}, TracerLine = nil }
+    Cache = { ESP = {}, MapDots = {}, Tracer = {} }
 }
 
-local ConfigName = "Macro_MCXC_V40.json"
+local ConfigName = "Macro_MCXC_V41.json"
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(MCXC.Config)) end) end
 
@@ -48,10 +48,7 @@ local Combat = {}
 function Combat.IsBusy(char)
     if not char then return false end
     for _, v in ipairs(char:GetChildren()) do 
-        if v:IsA("BoolValue") and v.Value then 
-            local n = string.lower(v.Name)
-            if string.find(n, "busy") or string.find(n, "using") or string.find(n, "cast") or string.find(n, "charg") then return true end 
-        end 
+        if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name), "busy") or string.find(string.lower(v.Name), "using") or string.find(string.lower(v.Name), "cast")) then return true end 
     end
     return false
 end
@@ -63,6 +60,21 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke)
     if MCXC.State.IsCombo then return end
     MCXC.State.IsCombo = true; Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.1); Utils.Tween(stroke, {Thickness=2.5, Color=Color3.fromRGB(255,255,255)}, 0.1)
     task.spawn(function()
+        if MCXC.Config.AutoLockC and MCXC.State.LockedTarget then
+            local w = tick()
+            while tick() - w < 1.5 do
+                if MCXC.State.CancelCombo then break end
+                local t = MCXC.State.LockedTarget
+                if not t or not t.Character or not t.Character:FindFirstChild("HumanoidRootPart") then break end
+                local cam = workspace.CurrentCamera
+                local tR = t.Character.HumanoidRootPart
+                local predPos = tR.Position + (tR.Velocity * MCXC.Config.Prediction) - Vector3.new(0, 1.2, 0)
+                local dir = (predPos - cam.CFrame.Position).Unit
+                if cam.CFrame.LookVector:Dot(dir) > 0.98 then break end
+                RunService.Heartbeat:Wait()
+            end
+        end
+
         task.wait(0.01); local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=string.sub(seq,2) end
         for i = 1, #seq do
@@ -71,13 +83,13 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke)
             if string.match(key, "[1-4]") then
                 local tT = LP.Character:FindFirstChildOfClass("Tool"); if not tT or GetToolType(tT)~=key then
                     local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; task.wait() end; task.wait(0.05)
+                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; RunService.Heartbeat:Wait() end; task.wait(0.05)
                 end
             elseif string.match(key, "[ZXCVF]") then
                 local kc = Enum.KeyCode[key]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game)
                 local wR = tick(); local trg = false
-                while tick()-wR < 0.4 do if MCXC.State.CancelCombo then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; task.wait() end
-                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo then break end; task.wait() end; task.wait(MCXC.Config.ActionDelay) else task.wait(MCXC.Config.BaseDelay) end
+                while tick()-wR < 0.4 do if MCXC.State.CancelCombo then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; RunService.Heartbeat:Wait() end
+                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo then break end; RunService.Heartbeat:Wait() end; task.wait(MCXC.Config.ActionDelay) else task.wait(MCXC.Config.ComboDelay) end
             end
         end
         MCXC.State.IsCombo = false; MCXC.State.CancelCombo = false
@@ -90,10 +102,10 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke)
 end
 
 local UIParent = pcall(gethui) and gethui() or CoreGui
-if UIParent:FindFirstChild("MCXCV40") then UIParent.MCXCV40:Destroy() end
+if UIParent:FindFirstChild("MCXCV41") then UIParent.MCXCV41:Destroy() end
 
-local UI = Instance.new("ScreenGui", UIParent); UI.Name = "MCXCV40"; UI.DisplayOrder = 10000; UI.ResetOnSpawn = false; UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-local ToggleIcon = Instance.new("ImageButton", UI); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Color3.fromRGB(15,15,18); ToggleIcon.BackgroundTransparency = 0.1; ToggleIcon.Active = true; ToggleIcon.ZIndex = 10; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); local ts = Instance.new("UIStroke", ToggleIcon); ts.Color = Color3.fromRGB(0,255,150); ts.Thickness=2
+local UI = Instance.new("ScreenGui", UIParent); UI.Name = "MCXCV41"; UI.DisplayOrder = 10000; UI.ResetOnSpawn = false; UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local ToggleIcon = Instance.new("ImageButton", UI); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Color3.fromRGB(15,15,18); ToggleIcon.BackgroundTransparency = 0.1; ToggleIcon.Active = true; ToggleIcon.Selectable = true; ToggleIcon.ZIndex = 10; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); local ts = Instance.new("UIStroke", ToggleIcon); ts.Color = Color3.fromRGB(0,255,150); ts.Thickness=2
 local Menu = Instance.new("Frame", UI); Menu.Size = UDim2.new(0,460,0,290); Menu.Position = UDim2.new(0.5,-230,0.5,-145); Menu.BackgroundColor3 = Color3.fromRGB(15,15,18); Menu.ClipsDescendants = true; Menu.Visible = false; Menu.ZIndex = 9; Instance.new("UICorner", Menu).CornerRadius = UDim.new(0,8); Instance.new("UIStroke", Menu).Color = Color3.fromRGB(40,40,50)
 local Sidebar = Instance.new("Frame", Menu); Sidebar.Size = UDim2.new(0,140,1,0); Sidebar.BackgroundColor3 = Color3.fromRGB(12,12,14); Sidebar.BorderSizePixel = 0
 local Content = Instance.new("Frame", Menu); Content.Size = UDim2.new(1,-140,1,0); Content.Position = UDim2.new(0,140,0,0); Content.BackgroundTransparency = 1
@@ -158,6 +170,7 @@ editBtn.MouseButton1Click:Connect(function() MCXC.State.EditSettings = not MCXC.
 
 CreateToggle(TabC, "MACRO", "Macro")
 CreateToggle(TabC, "AUTO LOCK ON C", "AutoLockC")
+local sldDelay = CreateSlider(TabC, "Action Delay", 0.05, 0.4, "ActionDelay", false); sldDelay.Visible = MCXC.State.EditSettings
 local sldPred = CreateSlider(TabC, "Prediction Factor", 0.05, 0.4, "Prediction", false); sldPred.Visible = MCXC.State.EditSettings
 local sldFL = CreateSlider(TabC, "Fake Lag Tick", 2, 15, "FakeLagTick", true); sldFL.Visible = MCXC.Config.FakeLag and MCXC.State.EditSettings
 CreateToggle(TabC, "GHOST DESYNC (LAG)", "FakeLag", function(v) if MCXC.State.EditSettings then sldFL.Visible = v end end)
@@ -227,13 +240,21 @@ ToggleIcon.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType
 UserInputService.InputChanged:Connect(function(i) if dragIcon and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then local delta = i.Position - dragStart; ToggleIcon.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 ToggleIcon.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
-        if dragIcon then dragIcon=false; if (i.Position - dragStart).Magnitude < 10 then MCXC.State.MenuOpen = not MCXC.State.MenuOpen; if MCXC.State.MenuOpen then Menu.Visible=true; Menu.Size=UDim2.new(0,460,0,0); Utils.Tween(Menu, {Size=UDim2.new(0,460,0,290)}, 0.25) else local tw = Utils.Tween(Menu, {Size=UDim2.new(0,460,0,0)}, 0.2); tw.Completed:Wait(); Menu.Visible=false end end end
+        if dragIcon then 
+            dragIcon=false
+            if (i.Position - dragStart).Magnitude < 10 then 
+                MCXC.State.MenuOpen = not MCXC.State.MenuOpen
+                if MCXC.State.MenuOpen then Menu.Visible=true; Menu.Size=UDim2.new(0,460,0,0); Utils.Tween(Menu, {Size=UDim2.new(0,460,0,290)}, 0.25) 
+                else local tw = Utils.Tween(Menu, {Size=UDim2.new(0,460,0,0)}, 0.2); tw.Completed:Wait(); Menu.Visible=false end 
+            end 
+        end
     end
 end)
 
 Players.PlayerRemoving:Connect(function(p) 
     if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy(); MCXC.Cache.ESP[p.Name] = nil end 
     if MCXC.Cache.MapDots[p.Name] then MCXC.Cache.MapDots[p.Name]:Destroy(); MCXC.Cache.MapDots[p.Name] = nil end
+    if MCXC.Cache.TracerLine and MCXC.State.LockedTarget == p then MCXC.Cache.TracerLine.Beam.Enabled = false end
 end)
 
 RunService:BindToRenderStep("MCXCGhost", 199, function() if MCXC.State.GhostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame = MCXC.State.GhostCF; MCXC.State.GhostCF = nil end end)
@@ -245,7 +266,7 @@ RunService.Heartbeat:Connect(function()
         
         if MCXC.State.IsLocked and MCXC.State.LockedTarget and MCXC.State.LockedTarget.Character and MCXC.State.LockedTarget.Character:FindFirstChild("HumanoidRootPart") and MCXC.State.LockedTarget.Character:FindFirstChild("Humanoid") and MCXC.State.LockedTarget.Character.Humanoid.Health>0 then
             local tR = MCXC.State.LockedTarget.Character.HumanoidRootPart
-            local vel = tR.Velocity; local predPos = tR.Position + (vel * MCXC.Config.Prediction)
+            local vel = tR.Velocity; local predPos = tR.Position + (vel * MCXC.Config.Prediction) - Vector3.new(0, 1.2, 0)
             local cam = workspace.CurrentCamera; cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(cam.CFrame.Position, predPos), MCXC.Config.Smoothness)
             myR.CFrame = myR.CFrame:Lerp(CFrame.lookAt(myR.Position, Vector3.new(predPos.X, myR.Position.Y, predPos.Z)), MCXC.Config.Smoothness + 0.1)
         else
@@ -269,7 +290,6 @@ RunService.Heartbeat:Connect(function()
             local cam = workspace.CurrentCamera
             local cF2, cR2 = Vector2.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Z).Unit, Vector2.new(cam.CFrame.RightVector.X, cam.CFrame.RightVector.Z).Unit
             
-            -- TRACER LOGIC (SINGLE CLOSEST TARGET)
             local tracerTarget = nil; local tracerMinD = 500
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
