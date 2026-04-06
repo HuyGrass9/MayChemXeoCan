@@ -32,7 +32,7 @@ local Theme = {
     Danger = Color3.fromRGB(255, 50, 70), Target = Color3.fromRGB(255, 210, 0)
 }
 
-local ConfigName = "Macro_MCXC_V51.json"
+local ConfigName = "Macro_MCXC_V52.json"
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(MCXC.Config)) end) end
 
@@ -287,21 +287,21 @@ RunService.Heartbeat:Connect(function()
                     if MCXC.Config.ESP and dist <= MCXC.Config.RenderDist then
                         if not MCXC.Cache.ESP[p.Name] or MCXC.Cache.ESP[p.Name].Parent ~= tR then
                             if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy() end
-                            local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,100,0,35); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3,0)
+                            local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,100,0,35); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3,0); bg.Name = "ESPGui"
                             local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center
-                            local nLbl = Instance.new("TextLabel", bg); nLbl.Size = UDim2.new(1,0,0,12); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBold; nLbl.TextSize = 10; nLbl.TextStrokeTransparency = 0.5; nLbl.LayoutOrder = 1
-                            local hpBg = Instance.new("Frame", bg); hpBg.Size = UDim2.new(1,0,0,10); hpBg.BackgroundColor3 = Color3.fromRGB(30,30,30); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1,0)
-                            local hpFill = Instance.new("Frame", hpBg); hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1,0)
-                            local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 9; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.ZIndex = 2
-                            local wLbl = Instance.new("TextLabel", bg); wLbl.Size = UDim2.new(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamMedium; wLbl.TextSize = 9; wLbl.TextStrokeTransparency = 0.5; wLbl.LayoutOrder = 3
+                            local nLbl = Instance.new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,12); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBold; nLbl.TextSize = 10; nLbl.TextStrokeTransparency = 0.5; nLbl.LayoutOrder = 1
+                            local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(1,0,0,10); hpBg.BackgroundColor3 = Color3.fromRGB(30,30,30); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1,0)
+                            local hpFill = Instance.new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1,0)
+                            local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 9; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.ZIndex = 2
+                            local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamMedium; wLbl.TextSize = 9; wLbl.TextStrokeTransparency = 0.5; wLbl.LayoutOrder = 3
                             MCXC.Cache.ESP[p.Name] = bg
                         end
                         local hp, mhp = 0, 0; pcall(function() hp = math.floor(p.Character.Humanoid.Health); mhp = math.floor(p.Character.Humanoid.MaxHealth) end); local w = p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"
                         local gui = MCXC.Cache.ESP[p.Name]; gui.Adornee = tR
                         local mainC = isClose and Theme.Target or Color3.fromRGB(255,255,255)
-                        gui:GetChildren()[2].Text = p.Name; gui:GetChildren()[2].TextColor3 = mainC
-                        gui:GetChildren()[3]:GetChildren()[2].Text = hp.." / "..mhp; gui:GetChildren()[3]:GetChildren()[1].Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui:GetChildren()[3]:GetChildren()[1].BackgroundColor3 = (hp<=300) and Theme.Danger or mainC
-                        gui:GetChildren()[4].Text = "[W: "..string.sub(w,1,12).."]"; gui:GetChildren()[4].TextColor3 = mainC; gui.Enabled = true
+                        gui.NameLbl.Text = p.Name; gui.NameLbl.TextColor3 = mainC
+                        gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC
+                        gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true
                     elseif MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end
                 else
                     if MCXC.Cache.MapDots[p.Name] then MCXC.Cache.MapDots[p.Name].Visible = false end; if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end
