@@ -3,69 +3,72 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
-local Lighting = game:GetService("Lighting")
-local UserInputService = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
 
--- [ CONFIG SYSTEM ]
 local ConfigName = "Macro_Titan_V31.json"
 local Config = {
-    ComboC="3XZ1CZ2ZX", ComboC2="2C1XZ", ComboDelay=0.05, ActionDelay=0.1, HitboxSize=15,
-    BtnSizeC=60, BtnSizeC2=60, BtnSizeX=45, SetupMode=false, ShowC=true, ShowC2=false, ShowX=true,
-    FakeLag=false, FakeLagTick=4, ESP=false, ViewTracer=false, RenderDistance=1500, AutoHideC=false, HideTimer=1.5,
-    UnlockFPS=true, AntiStun=true, ShowFPS=true, ShowMap=false, MapSize=100, MapRange=500, PredictionFactor=0.15
+    ComboC="3XZ1CZ2ZX", ComboC2="2C1XZ", BaseDelay=0.05, HitboxSize=15,
+    BtnSizeC=60, BtnSizeC2=60, BtnSizeX=45, SetupMode=false, ShowC=false, ShowC2=false,
+    ShowX=false, FakeLag=false, ESP=false, ViewTracer=false,
+    RenderDistance=1500, FPSCap=120, AutoLock=true, Humanize=true, MapSize=100, MapRange=500
 }
+
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(Config)) end) end
-pcall(function() if setfpscap then setfpscap(Config.UnlockFPS and 9999 or 60) end end)
+pcall(function() if setfpscap then setfpscap(Config.FPSCap) end end)
 
--- [ STATE SYSTEM ]
-getgenv().MacroHidden = false; getgenv().CancelCombo = false; getgenv().SetupMode = false
-getgenv().IsLocked = false; getgenv().LockedTarget = nil; getgenv().EditSettings = false
+local State = {
+    Hidden = false, Setup = false, LockC = false, LockC2 = false, Cancel = false,
+    Target = nil, Ping = 0.05, GhostCF = nil, LagTick = 0
+}
 
--- [ UI INITIALIZATION ]
-local UIParent = nil
-pcall(function() UIParent = gethui() end)
-if not UIParent then pcall(function() UIParent = CoreGui end) end
-if not UIParent then UIParent = LP:WaitForChild("PlayerGui") end
+local Cache = { ESP = {}, MapDots = {} }
 
-local oldUI = UIParent:FindFirstChild("Macro")
+local function GetPing()
+    pcall(function() State.Ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000 end)
+    if State.Ping > 0.5 or State.Ping < 0.01 then State.Ping = 0.05 end
+    return State.Ping
+end
+
+local function HumanizeDelay(base)
+    if not Config.Humanize then return base end
+    return base + math.random(-15, 25) / 1000
+end
+
+local UIParent = pcall(gethui) and gethui() or CoreGui
+local oldUI = UIParent:FindFirstChild("MacroV31")
 if oldUI then oldUI:Destroy() end
-local oldFPS = UIParent:FindFirstChild("FPSCounter")
-if oldFPS then oldFPS:Destroy() end
 
-local FPSGui = Instance.new("ScreenGui", UIParent); FPSGui.Name = "FPSCounter"; FPSGui.ResetOnSpawn = false; FPSGui.DisplayOrder = 10000
-local FPSText = Instance.new("TextLabel", FPSGui)
-FPSText.Size = UDim2.new(0,100,0,30); FPSText.Position = UDim2.new(1,-110,0,10); FPSText.BackgroundTransparency = 1
-FPSText.TextColor3 = Color3.fromRGB(0,255,150); FPSText.Font = Enum.Font.GothamBlack; FPSText.TextSize = 14; FPSText.TextXAlignment = Enum.TextXAlignment.Right
+local UI = Instance.new("ScreenGui", UIParent)
+UI.Name = "MacroV31"; UI.ResetOnSpawn = false; UI.DisplayOrder = 9999
 
-local UI = Instance.new("ScreenGui", UIParent); UI.Name = "Macro"; UI.ResetOnSpawn = false; UI.DisplayOrder = 9999
 local ToggleIcon = Instance.new("ImageButton", UI)
-ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,25); ToggleIcon.BackgroundColor3 = Color3.fromRGB(15,15,18)
+ToggleIcon.Size = UDim2.new(0,40,0,40); ToggleIcon.Position = UDim2.new(0.5,-20,0,15); ToggleIcon.BackgroundColor3 = Color3.fromRGB(15,15,18)
 ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.Active = true; ToggleIcon.Draggable = true
-Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); local ts = Instance.new("UIStroke", ToggleIcon); ts.Color = Color3.fromRGB(0,255,150); ts.Thickness=2
+Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); local ts = Instance.new("UIStroke", ToggleIcon); ts.Color = Color3.fromRGB(0,255,150); ts.Thickness=1.5
 
-local MapFrame = Instance.new("Frame", UI); MapFrame.Name = "MiniMap"; MapFrame.Size = UDim2.new(0,Config.MapSize,0,Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Color3.fromRGB(10,10,12); MapFrame.BackgroundTransparency = 0.3; MapFrame.Visible = Config.ShowMap and not getgenv().MacroHidden
+local MapFrame = Instance.new("Frame", UI); MapFrame.Name = "MiniMap"; MapFrame.Size = UDim2.new(0,Config.MapSize,0,Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Color3.fromRGB(10,10,12); MapFrame.BackgroundTransparency = 0.3; MapFrame.Visible = false
 Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(1,0); local ms = Instance.new("UIStroke", MapFrame); ms.Color = Color3.fromRGB(0,255,150); ms.Thickness=1.5
 local ring1 = Instance.new("Frame", MapFrame); ring1.Size = UDim2.new(0.5,0,0.5,0); ring1.Position = UDim2.new(0.25,0,0.25,0); ring1.BackgroundTransparency=1; Instance.new("UICorner", ring1).CornerRadius = UDim.new(1,0); local rs1 = Instance.new("UIStroke", ring1); rs1.Color = Color3.fromRGB(0,255,150); rs1.Transparency=0.8; rs1.Thickness=1
 local CenterDot = Instance.new("Frame", MapFrame); CenterDot.Size = UDim2.new(0,6,0,6); CenterDot.Position = UDim2.new(0.5,-3,0.5,-3); CenterDot.BackgroundColor3 = Color3.fromRGB(0,255,255); Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1,0); CenterDot.ZIndex=3
-local CamCone = Instance.new("Frame", CenterDot); CamCone.Size = UDim2.new(0,2,0,12); CamCone.Position = UDim2.new(0.5,-1,0,-12); CamCone.BackgroundColor3 = Color3.fromRGB(255,200,0); CamCone.BorderSizePixel=0; CamCone.ZIndex=2
-local DotsContainer = Instance.new("Folder", MapFrame); DotsContainer.Name = "Dots"
+local DotsContainer = Instance.new("Folder", MapFrame)
 
-local Menu = Instance.new("Frame", UI); Menu.Size = UDim2.new(0,460,0,290); Menu.Position = UDim2.new(0.5,-230,0.5,-145); Menu.BackgroundColor3 = Color3.fromRGB(15,15,18); Menu.Active=true; Menu.Visible=false; Menu.ClipsDescendants=true; Instance.new("UICorner", Menu).CornerRadius = UDim.new(0,8)
+local Menu = Instance.new("Frame", UI); Menu.Size = UDim2.new(0,440,0,280); Menu.Position = UDim2.new(0.5,-220,0.5,-140); Menu.BackgroundColor3 = Color3.fromRGB(15,15,18); Menu.Active=true; Menu.Visible=false; Menu.ClipsDescendants=true; Instance.new("UICorner", Menu).CornerRadius = UDim.new(0,6)
 local MenuStroke = Instance.new("UIStroke", Menu); MenuStroke.Color = Color3.fromRGB(40,40,50); MenuStroke.Thickness=1
-local Sidebar = Instance.new("Frame", Menu); Sidebar.Size = UDim2.new(0,130,1,0); Sidebar.BackgroundColor3 = Color3.fromRGB(12,12,14); Sidebar.BorderSizePixel=0
-local ContentArea = Instance.new("Frame", Menu); ContentArea.Size = UDim2.new(1,-130,1,0); ContentArea.Position = UDim2.new(0,130,0,0); ContentArea.BackgroundTransparency=1
-local Title = Instance.new("TextLabel", Sidebar); Title.Size = UDim2.new(1,0,0,45); Title.BackgroundTransparency=1; Title.Text = "MACRO"; Title.TextColor3 = Color3.fromRGB(255,255,255); Title.Font = Enum.Font.GothamBlack; Title.TextSize=16
+local Sidebar = Instance.new("Frame", Menu); Sidebar.Size = UDim2.new(0,120,1,0); Sidebar.BackgroundColor3 = Color3.fromRGB(12,12,14); Sidebar.BorderSizePixel=0
+local ContentArea = Instance.new("Frame", Menu); ContentArea.Size = UDim2.new(1,-120,1,0); ContentArea.Position = UDim2.new(0,120,0,0); ContentArea.BackgroundTransparency=1
+local Title = Instance.new("TextLabel", Sidebar); Title.Size = UDim2.new(1,0,0,45); Title.BackgroundTransparency=1; Title.Text = "TITAN V31"; Title.TextColor3 = Color3.fromRGB(0,255,150); Title.Font = Enum.Font.GothamBlack; Title.TextSize=14
 
 local TabFrames, TabBtns = {}, {}
 local function CreateTab(name, yPos, isActive)
-    local btn = Instance.new("TextButton", Sidebar); btn.Size = UDim2.new(1,0,0,40); btn.Position = UDim2.new(0,0,0,yPos); btn.BackgroundTransparency = isActive and 0.9 or 1; btn.Text = "   "..name; btn.TextColor3 = isActive and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140); btn.Font = Enum.Font.GothamBold; btn.TextSize=11; btn.TextXAlignment = Enum.TextXAlignment.Left
-    local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,3,1,-16); ind.Position = UDim2.new(0,0,0,8); ind.BackgroundColor3 = Color3.fromRGB(0,255,150); ind.BorderSizePixel=0; ind.Visible=isActive
-    local frm = Instance.new("ScrollingFrame", ContentArea); frm.Size = UDim2.new(1,-10,1,-10); frm.Position = UDim2.new(0,5,0,5); frm.BackgroundTransparency=1; frm.Visible=isActive; frm.ScrollBarThickness=2; frm.CanvasSize = UDim2.new(0,0,0,0); frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local layout = Instance.new("UIListLayout", frm); layout.Padding = UDim.new(0, 8); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    local btn = Instance.new("TextButton", Sidebar); btn.Size = UDim2.new(1,0,0,35); btn.Position = UDim2.new(0,0,0,yPos); btn.BackgroundTransparency = isActive and 0.9 or 1; btn.Text = "  "..name; btn.TextColor3 = isActive and Color3.fromRGB(255,255,255) or Color3.fromRGB(130,130,140); btn.Font = Enum.Font.GothamBold; btn.TextSize=10; btn.TextXAlignment = Enum.TextXAlignment.Left
+    local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,2,1,-14); ind.Position = UDim2.new(0,0,0,7); ind.BackgroundColor3 = Color3.fromRGB(0,255,150); ind.BorderSizePixel=0; ind.Visible=isActive
+    local frm = Instance.new("ScrollingFrame", ContentArea); frm.Size = UDim2.new(1,-10,1,-10); frm.Position = UDim2.new(0,5,0,5); frm.BackgroundTransparency=1; frm.Visible=isActive; frm.ScrollBarThickness=1; frm.CanvasSize = UDim2.new(0,0,0,0); frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    local layout = Instance.new("UIListLayout", frm); layout.Padding = UDim.new(0, 6); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     local pad = Instance.new("UIPadding", frm); pad.PaddingTop = UDim.new(0, 5)
     
     TabBtns[name] = {Btn=btn, Ind=ind}; TabFrames[name] = frm
@@ -76,28 +79,27 @@ local function CreateTab(name, yPos, isActive)
     return frm
 end
 
-local TabCombat = CreateTab("COMBAT", 55, true); local TabVisual = CreateTab("VISUALS", 95, false); local TabInt = CreateTab("INTERFACE", 135, false); local TabGuide = CreateTab("GUIDE", 175, false)
+local TabCombat = CreateTab("COMBAT", 55, true); local TabVisual = CreateTab("VISUALS", 90, false); local TabInt = CreateTab("INTERFACE", 125, false)
 
 local function CreateTextInput(parent, text, configKey)
-    local cont = Instance.new("Frame", parent); cont.Size = UDim2.new(0.95,0,0,45); cont.BackgroundTransparency=1
-    local lbl = Instance.new("TextLabel", cont); lbl.Size = UDim2.new(1,0,0,15); lbl.BackgroundTransparency=1; lbl.Text=text; lbl.TextColor3=Color3.fromRGB(200,200,200); lbl.Font=Enum.Font.GothamMedium; lbl.TextSize=10; lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local box = Instance.new("TextBox", cont); box.Size = UDim2.new(1,0,0,28); box.Position = UDim2.new(0,0,0,17); box.BackgroundColor3=Color3.fromRGB(20,20,25); box.TextColor3=Color3.fromRGB(0,255,150); box.Font=Enum.Font.GothamBold; box.TextSize=12; box.Text=Config[configKey]; box.ClearTextOnFocus = false; Instance.new("UICorner", box).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", box).Color=Color3.fromRGB(50,50,60)
+    local cont = Instance.new("Frame", parent); cont.Size = UDim2.new(0.95,0,0,40); cont.BackgroundTransparency=1
+    local lbl = Instance.new("TextLabel", cont); lbl.Size = UDim2.new(1,0,0,15); lbl.BackgroundTransparency=1; lbl.Text=text; lbl.TextColor3=Color3.fromRGB(200,200,200); lbl.Font=Enum.Font.GothamMedium; lbl.TextSize=9; lbl.TextXAlignment=Enum.TextXAlignment.Left
+    local box = Instance.new("TextBox", cont); box.Size = UDim2.new(1,0,0,25); box.Position = UDim2.new(0,0,0,15); box.BackgroundColor3=Color3.fromRGB(20,20,25); box.TextColor3=Color3.fromRGB(0,255,150); box.Font=Enum.Font.GothamBold; box.TextSize=11; box.Text=Config[configKey]; box.ClearTextOnFocus = false; Instance.new("UICorner", box).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", box).Color=Color3.fromRGB(50,50,60)
     box.FocusLost:Connect(function() Config[configKey]=box.Text; SaveConfig() end)
 end
 
-getgenv().MCXC_ActiveSlider = nil
 local SettingsList = {}
 local function CreateSlider(parent, text, min, max, configKey, isInt, btnRef)
-    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(0.95,0,0,40); frame.BackgroundTransparency=1; frame.Visible = false; table.insert(SettingsList, frame)
+    local frame = Instance.new("Frame", parent); frame.Size = UDim2.new(0.95,0,0,35); frame.BackgroundTransparency=1; frame.Visible = false; table.insert(SettingsList, frame)
     local lbl = Instance.new("TextLabel", frame); lbl.Size = UDim2.new(1,0,0,15); lbl.Position = UDim2.new(0.05,0,0,0); lbl.BackgroundTransparency=1; lbl.Text = text..": "..tostring(Config[configKey]); lbl.TextColor3=Color3.fromRGB(200,200,200); lbl.Font=Enum.Font.GothamMedium; lbl.TextSize=9; lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local bg = Instance.new("Frame", frame); bg.Size = UDim2.new(1,0,0,4); bg.Position = UDim2.new(0,0,0,25); bg.BackgroundColor3=Color3.fromRGB(35,35,40); Instance.new("UICorner", bg).CornerRadius=UDim.new(1,0)
+    local bg = Instance.new("Frame", frame); bg.Size = UDim2.new(1,0,0,3); bg.Position = UDim2.new(0,0,0,20); bg.BackgroundColor3=Color3.fromRGB(35,35,40); Instance.new("UICorner", bg).CornerRadius=UDim.new(1,0)
     local fill = Instance.new("Frame", bg); fill.Size = UDim2.new((Config[configKey]-min)/(max-min),0,1,0); fill.BackgroundColor3=Color3.fromRGB(0,255,150); Instance.new("UICorner", fill).CornerRadius=UDim.new(1,0)
     local touchArea = Instance.new("TextButton", bg); touchArea.Size = UDim2.new(1,0,0,16); touchArea.Position = UDim2.new(0,0,0.5,-8); touchArea.BackgroundTransparency=1; touchArea.Text=""
     local dragging = false
-    touchArea.InputBegan:Connect(function(inp) if inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1 then if not getgenv().MCXC_ActiveSlider then getgenv().MCXC_ActiveSlider=configKey; dragging=true end end end)
-    UserInputService.InputEnded:Connect(function(inp) if inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1 then if dragging and getgenv().MCXC_ActiveSlider==configKey then dragging=false; getgenv().MCXC_ActiveSlider=nil; SaveConfig() end end end)
+    touchArea.InputBegan:Connect(function(inp) if inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1 then State.EditSlider=configKey; dragging=true end end)
+    UserInputService.InputEnded:Connect(function(inp) if inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1 then if dragging and State.EditSlider==configKey then dragging=false; State.EditSlider=nil; SaveConfig() end end end)
     RunService.RenderStepped:Connect(function()
-        if dragging and getgenv().MCXC_ActiveSlider==configKey then
+        if dragging and State.EditSlider==configKey then
             local pct = math.clamp((UserInputService:GetMouseLocation().X - bg.AbsolutePosition.X)/bg.AbsoluteSize.X, 0, 1)
             local val = min + (max-min)*pct; if isInt then val=math.floor(val) else val=math.floor(val*100)/100 end
             fill.Size = UDim2.new(pct,0,1,0); lbl.Text = text..": "..tostring(val); Config[configKey]=val
@@ -109,10 +111,8 @@ local function CreateSlider(parent, text, min, max, configKey, isInt, btnRef)
     return frame
 end
 
-local function CleanVisuals() for _,v in ipairs(workspace:GetDescendants()) do if v.Name:sub(1,4)=="ESP_" or v.Name:sub(1,11)=="TracerLine_" then v:Destroy() end end end
-
 local function CreateToggle(parent, text, configKey, cb)
-    local btn = Instance.new("TextButton", parent); btn.Size = UDim2.new(0.95,0,0,32); btn.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25); btn.Text = text; btn.TextColor3 = Config[configKey] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160); btn.Font=Enum.Font.GothamBold; btn.TextSize=10; Instance.new("UICorner", btn).CornerRadius=UDim.new(0,4)
+    local btn = Instance.new("TextButton", parent); btn.Size = UDim2.new(0.95,0,0,28); btn.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25); btn.Text = text; btn.TextColor3 = Config[configKey] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160); btn.Font=Enum.Font.GothamBold; btn.TextSize=9; Instance.new("UICorner", btn).CornerRadius=UDim.new(0,4)
     local stroke = Instance.new("UIStroke", btn); stroke.Color = Config[configKey] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)
     btn.MouseButton1Click:Connect(function()
         Config[configKey] = not Config[configKey]; TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Config[configKey] and Color3.fromRGB(0,150,100) or Color3.fromRGB(20,20,25), TextColor3 = Config[configKey] and Color3.fromRGB(255,255,255) or Color3.fromRGB(150,150,160)}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Config[configKey] and Color3.fromRGB(0,255,150) or Color3.fromRGB(50,50,60)}):Play(); SaveConfig()
@@ -121,105 +121,88 @@ local function CreateToggle(parent, text, configKey, cb)
     return btn
 end
 
--- TABS POPULATION
 CreateTextInput(TabCombat, "Sequence C:", "ComboC"); CreateTextInput(TabCombat, "Sequence C2:", "ComboC2")
-local editBtn = Instance.new("TextButton", TabCombat); editBtn.Size=UDim2.new(0.95,0,0,25); editBtn.BackgroundColor3=Color3.fromRGB(40,40,45); editBtn.Text="[ EDIT SETTINGS: OFF ]"; editBtn.TextColor3=Color3.fromRGB(255,255,255); editBtn.Font=Enum.Font.GothamBold; editBtn.TextSize=10; Instance.new("UICorner",editBtn).CornerRadius=UDim.new(0,4)
+local editBtn = Instance.new("TextButton", TabCombat); editBtn.Size=UDim2.new(0.95,0,0,25); editBtn.BackgroundColor3=Color3.fromRGB(40,40,45); editBtn.Text="[ EDIT SETTINGS: OFF ]"; editBtn.TextColor3=Color3.fromRGB(255,255,255); editBtn.Font=Enum.Font.GothamBold; editBtn.TextSize=9; Instance.new("UICorner",editBtn).CornerRadius=UDim.new(0,4)
 editBtn.MouseButton1Click:Connect(function() getgenv().EditSettings = not getgenv().EditSettings; editBtn.Text = getgenv().EditSettings and "[ EDIT SETTINGS: ON ]" or "[ EDIT SETTINGS: OFF ]"; editBtn.BackgroundColor3 = getgenv().EditSettings and Color3.fromRGB(0,150,100) or Color3.fromRGB(40,40,45); for _,v in ipairs(SettingsList) do v.Visible = getgenv().EditSettings end end)
 
-CreateToggle(TabCombat, "MACRO (ANTI-STUN)", "AntiStun")
-local sldPred = CreateSlider(TabCombat, "Prediction Strength", 0.05, 0.4, "PredictionFactor", false, nil); sldPred.Visible = getgenv().EditSettings
-local sldFL = CreateSlider(TabCombat, "Fake Lag Freq", 2, 20, "FakeLagTick", true, nil); sldFL.Visible = Config.FakeLag and getgenv().EditSettings
-CreateToggle(TabCombat, "TETHER FAKE LAG", "FakeLag", function(v) if getgenv().EditSettings then sldFL.Visible = v end end)
+CreateToggle(TabCombat, "SMART AUTO AIM", "AutoLock")
+CreateToggle(TabCombat, "HUMANIZE DELAY", "Humanize")
+local sldFL = CreateSlider(TabCombat, "Fake Lag Interval", 2, 15, "FakeLagTick", true, nil); sldFL.Visible = Config.FakeLag and getgenv().EditSettings
+CreateToggle(TabCombat, "GHOST DESYNC (LAG)", "FakeLag", function(v) if getgenv().EditSettings then sldFL.Visible = v end end)
 
-local sldHB = CreateSlider(TabVisual, "Hitbox Size", 5, 30, "HitboxSize", true, nil); sldHB.Visible = Config.Hitbox and getgenv().EditSettings
-CreateToggle(TabVisual, "HITBOX", "Hitbox", function(v) if getgenv().EditSettings then sldHB.Visible = v end end)
-CreateToggle(TabVisual, "ESP RADAR", "ESP", function(v) if not v then CleanVisuals() end end)
-CreateToggle(TabVisual, "VIEW TRACER", "ViewTracer", function(v) if not v then CleanVisuals() end end)
-local sldMap1 = CreateSlider(TabVisual, "Minimap Range", 500, 5000, "MapRange", true, nil); local sldMap2 = CreateSlider(TabVisual, "Minimap Size", 80, 250, "MapSize", true, nil); sldMap1.Visible = Config.ShowMap and getgenv().EditSettings; sldMap2.Visible = Config.ShowMap and getgenv().EditSettings
+local sldHB = CreateSlider(TabVisual, "Hitbox Expander", 5, 25, "HitboxSize", true, nil); sldHB.Visible = Config.Hitbox and getgenv().EditSettings
+CreateToggle(TabVisual, "HITBOX OVERRIDE", "Hitbox", function(v) if getgenv().EditSettings then sldHB.Visible = v end end)
+CreateToggle(TabVisual, "ESP RADAR", "ESP", function(v) if not v then for _,c in pairs(Cache.ESP) do if c then c:Destroy() end end; Cache.ESP={} end end)
+local sldMap1 = CreateSlider(TabVisual, "Minimap Range", 500, 3000, "MapRange", true, nil); local sldMap2 = CreateSlider(TabVisual, "Minimap Size", 80, 200, "MapSize", true, nil); sldMap1.Visible = Config.ShowMap and getgenv().EditSettings; sldMap2.Visible = Config.ShowMap and getgenv().EditSettings
 CreateToggle(TabVisual, "SHOW MINIMAP", "ShowMap", function(v) MapFrame.Visible=v and not getgenv().MacroHidden; if getgenv().EditSettings then sldMap1.Visible=v; sldMap2.Visible=v end end)
-CreateSlider(TabVisual, "Render Distance", 500, 5000, "RenderDistance", true, nil)
 
 CreateToggle(TabInt, "SETUP UI (MOVE)", "SetupMode", function(v) getgenv().SetupMode=v; Menu.Draggable=v; MapFrame.Draggable=v; if getgenv().ExecBtnC then getgenv().ExecBtnC.Draggable=v end; if getgenv().ExecBtnC2 then getgenv().ExecBtnC2.Draggable=v end; if getgenv().ExecBtnX then getgenv().ExecBtnX.Draggable=v end end)
-local sldC = CreateSlider(TabInt, "Size C", 40, 120, "BtnSizeC", true, nil); sldC.Visible = Config.ShowC and getgenv().EditSettings
+local sldC = CreateSlider(TabInt, "Size C", 40, 100, "BtnSizeC", true, nil); sldC.Visible = Config.ShowC and getgenv().EditSettings
 CreateToggle(TabInt, "SHOW C", "ShowC", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC.Visible=v end; if getgenv().EditSettings then sldC.Visible = v end end)
-local sldC2 = CreateSlider(TabInt, "Size C2", 40, 120, "BtnSizeC2", true, nil); sldC2.Visible = Config.ShowC2 and getgenv().EditSettings
+local sldC2 = CreateSlider(TabInt, "Size C2", 40, 100, "BtnSizeC2", true, nil); sldC2.Visible = Config.ShowC2 and getgenv().EditSettings
 CreateToggle(TabInt, "SHOW C2", "ShowC2", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnC2.Visible=v end; if getgenv().EditSettings then sldC2.Visible = v end end)
-local sldX = CreateSlider(TabInt, "Size X", 30, 100, "BtnSizeX", true, nil); sldX.Visible = Config.ShowX and getgenv().EditSettings
+local sldX = CreateSlider(TabInt, "Size X", 30, 80, "BtnSizeX", true, nil); sldX.Visible = Config.ShowX and getgenv().EditSettings
 CreateToggle(TabInt, "SHOW X", "ShowX", function(v) if not getgenv().MacroHidden then getgenv().ExecBtnX.Visible=v end; if getgenv().EditSettings then sldX.Visible = v end end)
-local sldAH = CreateSlider(TabInt, "Hide Timer (Sec)", 0.5, 5.0, "HideTimer", false, nil); sldAH.Visible = Config.AutoHideC and getgenv().EditSettings
-CreateToggle(TabInt, "AUTO HIDE C", "AutoHideC", function(v) if getgenv().EditSettings then sldAH.Visible = v end end)
-CreateToggle(TabInt, "SHOW FPS", "ShowFPS", function(v) FPSText.Visible=v end)
-CreateToggle(TabInt, "UNLOCK MAX FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
-
-local FixBtn = Instance.new("TextButton", TabInt); FixBtn.Size = UDim2.new(0.95,0,0,30); FixBtn.BackgroundColor3 = Color3.fromRGB(20,20,25); FixBtn.Text = "FIX LAG (MAX FPS)"; FixBtn.TextColor3 = Color3.fromRGB(200,200,200); FixBtn.Font=Enum.Font.GothamBold; FixBtn.TextSize=10; Instance.new("UICorner", FixBtn).CornerRadius=UDim.new(0,4); Instance.new("UIStroke", FixBtn).Color=Color3.fromRGB(50,50,60)
-local HideBtn = Instance.new("TextButton", TabInt); HideBtn.Size = UDim2.new(0.95,0,0,35); HideBtn.BackgroundColor3 = Color3.fromRGB(200,40,40); HideBtn.Text = "HIDE ALL UI"; HideBtn.TextColor3 = Color3.fromRGB(255,255,255); HideBtn.Font=Enum.Font.GothamBold; HideBtn.TextSize=11; Instance.new("UICorner", HideBtn).CornerRadius=UDim.new(0,4)
-local InstTxt = Instance.new("TextLabel", TabGuide); InstTxt.Size = UDim2.new(1,-10,1,-10); InstTxt.Position = UDim2.new(0,5,0,5); InstTxt.BackgroundTransparency=1; InstTxt.TextColor3=Color3.fromRGB(200,200,200); InstTxt.TextWrapped=true; InstTxt.Font=Enum.Font.GothamMedium; InstTxt.TextSize=10; InstTxt.TextXAlignment=Enum.TextXAlignment.Left; InstTxt.TextYAlignment=Enum.TextYAlignment.Top
-InstTxt.Text = "HOW TO (V31 PREDICTION)\n\n1. COMBAT SYSTEM\n- Nhập Combo vào ô. Tự bỏ số rút vũ khí nếu tay đang cầm sẵn.\n- Bật EDIT SETTINGS để chỉnh thông số.\n\n2. PREDICTION AIM (NGẮM TRƯỚC)\n- Giữ/Bấm kỹ năng (VD đè chữ Z), Lõi tự động dùng Toán học Vector đọc Vận tốc (Velocity) của địch để hướng Camera tới VỊ TRÍ TƯƠNG LAI. Địch Dash là đón đầu!\n\n3. TETHER FAKE LAG\n- Giật ngang tàng hình khi di chuyển. Đóng cọc khi xả chiêu để tỷ lệ trúng là 100%.\n\n4. ESP ĐỘC TÔN\n- Kẻ địch GẦN NHẤT sẽ bị hệ thống bôi màu VÀNG CHÓI để nhận diện làm mục tiêu bị săn đuổi!"
+local sldFPS = CreateSlider(TabInt, "FPS Cap", 60, 240, "FPSCap", true, nil); sldFPS.Visible = getgenv().EditSettings
+CreateToggle(TabInt, "UNLOCK FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and Config.FPSCap or 60) end end); if getgenv().EditSettings then sldFPS.Visible = v end end)
 
 local function CreateActionBtnEx(name, xPos, yPos, color, showKey, sizeKey)
-    local btn = Instance.new("TextButton", UI); btn.Size = UDim2.new(0,Config[sizeKey],0,Config[sizeKey]); btn.Position = UDim2.new(xPos,0,yPos,0); btn.BackgroundColor3 = Color3.fromRGB(12,12,12); btn.BackgroundTransparency=0.3; btn.Text=name; btn.TextColor3=color; btn.Font=Enum.Font.GothamBlack; btn.TextSize=math.clamp(Config[sizeKey]*0.4,12,35); btn.Visible=Config[showKey] and not getgenv().MacroHidden; btn.Active=true; btn.Selectable=false; btn.Draggable=false; Instance.new("UICorner", btn).CornerRadius=UDim.new(0.3,0); local stk=Instance.new("UIStroke", btn); stk.Color=color; stk.Thickness=1.5; stk.Transparency=0.2
+    local btn = Instance.new("TextButton", UI); btn.Size = UDim2.new(0,Config[sizeKey],0,Config[sizeKey]); btn.Position = UDim2.new(xPos,0,yPos,0); btn.BackgroundColor3 = Color3.fromRGB(12,12,12); btn.BackgroundTransparency=0.3; btn.Text=name; btn.TextColor3=color; btn.Font=Enum.Font.GothamBlack; btn.TextSize=math.clamp(Config[sizeKey]*0.4,12,30); btn.Visible=Config[showKey] and not getgenv().MacroHidden; btn.Active=true; btn.Selectable=false; btn.Draggable=false; Instance.new("UICorner", btn).CornerRadius=UDim.new(0.3,0); local stk=Instance.new("UIStroke", btn); stk.Color=color; stk.Thickness=1.5; stk.Transparency=0.2
     return btn, stk
 end
+
 getgenv().ExecBtnC, getgenv().StrokeC = CreateActionBtnEx("C", 0.8, 0.4, Color3.fromRGB(255,80,80), "ShowC", "BtnSizeC")
 getgenv().ExecBtnC2, getgenv().StrokeC2 = CreateActionBtnEx("C2", 0.8, 0.55, Color3.fromRGB(80,200,255), "ShowC2", "BtnSizeC2")
 getgenv().ExecBtnX, getgenv().StrokeX = CreateActionBtnEx("X", 0.8, 0.7, Color3.fromRGB(255,200,50), "ShowX", "BtnSizeX")
 
-HideBtn.MouseButton1Click:Connect(function() getgenv().MacroHidden=true; UI.Enabled=false end)
 ToggleIcon.MouseButton1Click:Connect(function() Menu.Visible = not Menu.Visible end)
-FixBtn.MouseButton1Click:Connect(function() pcall(function() settings().Rendering.QualityLevel=1; for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then v.Material=Enum.Material.SmoothPlastic; v.CastShadow=false; v.Reflectance=0 elseif (v:IsA("Decal") or v:IsA("Texture")) and not v.Parent:FindFirstChild("Humanoid") then v.Transparency=1 end end; Lighting.GlobalShadows=false; Lighting.FogEnd=9e9; for _,v in ipairs(Lighting:GetChildren()) do if v:IsA("PostEffect") then v.Enabled=false end end end); FixBtn.Text="LAG FIXED!"; FixBtn.TextColor3=Color3.fromRGB(50,255,50) end)
-
-local sec, frames, lagTick, ghostCF = tick(), 0, 0, nil
-RunService.RenderStepped:Connect(function() frames=frames+1; if tick()-sec>=1 then FPSText.Text="FPS: "..frames; frames=0; sec=tick() end end)
-LP.Chatted:Connect(function(msg) if string.upper(msg)=="MCXC" then getgenv().MacroHidden=false; UI.Enabled=true end end)
 
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
 local function GetToolType(tool) if not tool then return "0" end; local n, v = string.lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt then v = string.lower(tostring(tt.Value)) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if string.find(n,k) or string.find(v,k) then return tostring(i) end end end; return "0" end
-local function IsBusy(char) if not char then return false end; for _, v in ipairs(char:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name), "busy") or string.find(string.lower(v.Name), "using") or string.find(string.lower(v.Name), "cast")) then return true end end; return false end
 
--- [ MODULE: TARGET & PREDICTION ]
-local function GetBestTarget()
+local function TargetSystem()
     local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return nil end
-    local nPlr, minD = nil, math.huge
-    for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then local d=(p.Character.HumanoidRootPart.Position-myR.Position).Magnitude; if d<minD then minD=d; nPlr=p end end end
-    return nPlr
+    local cam = workspace.CurrentCamera; local bestTarget, minD = nil, math.huge
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then
+            local pos, vis = cam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+            if vis then
+                local dist = (p.Character.HumanoidRootPart.Position - myR.Position).Magnitude
+                if dist < 300 and dist < minD then minD = dist; bestTarget = p end
+            end
+        end
+    end
+    State.Target = bestTarget
+    return bestTarget
 end
 
-local function AimWithPrediction()
-    local t = GetBestTarget()
+local function AimEngine()
+    if not Config.AutoLock then return end
+    local t = TargetSystem()
     if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
-        local cam = workspace.CurrentCamera
-        local tRoot = t.Character.HumanoidRootPart
-        local tVel = tRoot.Velocity
-        -- [ PREDICTION MATH: Pos + (Velocity * Factor) ]
-        local predFactor = tonumber(Config.PredictionFactor) or 0.15
-        local predPos = tRoot.Position + (tVel * predFactor)
-        cam.CFrame = CFrame.lookAt(cam.CFrame.Position, predPos)
-        
-        local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        if myR then myR.CFrame = CFrame.lookAt(myR.Position, Vector3.new(predPos.X, myR.Position.Y, predPos.Z)) end
+        local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end
+        local tR = t.Character.HumanoidRootPart; local ping = GetPing()
+        local predPos = tR.Position + (tR.Velocity * (ping + Config.PredictionFactor))
+        local cPos = myR.Position; local look = CFrame.lookAt(cPos, Vector3.new(predPos.X, cPos.Y, predPos.Z))
+        myR.CFrame = look
     end
 end
 
--- [ MODULE: COMBAT TASK CONTROL ]
-local function ExCombo(comboStr, btnRef, stroke, baseColor)
+local function ProcessCombo(comboStr, btnRef, stroke, baseColor)
     TweenService:Create(btnRef, TweenInfo.new(0.2), {BackgroundTransparency=0.1}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color=Color3.fromRGB(255,255,255), Thickness=2.5, Transparency=0}):Play()
-    if Config.AutoHideC and btnRef.Visible then btnRef.Visible=false; task.delay(Config.HideTimer, function() if not getgenv().MacroHidden and ((btnRef==getgenv().ExecBtnC and Config.ShowC) or (btnRef==getgenv().ExecBtnC2 and Config.ShowC2)) then btnRef.Visible=true end end) end
-    
     task.spawn(function()
         task.wait(0.01); local s = string.upper(comboStr); local first = string.sub(s,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
-        if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then s=string.sub(s,2) end
-        
+        if tonumber(first) and cT and GetToolType(cT)==first then s=string.sub(s,2) end
         for i=1, #s do
             if getgenv().CancelCombo then break end; local char = string.sub(s,i,i)
-            if char=="1" or char=="2" or char=="3" or char=="4" then
+            if tonumber(char) then
                 local tT = LP.Character:FindFirstChildOfClass("Tool"); if not tT or GetToolType(tT)~=char then
                     local kc = Enum.KeyCode.One; if char=="2" then kc=Enum.KeyCode.Two elseif char=="3" then kc=Enum.KeyCode.Three elseif char=="4" then kc=Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if getgenv().CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==char then break end; task.wait() end; task.wait(0.05)
+                    VIM:SendKeyEvent(true, kc, false, game); task.wait(HumanizeDelay(0.02)); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if getgenv().CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==char then break end; task.wait() end; task.wait(HumanizeDelay(0.02))
                 end
-            elseif char=="Z" or char=="X" or char=="C" or char=="V" or char=="F" then
-                AimWithPrediction() -- Áp dụng Prediction ngay trước khi nhả chiêu
-                local kc = Enum.KeyCode[char]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game); local wR=tick(); local trg=false; while tick()-wR<0.4 do if getgenv().CancelCombo then break end; if IsBusy(LP.Character) then trg=true; break end; task.wait() end
-                if trg then local wA=tick(); while IsBusy(LP.Character) and tick()-wA<3.0 do if getgenv().CancelCombo then break end; task.wait() end; task.wait(tonumber(Config.ActionDelay) or 0.1) else task.wait(tonumber(Config.ComboDelay) or 0.05) end
+            elseif string.match(char, "[ZXCVF]") then
+                AimEngine(); local kc = Enum.KeyCode[char]; VIM:SendKeyEvent(true, kc, false, game); task.wait(HumanizeDelay(0.05)); VIM:SendKeyEvent(false, kc, false, game)
+                task.wait(HumanizeDelay(tonumber(Config.ComboDelay) or 0.05))
             end
         end
         TweenService:Create(btnRef, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play(); TweenService:Create(stroke, TweenInfo.new(0.2), {Color=baseColor, Thickness=1.5, Transparency=0.2}):Play()
@@ -227,56 +210,48 @@ local function ExCombo(comboStr, btnRef, stroke, baseColor)
     end)
 end
 
-getgenv().ExecBtnC.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC then getgenv().lockC=true; ExCombo(Config.ComboC, getgenv().ExecBtnC, getgenv().StrokeC, Color3.fromRGB(255,80,80)) end end)
-getgenv().ExecBtnC2.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC2 then getgenv().lockC2=true; ExCombo(Config.ComboC2, getgenv().ExecBtnC2, getgenv().StrokeC2, Color3.fromRGB(80,200,255)) end end)
+getgenv().ExecBtnC.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC then getgenv().lockC=true; ProcessCombo(Config.ComboC, getgenv().ExecBtnC, getgenv().StrokeC, Color3.fromRGB(255,80,80)) end end)
+getgenv().ExecBtnC2.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode and not getgenv().lockC2 then getgenv().lockC2=true; ProcessCombo(Config.ComboC2, getgenv().ExecBtnC2, getgenv().StrokeC2, Color3.fromRGB(80,200,255)) end end)
 getgenv().ExecBtnX.InputBegan:Connect(function(inp) if (inp.UserInputType==Enum.UserInputType.Touch or inp.UserInputType==Enum.UserInputType.MouseButton1) and not getgenv().SetupMode then getgenv().CancelCombo=true; getgenv().lockC=false; getgenv().lockC2=false; TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.1), {BackgroundTransparency=0.1}):Play(); task.delay(0.2, function() TweenService:Create(getgenv().ExecBtnX, TweenInfo.new(0.2), {BackgroundTransparency=0.3}):Play() end) end end)
 
-RunService:BindToRenderStep("GhostDesyncFix", 199, function() if ghostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame=ghostCF; ghostCF=nil end end)
+RunService:BindToRenderStep("GhostLagEngine", 199, function() if State.GhostCF and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame=State.GhostCF; State.GhostCF=nil end end)
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if LP.Character then
-            if Config.AntiStun then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
             local isMv = LP.Character:FindFirstChild("Humanoid") and LP.Character.Humanoid.MoveDirection.Magnitude > 0
             if Config.FakeLag and isMv and not (getgenv().lockC or getgenv().lockC2) and LP.Character:FindFirstChild("HumanoidRootPart") then
-                lagTick=lagTick+1; if lagTick>=(tonumber(Config.FakeLagTick) or 4) then local hr=LP.Character.HumanoidRootPart; ghostCF=hr.CFrame; hr.CFrame=ghostCF*CFrame.new(math.random(-150,150), 0, math.random(-150,150)); lagTick=0 end
-            else lagTick=0 end
+                State.LagTick = State.LagTick + 1; if State.LagTick >= (tonumber(Config.FakeLagTick) or 4) then local hr=LP.Character.HumanoidRootPart; State.GhostCF=hr.CFrame; hr.CFrame=State.GhostCF*CFrame.new(math.random(-150,150), 0, math.random(-150,150)); State.LagTick=0 end
+            else State.LagTick=0 end
             
+            TargetSystem()
             local myR = LP.Character:FindFirstChild("HumanoidRootPart")
-            local nPlr = GetBestTarget()
-            
-            if Config.ShowMap and not getgenv().MacroHidden then
-                for _,v in ipairs(DotsContainer:GetChildren()) do v:Destroy() end
-                local cam = workspace.CurrentCamera
-                if myR then
-                    local cF2, cR2 = Vector2.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Z).Unit, Vector2.new(cam.CFrame.RightVector.X, cam.CFrame.RightVector.Z).Unit
-                    for _,p in ipairs(Players:GetPlayers()) do
-                        if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then
-                            local d3 = p.Character.HumanoidRootPart.Position - myR.Position; local dst = d3.Magnitude; local maxR = tonumber(Config.MapRange) or 700
-                            if dst<=maxR then
-                                local of2 = Vector2.new(d3.X, d3.Z); local sc = ((tonumber(Config.MapSize) or 100)/2)/maxR; local uX, uY = of2:Dot(cR2)*sc, -of2:Dot(cF2)*sc
-                                local dot = Instance.new("Frame", DotsContainer); dot.Size=UDim2.new(0,6,0,6); dot.BackgroundColor3 = (p==nPlr) and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,50,50); dot.Position=UDim2.new(0.5,uX-3,0.5,uY-3); Instance.new("UICorner",dot).CornerRadius=UDim.new(1,0); dot.ZIndex=4
-                            end
-                        end
-                    end
+            if Config.ShowMap and not getgenv().MacroHidden and myR then
+                local cam = workspace.CurrentCamera; local cF2, cR2 = Vector2.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Z).Unit, Vector2.new(cam.CFrame.RightVector.X, cam.CFrame.RightVector.Z).Unit
+                for _,p in ipairs(Players:GetPlayers()) do
+                    if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health>0 then
+                        local d3 = p.Character.HumanoidRootPart.Position - myR.Position; local dst = d3.Magnitude; local maxR = tonumber(Config.MapRange) or 500
+                        if dst<=maxR then
+                            local uX, uY = Vector2.new(d3.X, d3.Z):Dot(cR2)*(((tonumber(Config.MapSize) or 100)/2)/maxR), -Vector2.new(d3.X, d3.Z):Dot(cF2)*(((tonumber(Config.MapSize) or 100)/2)/maxR)
+                            if not Cache.MapDots[p.Name] then local d = Instance.new("Frame", DotsContainer); d.Size=UDim2.new(0,6,0,6); Instance.new("UICorner",d).CornerRadius=UDim.new(1,0); d.ZIndex=4; Cache.MapDots[p.Name]=d end
+                            Cache.MapDots[p.Name].BackgroundColor3 = (p==State.Target) and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,50,50); Cache.MapDots[p.Name].Position=UDim2.new(0.5,uX-3,0.5,uY-3); Cache.MapDots[p.Name].Visible=true
+                        elseif Cache.MapDots[p.Name] then Cache.MapDots[p.Name].Visible=false end
+                    elseif Cache.MapDots[p.Name] then Cache.MapDots[p.Name].Visible=false end
                 end
             end
             
-            for _,p in ipairs(Players:GetPlayers()) do
-                if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local rt = p.Character.HumanoidRootPart; local dst = myR and (rt.Position-myR.Position).Magnitude or 0; local isNear = (p == nPlr)
-                    if Config.Hitbox and not getgenv().MacroHidden then local hs=tonumber(Config.HitboxSize) or 15; rt.Size=Vector3.new(hs,hs,hs); rt.Transparency=0.8; rt.CanCollide=false else if rt.Size.X>5 then rt.Size=Vector3.new(2,2,1); rt.Transparency=1 end end
-                    local espG = rt:FindFirstChild("ESP_"..p.Name)
-                    if Config.ESP and dst<=(tonumber(Config.RenderDistance) or 1500) and not getgenv().MacroHidden then
-                        if not espG then espG=Instance.new("BillboardGui",rt); espG.Name="ESP_"..p.Name; espG.Size=UDim2.new(0,200,0,50); espG.StudsOffset=Vector3.new(0,3,0); espG.AlwaysOnTop=true; local tx=Instance.new("TextLabel",espG); tx.Name="TextNode"; tx.Size=UDim2.new(1,0,1,0); tx.BackgroundTransparency=1; tx.Font=Enum.Font.GothamBold; tx.TextSize=11; tx.TextStrokeTransparency=0.5 end
-                        local hp,mhp=0,0; pcall(function() hp=math.floor(p.Character.Humanoid.Health); mhp=math.floor(p.Character.Humanoid.MaxHealth) end); local w=p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"
-                        local tn=espG:FindFirstChild("TextNode"); if tn then tn.Text=string.format("%s\nHP: %d/%d | W: %s\nDist: %dm", p.Name, hp, mhp, string.sub(w,1,15), math.floor(dst)); tn.TextColor3=isNear and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,255,255) end
-                    elseif espG then espG:Destroy() end
-                    local lin = rt:FindFirstChild("TracerLine_"..p.Name)
-                    if Config.ViewTracer and dst<=(tonumber(Config.RenderDistance) or 1500) and not getgenv().MacroHidden then
-                        if not lin then lin=Instance.new("LineHandleAdornment",rt); lin.Name="TracerLine_"..p.Name; lin.Adornee=rt; lin.Thickness=5; lin.Length=50; lin.ZIndex=5; lin.Transparency=0.2; lin.AlwaysOnTop=true end
-                        lin.Color3=isNear and Color3.fromRGB(255,255,0) or Color3.fromRGB(0,255,150)
-                    elseif lin then lin:Destroy() end
+            if Config.ESP or Config.Hitbox then
+                for _,p in ipairs(Players:GetPlayers()) do
+                    if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local rt = p.Character.HumanoidRootPart; local isTarget = (p == State.Target)
+                        if Config.Hitbox and not getgenv().MacroHidden then local hs=tonumber(Config.HitboxSize) or 15; rt.Size=Vector3.new(hs,hs,hs); rt.Transparency=0.8; rt.CanCollide=false else if rt.Size.X>5 then rt.Size=Vector3.new(2,2,1); rt.Transparency=1 end end
+                        if Config.ESP and not getgenv().MacroHidden then
+                            if not Cache.ESP[p.Name] then
+                                local g=Instance.new("BillboardGui",rt); g.Size=UDim2.new(0,200,0,50); g.StudsOffset=Vector3.new(0,3,0); g.AlwaysOnTop=true; local t=Instance.new("TextLabel",g); t.Size=UDim2.new(1,0,1,0); t.BackgroundTransparency=1; t.Font=Enum.Font.GothamBold; t.TextSize=10; t.TextStrokeTransparency=0.5; Cache.ESP[p.Name]=g
+                            end
+                            local h=0; pcall(function() h=math.floor(p.Character.Humanoid.Health) end); Cache.ESP[p.Name].TextLabel.Text=string.format("%s\nHP: %d", p.Name, h); Cache.ESP[p.Name].TextLabel.TextColor3=isTarget and Color3.fromRGB(255,255,0) or Color3.fromRGB(255,255,255)
+                        end
+                    end
                 end
             end
         end
