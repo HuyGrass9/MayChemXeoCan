@@ -2,13 +2,22 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
-local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Stats = game:GetService("Stats")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
+
+local function GetSafeParent()
+    local p = nil
+    local s1, r1 = pcall(function() return gethui and gethui() end)
+    if s1 and r1 then return r1 end
+    local s2, r2 = pcall(function() return game:GetService("CoreGui") end)
+    if s2 and r2 then return r2 end
+    return LP:WaitForChild("PlayerGui")
+end
+local targetParent = GetSafeParent()
 
 local MCXC = {
     Config = {
@@ -27,7 +36,7 @@ local Theme = {
     Danger = Color3.fromRGB(255, 50, 70), Target = Color3.fromRGB(255, 210, 0), Safe = Color3.fromRGB(0, 255, 100)
 }
 
-local ConfigName = "Macro_MCXC_V59.json"
+local ConfigName = "Macro_MCXC_V60.json"
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(MCXC.Config)) end) end
 
@@ -71,29 +80,43 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
                 local kc = Enum.KeyCode[key]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game)
                 local wR = tick(); local trg = false
                 while tick()-wR < 0.4 do if MCXC.State.CancelCombo then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; task.wait() end
-                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo then break end; task.wait() end; task.wait(MCXC.Config.ActionDelay) else task.wait(MCXC.Config.BaseDelay) end
+                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 1.5 do if MCXC.State.CancelCombo then break end; task.wait() end; task.wait(MCXC.Config.ActionDelay) else task.wait(MCXC.Config.BaseDelay) end
             end
         end
         MCXC.State.IsCombo = false; MCXC.State.CancelCombo = false; Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2); Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.2)
     end)
 end
-
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
-    local p = pcall(gethui) and gethui() or CoreGui
-    if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
-    local gui = Instance.new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    pcall(function() if targetParent:FindFirstChild("MaruMCXC") then targetParent.MaruMCXC:Destroy() end end)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "MaruMCXC"; gui.DisplayOrder = 100000; gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    if syn and syn.protect_gui then pcall(function() syn.protect_gui(gui) end) elseif protectgui then pcall(function() protectgui(gui) end) end
+    gui.Parent = targetParent
     
-    local ToggleIcon = Instance.new("ImageButton", gui); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Theme.BG; ToggleIcon.BackgroundTransparency = MCXC.Config.UITrans; ToggleIcon.ZIndex = 10; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", ToggleIcon).Color = Theme.Accent; Instance.new("UIStroke", ToggleIcon).Thickness = 2
+    local ToggleIcon = Instance.new("ImageButton", gui); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Theme.BG; ToggleIcon.BackgroundTransparency = MCXC.Config.UITrans; ToggleIcon.Visible = true; ToggleIcon.Active = true; ToggleIcon.ZIndex = 9999; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", ToggleIcon).Color = Theme.Accent; Instance.new("UIStroke", ToggleIcon).Thickness = 2
     Utils.MakeDraggable(ToggleIcon, ToggleIcon); table.insert(MCXC.Cache.UIElements, ToggleIcon)
     
-    local Main = Instance.new("Frame", gui); Main.Size = UDim2.new(0,460,0,290); Main.Position = UDim2.new(0.5,-230,0.5,-145); Main.BackgroundColor3 = Theme.BG; Main.BackgroundTransparency = MCXC.Config.UITrans; Main.ClipsDescendants = true; Main.Visible = false; Main.ZIndex = 9; Instance.new("UICorner", Main).CornerRadius = UDim.new(0,8); Instance.new("UIStroke", Main).Color = Color3.fromRGB(40,40,45)
+    local Main = Instance.new("Frame", gui); Main.Size = UDim2.new(0,460,0,290); Main.Position = UDim2.new(0.5,-230,0.5,-145); Main.BackgroundColor3 = Theme.BG; Main.BackgroundTransparency = MCXC.Config.UITrans; Main.ClipsDescendants = true; Main.Visible = false; Main.ZIndex = 9998; Instance.new("UICorner", Main).CornerRadius = UDim.new(0,8); Instance.new("UIStroke", Main).Color = Color3.fromRGB(40,40,45)
     local Sidebar = Instance.new("Frame", Main); Sidebar.Size = UDim2.new(0,130,1,0); Sidebar.BackgroundColor3 = Theme.Sidebar; Sidebar.BackgroundTransparency = MCXC.Config.UITrans; Sidebar.BorderSizePixel = 0
     local TitleLbl = Instance.new("TextLabel", Sidebar); TitleLbl.Size = UDim2.new(1,0,0,45); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = title; TitleLbl.TextColor3 = Theme.Accent; TitleLbl.Font = Enum.Font.GothamBlack; TitleLbl.TextSize = 11; TitleLbl.TextWrapped = true
     local Content = Instance.new("Frame", Main); Content.Size = UDim2.new(1,-130,1,0); Content.Position = UDim2.new(0,130,0,0); Content.BackgroundTransparency = 1
     table.insert(MCXC.Cache.UIElements, Main); table.insert(MCXC.Cache.UIElements, Sidebar)
     
-    ToggleIcon.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; if MCXC.State.MenuOpen then Main.Visible=true; Main.Size=UDim2.new(0,460,0,0); Utils.Tween(Main, {Size=UDim2.new(0,460,0,290)}, 0.3) else local t=Utils.Tween(Main, {Size=UDim2.new(0,460,0,0)}, 0.2); t.Completed:Wait(); Main.Visible=false end end)
+    local dragIcon = false; local dragStart; local startPos
+    ToggleIcon.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then dragIcon = true; dragStart = i.Position; startPos = ToggleIcon.Position end end)
+    UserInputService.InputChanged:Connect(function(i) if dragIcon and (i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseMovement) then local delta = i.Position - dragStart; ToggleIcon.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+    ToggleIcon.InputEnded:Connect(function(i) 
+        if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then 
+            if dragIcon then 
+                dragIcon = false
+                if (i.Position - dragStart).Magnitude < 10 then 
+                    MCXC.State.MenuOpen = not MCXC.State.MenuOpen
+                    if MCXC.State.MenuOpen then Main.Visible=true; Main.Size=UDim2.new(0,460,0,0); Utils.Tween(Main, {Size=UDim2.new(0,460,0,290)}, 0.3) else local t=Utils.Tween(Main, {Size=UDim2.new(0,460,0,0)}, 0.2); t.Completed:Wait(); Main.Visible=false end 
+                end 
+            end 
+        end 
+    end)
     Utils.MakeDraggable(Sidebar, Main)
     
     local Window = {Tabs = {}, CurrentTab = nil, Container = Content, Sidebar = Sidebar}
@@ -165,9 +188,9 @@ function MaruUI:CreateWindow(title)
 end
 
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
-local TabC = Win:CreateTab("Combat"); local TabV = Win:CreateTab("Visuals"); local TabShop = Win:CreateTab("Shop Beta"); local TabS = Win:CreateTab("Settings")
+local TabC = Win:CreateTab("Combat"); local TabV = Win:CreateTab("Visuals"); local TabShop = Win:CreateTab("Shop"); local TabS = Win:CreateTab("Settings")
 
-TabC:CreateInput("Combo C", "ComboC"); TabC:CreateInput("Combo C2", "ComboC2"); TabC:CreateToggle("Macro", "Macro", nil)
+TabC:CreateInput("Combo C", "ComboC"); TabC:CreateInput("Combo C2", "ComboC2"); TabC:CreateToggle("Macro (Anti-Stun)", "Macro", nil)
 
 TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then c:Destroy() end end; MCXC.Cache.ESP={} end end)
 local sldTracer; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sldTracer then sldTracer.Visible=v end; if not v then if MCXC.Cache.TracerLine then MCXC.Cache.TracerLine.Beam:Destroy(); MCXC.Cache.TracerLine.A1:Destroy(); MCXC.Cache.TracerLine.A2:Destroy(); MCXC.Cache.TracerLine=nil end end end)
@@ -269,9 +292,9 @@ RunService.Heartbeat:Connect(function()
                             local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,100,0,35); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3.5,0); bg.Name = "ESPGui"
                             local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UDim.new(0,2)
                             local nLbl = Instance.new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,14); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 12; nLbl.TextStrokeTransparency = 0; nLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); nLbl.LayoutOrder = 1
-                            local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(0.5,0,0,10); hpBg.BackgroundColor3 = Color3.fromRGB(20,20,20); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0,2); local hpStr = Instance.new("UIStroke", hpBg); hpStr.Color = Color3.fromRGB(0,0,0); hpStr.Thickness = 1
+                            local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(0.6,0,0,8); hpBg.BackgroundColor3 = Color3.fromRGB(20,20,20); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0,2); local hpStr = Instance.new("UIStroke", hpBg); hpStr.Color = Color3.fromRGB(0,0,0); hpStr.Thickness = 1
                             local hpFill = Instance.new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0,2)
-                            local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 9; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
+                            local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 8; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
                             local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,13); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 11; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); wLbl.LayoutOrder = 3
                             MCXC.Cache.ESP[p.Name] = bg
                         end
