@@ -2,6 +2,7 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
+local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Stats = game:GetService("Stats")
@@ -26,7 +27,7 @@ local Theme = {
     Danger = Color3.fromRGB(255, 50, 70), Target = Color3.fromRGB(255, 210, 0), Safe = Color3.fromRGB(0, 255, 100)
 }
 
-local ConfigName = "Macro_MCXC_V58.json"
+local ConfigName = "Macro_MCXC_V59.json"
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(MCXC.Config)) end) end
 
@@ -77,23 +78,11 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
     end)
 end
 
-local function GetSafeParent()
-    local p = nil
-    pcall(function() p = gethui and gethui() end)
-    if p then return p end
-    pcall(function() p = game:GetService("CoreGui") end)
-    if p then return p end
-    return LP:WaitForChild("PlayerGui")
-end
-
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
-    local uParent = GetSafeParent()
-    if uParent:FindFirstChild("MaruMCXC") then uParent.MaruMCXC:Destroy() end
-    
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Parent = uParent
+    local p = pcall(gethui) and gethui() or CoreGui
+    if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
+    local gui = Instance.new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
     local ToggleIcon = Instance.new("ImageButton", gui); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Theme.BG; ToggleIcon.BackgroundTransparency = MCXC.Config.UITrans; ToggleIcon.ZIndex = 10; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", ToggleIcon).Color = Theme.Accent; Instance.new("UIStroke", ToggleIcon).Thickness = 2
     Utils.MakeDraggable(ToggleIcon, ToggleIcon); table.insert(MCXC.Cache.UIElements, ToggleIcon)
@@ -110,7 +99,7 @@ function MaruUI:CreateWindow(title)
     local Window = {Tabs = {}, CurrentTab = nil, Container = Content, Sidebar = Sidebar}
     
     function Window:CreateTab(name)
-        local btn = Instance.new("TextButton", self.Sidebar); btn.Size = UDim2.new(1,0,0,38); btn.Position = UDim2.new(0,0,0,10 + (#self.Tabs * 38)); btn.BackgroundTransparency = 1; btn.Text = "  "..name; btn.TextColor3 = Theme.TextDark; btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left
+        local btn = Instance.new("TextButton", self.Sidebar); btn.Size = UDim2.new(1,0,0,38); btn.Position = UDim2.new(0,0,0,50 + (#self.Tabs * 38)); btn.BackgroundTransparency = 1; btn.Text = "  "..name; btn.TextColor3 = Theme.TextDark; btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left
         local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,3,0,0); ind.Position = UDim2.new(0,0,0.5,0); ind.BackgroundColor3 = Theme.Accent; ind.BorderSizePixel = 0; ind.AnchorPoint = Vector2.new(0,0.5)
         local frm = Instance.new("ScrollingFrame", self.Container); frm.Size = UDim2.new(1,-16,1,-16); frm.Position = UDim2.new(0,8,0,8); frm.BackgroundTransparency = 1; frm.Visible = false; frm.ScrollBarThickness = 2; frm.ScrollBarImageColor3 = Theme.ElementBG; frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
         local lay = Instance.new("UIListLayout", frm); lay.Padding = UDim.new(0,8); lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -176,7 +165,7 @@ function MaruUI:CreateWindow(title)
 end
 
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
-local TabC = Win:CreateTab("Combat"); local TabV = Win:CreateTab("Visuals"); local TabShop = Win:CreateTab("Shop"); local TabS = Win:CreateTab("Settings")
+local TabC = Win:CreateTab("Combat"); local TabV = Win:CreateTab("Visuals"); local TabShop = Win:CreateTab("Shop Beta"); local TabS = Win:CreateTab("Settings")
 
 TabC:CreateInput("Combo C", "ComboC"); TabC:CreateInput("Combo C2", "ComboC2"); TabC:CreateToggle("Macro", "Macro", nil)
 
@@ -280,9 +269,9 @@ RunService.Heartbeat:Connect(function()
                             local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,100,0,35); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3.5,0); bg.Name = "ESPGui"
                             local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UDim.new(0,2)
                             local nLbl = Instance.new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,14); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 12; nLbl.TextStrokeTransparency = 0; nLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); nLbl.LayoutOrder = 1
-                            local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(0.6,0,0,8); hpBg.BackgroundColor3 = Color3.fromRGB(20,20,20); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0,2); local hpStr = Instance.new("UIStroke", hpBg); hpStr.Color = Color3.fromRGB(0,0,0); hpStr.Thickness = 1
+                            local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(0.5,0,0,10); hpBg.BackgroundColor3 = Color3.fromRGB(20,20,20); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0,2); local hpStr = Instance.new("UIStroke", hpBg); hpStr.Color = Color3.fromRGB(0,0,0); hpStr.Thickness = 1
                             local hpFill = Instance.new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0,2)
-                            local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 8; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
+                            local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 9; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
                             local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,13); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 11; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); wLbl.LayoutOrder = 3
                             MCXC.Cache.ESP[p.Name] = bg
                         end
