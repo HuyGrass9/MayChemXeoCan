@@ -94,7 +94,7 @@ function MaruUI:CreateWindow(title)
     if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
     local gui = Instance.new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    local ToggleIcon = Instance.new("ImageButton", gui); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Theme.BG; ToggleIcon.BackgroundTransparency = MCXC.Config.UITrans; ToggleIcon.ZIndex = 10; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", ToggleIcon).Color = Theme.Accent; Instance.new("UIStroke", ToggleIcon).Thickness = 2
+    local ToggleIcon = Instance.new("ImageButton", gui); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://5206932266"; ToggleIcon.BackgroundColor3 = Theme.BG; ToggleIcon.BackgroundTransparency = MCXC.Config.UITrans; ToggleIcon.ZIndex = 10; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", ToggleIcon).Color = Theme.Accent; Instance.new("UIStroke", ToggleIcon).Thickness = 2
     Utils.MakeDraggable(ToggleIcon, ToggleIcon); table.insert(MCXC.Cache.UIElements, ToggleIcon)
     
     local Main = Instance.new("Frame", gui); Main.Size = UDim2.new(0,460,0,290); Main.Position = UDim2.new(0.5,-230,0.5,-145); Main.BackgroundColor3 = Theme.BG; Main.BackgroundTransparency = MCXC.Config.UITrans; Main.ClipsDescendants = true; Main.Visible = false; Main.ZIndex = 9; Instance.new("UICorner", Main).CornerRadius = UDim.new(0,8); Instance.new("UIStroke", Main).Color = Color3.fromRGB(40,40,45)
@@ -156,17 +156,12 @@ function MaruUI:CreateWindow(title)
                 return c
             end,
             CreateInput = function(self, text, key)
-                self.LayoutIndex = self.LayoutIndex + 1; local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,40); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LayoutIndex; Instance.new("UICorner", c).CornerRadius = UDim.new(0,6)
+                local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,40); c.BackgroundColor3 = Theme.ElementBG; Instance.new("UICorner", c).CornerRadius = UDim.new(0,6)
                 local l = Instance.new("TextLabel", c); l.Size = UDim2.new(0.4,0,1,0); l.Position = UDim2.new(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left
                 local b = Instance.new("TextBox", c); b.Size = UDim2.new(0.55,-10,0,26); b.Position = UDim2.new(0.45,0,0.5,-13); b.BackgroundColor3 = Color3.fromRGB(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = MCXC.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,55)
                 b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end)
                 b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig() end)
                 return c
-            end,
-            CreateButton = function(self, text, color, cb)
-                self.LayoutIndex = self.LayoutIndex + 1; local b = Instance.new("TextButton", self.Frame); b.Size = UDim2.new(1,0,0,35); b.BackgroundColor3 = Theme.ElementBG; b.LayoutOrder = self.LayoutIndex; b.Text = text; b.TextColor3 = color or Theme.Text; b.Font = Enum.Font.GothamBold; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0,6); local s = Instance.new("UIStroke", b); s.Color = color or Theme.Accent; s.Transparency = 0.5
-                b.MouseButton1Click:Connect(function() Utils.Tween(b, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb then cb() end end)
-                return b
             end
         }
     end
@@ -213,11 +208,11 @@ TabS:CreateToggle("Shaders (Graphics)", "Shader", function(v)
     else for _,l in pairs(Lighting:GetChildren()) do if string.find(l.Name, "MCXC_") then l:Destroy() end end end 
 end)
 
-TabS:CreateButton("Fix Lag (No Shadows)", Theme.Accent, function()
-    pcall(function() settings().Rendering.QualityLevel=1; for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then v.CastShadow=false; v.Material=Enum.Material.SmoothPlastic end end; Lighting.GlobalShadows=false end)
-end)
+local fixBtn = Instance.new("TextButton", TabS.Frame); fixBtn.Size = UDim2.new(1,0,0,35); fixBtn.BackgroundColor3 = Theme.ElementBG; fixBtn.Text = "Fix Lag (No Shadows)"; fixBtn.TextColor3 = Theme.Accent; fixBtn.Font = Enum.Font.GothamBold; fixBtn.TextSize = 11; fixBtn.LayoutOrder = 99; Instance.new("UICorner", fixBtn).CornerRadius = UDim.new(0,6); local fStr = Instance.new("UIStroke", fixBtn); fStr.Color = Theme.Accent; fStr.Transparency = 0.5
+fixBtn.MouseButton1Click:Connect(function() Utils.Tween(fixBtn, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(fixBtn, {BackgroundColor3=Theme.ElementBG}, 0.2) end); pcall(function() settings().Rendering.QualityLevel=1; for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then v.CastShadow=false; v.Material=Enum.Material.SmoothPlastic end end; Lighting.GlobalShadows=false end) end)
 
-TabS:CreateButton("Hide All UI", Theme.Danger, function() Gui.Enabled = false end)
+local hideBtn = Instance.new("TextButton", TabS.Frame); hideBtn.Size = UDim2.new(1,0,0,35); hideBtn.BackgroundColor3 = Theme.ElementBG; hideBtn.Text = "Hide All UI"; hideBtn.TextColor3 = Theme.Danger; hideBtn.Font = Enum.Font.GothamBold; hideBtn.TextSize = 11; hideBtn.LayoutOrder = 100; Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0,6); local hStr = Instance.new("UIStroke", hideBtn); hStr.Color = Theme.Danger; hStr.Transparency = 0.5
+hideBtn.MouseButton1Click:Connect(function() Utils.Tween(hideBtn, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(hideBtn, {BackgroundColor3=Theme.ElementBG}, 0.2) end); Gui.Enabled = false end)
 LP.Chatted:Connect(function(msg) if string.lower(msg) == "mcxc" then Gui.Enabled = true end end)
 
 local MapFrame = Instance.new("Frame", Gui); MapFrame.Size = UDim2.new(0,MCXC.Config.MapSize,0,MCXC.Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Theme.BG; MapFrame.BackgroundTransparency = MCXC.Config.UITrans; MapFrame.Visible = MCXC.Config.ShowMap; MapFrame.ClipsDescendants = true; Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(0.5,0); Instance.new("UIStroke", MapFrame).Color = Theme.Accent; Instance.new("UIStroke", MapFrame).Thickness = 2
@@ -282,7 +277,7 @@ RunService.Heartbeat:Connect(function()
                     if MCXC.Config.ESP and dist <= MCXC.Config.RenderDist then
                         if not MCXC.Cache.ESP[p.Name] or MCXC.Cache.ESP[p.Name].Parent ~= tR then
                             if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy() end
-                            local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,100,0,38); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,4,0); bg.Name = "ESPGui"
+                            local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,100,0,35); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3.5,0); bg.Name = "ESPGui"
                             local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UDim.new(0,2)
                             
                             local nLbl = Instance.new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,13); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 11; nLbl.TextStrokeTransparency = 0; nLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); nLbl.LayoutOrder = 1
