@@ -18,11 +18,12 @@ local MCXC = {
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45,
         ShowC = false, ShowC2 = false, ShowX = false, Macro = true,
         UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, FixLag = false,
-        ShowStats = true, CancelOnTap = true
+        ShowStats = true, CancelOnTap = true,
+        AutoSoruTarget = false, AutoSoruEscape = false, AutoRace = false
     },
     State = {
         IsCombo = false, CancelCombo = false, MenuOpen = false, LastTick = tick(),
-        SetupMode = false, LastStatTick = tick()
+        SetupMode = false, LastStatTick = tick(), CurrentTarget = nil, LastSoruTick = tick()
     },
     Cache = { ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {} }
 }
@@ -77,7 +78,21 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
     if MCXC.State.IsCombo then return end
     MCXC.State.IsCombo = true; Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.1); Utils.Tween(stroke, {Thickness=2.5, Color=Color3.fromRGB(255,255,255)}, 0.1)
     task.spawn(function()
-        task.wait(0.01); local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
+        task.wait(0.01)
+        
+        if MCXC.Config.AutoRace then
+            VIM:SendKeyEvent(true, Enum.KeyCode.T, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.T, false, game)
+            VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+        end
+        
+        if MCXC.Config.AutoSoruTarget and MCXC.State.CurrentTarget and MCXC.State.CurrentTarget.Character and MCXC.State.CurrentTarget.Character:FindFirstChild("HumanoidRootPart") and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            local tR = MCXC.State.CurrentTarget.Character.HumanoidRootPart
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, tR.Position)
+            VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+            task.wait(0.05)
+        end
+
+        local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
         local curWepType = "0"
         if cT then curWepType = GetToolType(cT) end
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=string.sub(seq,2) end
@@ -217,6 +232,7 @@ end
 
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
 local TabC = Win:CreateTab("Combat")
+local TabA = Win:CreateTab("Auto")
 local TabV = Win:CreateTab("Visuals")
 local TabS = Win:CreateTab("Settings")
 
@@ -256,6 +272,10 @@ local function RefreshHoldUI(text)
 end
 TabC:CreateInput("Hold Setup (e.g 3Z2C)", "HoldSetup", function(val) RefreshHoldUI(val) end)
 RefreshHoldUI(MCXC.Config.HoldSetup)
+
+TabA:CreateToggle("Auto Soru To Target", "AutoSoruTarget", nil)
+TabA:CreateToggle("Auto Soru Escape", "AutoSoruEscape", nil)
+TabA:CreateToggle("Auto Race V3/V4", "AutoRace", nil)
 
 local sldESP; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if sldESP then sldESP.Visible=v end; if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then pcall(function() c:Destroy() end) end end; MCXC.Cache.ESP={} end end)
 sldESP = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true); sldESP.Visible = MCXC.Config.ESP
@@ -366,6 +386,15 @@ RunService.Heartbeat:Connect(function()
         local now = tick(); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if not myR then return end
 
+        if MCXC.Config.AutoSoruEscape and Combat.IsStunned(LP.Character) then
+            if now - MCXC.State.LastSoruTick >= 0.2 then
+                MCXC.State.LastSoruTick = now
+                local cam = workspace.CurrentCamera
+                cam.CFrame = CFrame.new(cam.CFrame.Position) * CFrame.Angles(0, math.rad(math.random(0,360)), 0)
+                VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+            end
+        end
+
         if now - MCXC.State.LastStatTick >= 1 then
             MCXC.State.LastStatTick = now
             local fps = math.floor(workspace:GetRealPhysicsFPS())
@@ -396,6 +425,8 @@ RunService.Heartbeat:Connect(function()
                 end
             end
             
+            MCXC.State.CurrentTarget = tracerTarget
+            
             if MCXC.Config.ViewTracer and tracerTarget and minD <= MCXC.Config.TracerRange then
                 if not MCXC.Cache.TracerLine then local a1 = Instance.new("Attachment"); local a2 = Instance.new("Attachment"); local b = Instance.new("Beam"); b.Attachment0 = a1; b.Attachment1 = a2; b.FaceCamera = true; b.Width0 = 0.6; b.Width1 = 0.6; b.Transparency = NumberSequence.new(0.1); b.Color = ColorSequence.new(Theme.Target); MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2, Targ = nil} end
                 local tR = tracerTarget.Character.HumanoidRootPart; local trObj = MCXC.Cache.TracerLine; trObj.A1.Parent = myR; trObj.A2.Parent = tR; trObj.Beam.Parent = tR; trObj.Beam.Enabled = true; trObj.Targ = tracerTarget
@@ -415,13 +446,9 @@ RunService.Heartbeat:Connect(function()
                     else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end end
                     
                     if MCXC.Config.ESP and dist <= MCXC.Config.RenderDist then
-                        -- Check valid Parent an toan tuyet doi
                         if MCXC.Cache.ESP[p.Name] then
                             local s, parentCheck = pcall(function() return MCXC.Cache.ESP[p.Name].Parent end)
-                            if not s or parentCheck ~= tR then
-                                pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end)
-                                MCXC.Cache.ESP[p.Name] = nil
-                            end
+                            if not s or parentCheck ~= tR then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end
                         end
                         
                         if not MCXC.Cache.ESP[p.Name] then
