@@ -18,12 +18,11 @@ local MCXC = {
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45,
         ShowC = false, ShowC2 = false, ShowX = false, Macro = true,
         UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, FixLag = false,
-        ShowStats = true, CancelOnTap = true,
-        AutoSoruTarget = false, AutoSoruEscape = false, AutoRace = false
+        ShowStats = true, CancelOnTap = true
     },
     State = {
         IsCombo = false, CancelCombo = false, MenuOpen = false, LastTick = tick(),
-        SetupMode = false, LastStatTick = tick(), CurrentTarget = nil, LastSoruTick = tick()
+        SetupMode = false, LastStatTick = tick(), CurrentTarget = nil
     },
     Cache = { ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {} }
 }
@@ -80,18 +79,6 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
     task.spawn(function()
         task.wait(0.01)
         
-        if MCXC.Config.AutoRace then
-            VIM:SendKeyEvent(true, Enum.KeyCode.T, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.T, false, game)
-            VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-        end
-        
-        if MCXC.Config.AutoSoruTarget and MCXC.State.CurrentTarget and MCXC.State.CurrentTarget.Character and MCXC.State.CurrentTarget.Character:FindFirstChild("HumanoidRootPart") and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-            local tR = MCXC.State.CurrentTarget.Character.HumanoidRootPart
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, tR.Position)
-            VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
-            task.wait(0.05)
-        end
-
         local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
         local curWepType = "0"
         if cT then curWepType = GetToolType(cT) end
@@ -232,7 +219,6 @@ end
 
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
 local TabC = Win:CreateTab("Combat")
-local TabA = Win:CreateTab("Auto")
 local TabV = Win:CreateTab("Visuals")
 local TabS = Win:CreateTab("Settings")
 
@@ -273,10 +259,6 @@ end
 TabC:CreateInput("Hold Setup (e.g 3Z2C)", "HoldSetup", function(val) RefreshHoldUI(val) end)
 RefreshHoldUI(MCXC.Config.HoldSetup)
 
-TabA:CreateToggle("Auto Soru To Target", "AutoSoruTarget", nil)
-TabA:CreateToggle("Auto Soru Escape", "AutoSoruEscape", nil)
-TabA:CreateToggle("Auto Race V3/V4", "AutoRace", nil)
-
 local sldESP; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if sldESP then sldESP.Visible=v end; if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then pcall(function() c:Destroy() end) end end; MCXC.Cache.ESP={} end end)
 sldESP = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true); sldESP.Visible = MCXC.Config.ESP
 
@@ -291,18 +273,24 @@ sldMap1.Visible = MCXC.Config.ShowMap; sldMap2.Visible = MCXC.Config.ShowMap
 TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) MCXC.State.SetupMode=v; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable=v end; if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable=v end; if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable=v end; if MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Draggable=v end end)
 TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
 TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
-TabS:CreateToggle("Unlock 120 FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 120 or 60) end end) end)
-pcall(function() if setfpscap then setfpscap(MCXC.Config.UnlockFPS and 120 or 60) end end)
+TabS:CreateToggle("Unlock FPS (Max 9999)", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 9999 or 60) end end) end)
+pcall(function() if setfpscap then setfpscap(MCXC.Config.UnlockFPS and 9999 or 60) end end)
 
 TabS:CreateToggle("Fix Lag Max (No Effects)", "FixLag", function(v)
     if v then
         Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        for _, obj in pairs(Lighting:GetChildren()) do
+            if obj:IsA("PostEffect") or obj:IsA("Atmosphere") then obj.Enabled = false end
+        end
         for _,p in ipairs(workspace:GetDescendants()) do
             if p:IsA("BasePart") and not p.Parent:FindFirstChild("Humanoid") then
                 p.CastShadow = false
                 p.Material = Enum.Material.SmoothPlastic
             elseif p:IsA("ParticleEmitter") or p:IsA("Trail") or p:IsA("Beam") or p:IsA("Fire") or p:IsA("Smoke") or p:IsA("Sparkles") then
                 p.Enabled = false
+            elseif p:IsA("Texture") or p:IsA("Decal") then
+                p.Transparency = 1
             end
         end
     end
@@ -334,13 +322,9 @@ MCXC.Cache.BtnC.InputBegan:Connect(function(i)
     if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then 
         if MCXC.State.IsCombo then
             if MCXC.Config.CancelOnTap then
-                MCXC.State.CancelCombo = true
-                Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=0.1}, 0.1)
-                task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
+                MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
             end
-        else
-            Combat.ExecuteCombo(MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) 
-        end
+        else Combat.ExecuteCombo(MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end
     end 
 end)
 
@@ -349,22 +333,16 @@ MCXC.Cache.BtnC2.InputBegan:Connect(function(i)
     if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then 
         if MCXC.State.IsCombo then
             if MCXC.Config.CancelOnTap then
-                MCXC.State.CancelCombo = true
-                Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=0.1}, 0.1)
-                task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
+                MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
             end
-        else
-            Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) 
-        end
+        else Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end
     end 
 end)
 
 MCXC.Cache.BtnX.InputBegan:Connect(function(i) 
     if MCXC.State.SetupMode then return end
     if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then 
-        MCXC.State.CancelCombo = true
-        Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.1)
-        task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
+        MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
     end 
 end)
 
@@ -376,8 +354,9 @@ end)
 
 workspace.DescendantAdded:Connect(function(v)
     if MCXC.Config.FixLag then
-        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0
-        elseif v:IsA("Explosion") then v.Visible = false end
+        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0 
+        elseif v:IsA("Explosion") then v.Visible = false 
+        elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency = 1 end
     end
 end)
 
@@ -385,15 +364,6 @@ RunService.Heartbeat:Connect(function()
     pcall(function()
         local now = tick(); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if not myR then return end
-
-        if MCXC.Config.AutoSoruEscape and Combat.IsStunned(LP.Character) then
-            if now - MCXC.State.LastSoruTick >= 0.2 then
-                MCXC.State.LastSoruTick = now
-                local cam = workspace.CurrentCamera
-                cam.CFrame = CFrame.new(cam.CFrame.Position) * CFrame.Angles(0, math.rad(math.random(0,360)), 0)
-                VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game); task.wait(0.01); VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
-            end
-        end
 
         if now - MCXC.State.LastStatTick >= 1 then
             MCXC.State.LastStatTick = now
@@ -403,11 +373,9 @@ RunService.Heartbeat:Connect(function()
                 MCXC.Cache.FPSLbl.Text = "FPS: " .. tostring(fps)
                 MCXC.Cache.PingLbl.Text = "PING: " .. tostring(ping) .. "ms"
                 if fps < 20 or ping > 150 then
-                    MCXC.Cache.FPSLbl.TextColor3 = Theme.Danger
-                    MCXC.Cache.PingLbl.TextColor3 = Theme.Danger
+                    MCXC.Cache.FPSLbl.TextColor3 = Theme.Danger; MCXC.Cache.PingLbl.TextColor3 = Theme.Danger
                 else
-                    MCXC.Cache.FPSLbl.TextColor3 = Color3.fromRGB(255,255,255)
-                    MCXC.Cache.PingLbl.TextColor3 = Color3.fromRGB(255,255,255)
+                    MCXC.Cache.FPSLbl.TextColor3 = Color3.fromRGB(255,255,255); MCXC.Cache.PingLbl.TextColor3 = Color3.fromRGB(255,255,255)
                 end
             end
         end
@@ -418,7 +386,9 @@ RunService.Heartbeat:Connect(function()
             MCXC.State.LastTick = now; local cam = workspace.CurrentCamera; local cF2, cR2 = Vector2.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Z).Unit, Vector2.new(cam.CFrame.RightVector.X, cam.CFrame.RightVector.Z).Unit
             
             local tracerTarget = nil; local minD = math.huge
-            for _, p in ipairs(Players:GetPlayers()) do
+            local plrs = Players:GetPlayers()
+            for i = 1, #plrs do
+                local p = plrs[i]
                 if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
                     local d = (p.Character.HumanoidRootPart.Position - myR.Position).Magnitude
                     if d < minD then minD = d; tracerTarget = p end
@@ -432,9 +402,9 @@ RunService.Heartbeat:Connect(function()
                 local tR = tracerTarget.Character.HumanoidRootPart; local trObj = MCXC.Cache.TracerLine; trObj.A1.Parent = myR; trObj.A2.Parent = tR; trObj.Beam.Parent = tR; trObj.Beam.Enabled = true; trObj.Targ = tracerTarget
             else if MCXC.Cache.TracerLine then pcall(function() MCXC.Cache.TracerLine.Beam.Enabled = false end) end end
             
-            for _, p in ipairs(Players:GetPlayers()) do
+            for i = 1, #plrs do
+                local p = plrs[i]
                 if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                   
                     local tR = p.Character.HumanoidRootPart; local dist = (tR.Position - myR.Position).Magnitude; local isClose = (p == tracerTarget)
                     
                     if MCXC.Config.ShowMap then
@@ -450,7 +420,6 @@ RunService.Heartbeat:Connect(function()
                             local s, parentCheck = pcall(function() return MCXC.Cache.ESP[p.Name].Parent end)
                             if not s or parentCheck ~= tR then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end
                         end
-                        
                         if not MCXC.Cache.ESP[p.Name] then
                             local bg = Instance.new("BillboardGui"); bg.Size = UDim2.new(0,100,0,38); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,4,0); bg.Name = "ESPGui"
                             local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UDim.new(0,2)
@@ -459,8 +428,7 @@ RunService.Heartbeat:Connect(function()
                             local hpFill = Instance.new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0,2)
                             local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 8; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
                             local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 10; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); wLbl.LayoutOrder = 3
-                            bg.Parent = tR
-                            MCXC.Cache.ESP[p.Name] = bg
+                            bg.Parent = tR; MCXC.Cache.ESP[p.Name] = bg
                         end
                         local hp, mhp = 0, 0; pcall(function() hp = math.floor(p.Character.Humanoid.Health); mhp = math.floor(p.Character.Humanoid.MaxHealth) end); local w = p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"
                         local gui = MCXC.Cache.ESP[p.Name]; gui.Adornee = tR; local mainC = isClose and Theme.Target or Color3.fromRGB(255,255,255)
