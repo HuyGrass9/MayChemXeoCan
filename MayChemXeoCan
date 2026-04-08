@@ -12,11 +12,11 @@ local LP = Players.LocalPlayer
 
 local MCXC = {
     Config = {
-        ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", BaseDelay = 0.05, ActionDelay = 0.15,
+        ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ",
         RenderDist = 1500, TracerRange = 250,
         ESP = false, ViewTracer = false, ShowMap = false, MapSize = 120, MapRange = 600,
-        BtnSizeC = 60, BtnSizeC2 = 60,
-        ShowC = false, ShowC2 = false, Macro = true,
+        BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45,
+        ShowC = false, ShowC2 = false, ShowX = false, Macro = true,
         UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, FixLag = false,
         ShowStats = true, CancelOnTap = true
     },
@@ -73,21 +73,22 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
         for i = 1, #seq do
             if MCXC.State.CancelCombo then break end
             local key = string.sub(seq, i, i)
+            local aiDelay = math.clamp(Utils.GetPing() / 1000, 0.01, 0.25)
             if string.match(key, "[1-4]") then
                 curWepType = key
                 local tT = LP.Character:FindFirstChildOfClass("Tool"); if not tT or GetToolType(tT)~=key then
                     local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; task.wait() end; task.wait(0.05)
+                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; task.wait() end; task.wait(0.01)
                 end
             elseif string.match(key, "[ZXCVF]") then
                 local kc = Enum.KeyCode[key]; local holdKey = "Hold_"..curWepType..key
                 local holdTime = MCXC.Config.HoldEnabled and (MCXC.Config[holdKey] or 0) or 0
                 VIM:SendKeyEvent(true, kc, false, game)
-                if holdTime > 0 then task.wait(holdTime) else task.wait(0.05) end
+                if holdTime > 0 then task.wait(holdTime) else task.wait(0.02) end
                 VIM:SendKeyEvent(false, kc, false, game)
                 local wR = tick(); local trg = false
                 while tick()-wR < 0.4 do if MCXC.State.CancelCombo then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; task.wait() end
-                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo then break end; task.wait() end; task.wait(MCXC.Config.ActionDelay) else task.wait(MCXC.Config.BaseDelay) end
+                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo then break end; task.wait() end; task.wait(aiDelay) else task.wait(aiDelay / 2) end
             end
         end
         MCXC.State.IsCombo = false; MCXC.State.CancelCombo = false
@@ -151,8 +152,8 @@ function MaruUI:CreateWindow(title)
                     local pct = math.clamp((i.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1); local val = min + (max-min)*pct; if isInt then val = math.floor(val) else val = math.floor(val*100)/100 end
                     fill.Size = UDim2.new(pct,0,1,0); vL.Text = tostring(val); MCXC.Config[key] = val
                     if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size=UDim2.new(0,val,0,val) end; if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size=UDim2.new(0,val,0,val) end
-                    if key=="MapSize" and MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Size=UDim2.new(0,val,0,val) end
-                    if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.BackgroundTransparency = val; MCXC.Cache.BtnC2.BackgroundTransparency = val end end
+                    if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size=UDim2.new(0,val,0,val) end; if key=="MapSize" and MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Size=UDim2.new(0,val,0,val) end
+                    if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.BackgroundTransparency = val; MCXC.Cache.BtnC2.BackgroundTransparency = val; MCXC.Cache.BtnX.BackgroundTransparency = val end end
                 end
                 tBtn.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; Utils.Tween(l, {TextColor3=Theme.Text}, 0.2); update(i) end end)
                 UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then update(i) end end)
@@ -192,6 +193,9 @@ TabC:CreateInput("Combo C2", "ComboC2")
 local sldC2; TabC:CreateToggle("Show Button C2", "ShowC2", function(v) if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible=v end; if sldC2 then sldC2.Visible=v end end)
 sldC2 = TabC:CreateSlider("Size C2", 40, 100, "BtnSizeC2", true); sldC2.Visible = MCXC.Config.ShowC2
 
+local sldX; TabC:CreateToggle("Show Button X", "ShowX", function(v) if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible=v end; if sldX then sldX.Visible=v end end)
+sldX = TabC:CreateSlider("Size X", 30, 80, "BtnSizeX", true); sldX.Visible = MCXC.Config.ShowX
+
 TabC:CreateToggle("Cancel Combo on Tap", "CancelOnTap", nil)
 TabC:CreateToggle("Enable Hold Skills", "HoldEnabled", nil)
 
@@ -227,7 +231,7 @@ sldMap1 = TabV:CreateSlider("Minimap Range", 500, 3000, "MapRange", true)
 sldMap2 = TabV:CreateSlider("Minimap Size", 80, 200, "MapSize", true)
 sldMap1.Visible = MCXC.Config.ShowMap; sldMap2.Visible = MCXC.Config.ShowMap
 
-TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) MCXC.State.SetupMode=v; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable=v end; if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable=v end; if MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Draggable=v end end)
+TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) MCXC.State.SetupMode=v; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable=v end; if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable=v end; if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable=v end; if MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Draggable=v end end)
 TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
 TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
 TabS:CreateToggle("Unlock 120 FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 120 or 60) end end) end)
@@ -266,6 +270,7 @@ end
 
 MCXC.Cache.BtnC, MCXC.Cache.StrC = CreateActionBtn("C", 0.8, 0.4, Theme.Danger, "ShowC", "BtnSizeC")
 MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CreateActionBtn("C2", 0.8, 0.55, Theme.Accent, "ShowC2", "BtnSizeC2")
+MCXC.Cache.BtnX, MCXC.Cache.StrX = CreateActionBtn("X", 0.8, 0.7, Color3.fromRGB(255,200,50), "ShowX", "BtnSizeX")
 
 MCXC.Cache.BtnC.InputBegan:Connect(function(i) 
     if MCXC.State.SetupMode then return end
@@ -294,6 +299,15 @@ MCXC.Cache.BtnC2.InputBegan:Connect(function(i)
         else
             Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) 
         end
+    end 
+end)
+
+MCXC.Cache.BtnX.InputBegan:Connect(function(i) 
+    if MCXC.State.SetupMode then return end
+    if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then 
+        MCXC.State.CancelCombo = true
+        Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.1)
+        task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
     end 
 end)
 
