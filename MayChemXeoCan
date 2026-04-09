@@ -22,7 +22,7 @@ local MCXC = {
     },
     State = {
         IsCombo = false, CancelCombo = false, MenuOpen = false, LastTick = tick(),
-        SetupMode = false, CurrentTarget = nil
+        SetupMode = false, CurrentTarget = nil, LastStatTick = tick(), Ping = 0.05
     },
     Cache = { ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {} }
 }
@@ -117,7 +117,7 @@ function MaruUI:CreateWindow(title)
     if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
     local gui = Instance.new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    local StatFrame = Instance.new("Frame", gui); StatFrame.Size = UDim2.new(0,100,0,40); StatFrame.Position = UDim2.new(0,15,0,50); StatFrame.BackgroundTransparency = 1; StatFrame.Visible = MCXC.Config.ShowStats
+    local StatFrame = Instance.new("Frame", gui); StatFrame.Size = UDim2.new(0,100,0,40); StatFrame.Position = UDim2.new(0,15,0.4,0); StatFrame.BackgroundTransparency = 1; StatFrame.Visible = MCXC.Config.ShowStats
     local FPSLbl = Instance.new("TextLabel", StatFrame); FPSLbl.Size = UDim2.new(1,0,0,18); FPSLbl.BackgroundTransparency = 1; FPSLbl.Font = Enum.Font.GothamBold; FPSLbl.TextSize = 12; FPSLbl.TextXAlignment = Enum.TextXAlignment.Left; FPSLbl.TextColor3 = Color3.fromRGB(255,255,255); FPSLbl.TextStrokeTransparency = 0.5; FPSLbl.Text = "FPS: --"
     local PingLbl = Instance.new("TextLabel", StatFrame); PingLbl.Size = UDim2.new(1,0,0,18); PingLbl.Position = UDim2.new(0,0,0,18); PingLbl.BackgroundTransparency = 1; PingLbl.Font = Enum.Font.GothamBold; PingLbl.TextSize = 12; PingLbl.TextXAlignment = Enum.TextXAlignment.Left; PingLbl.TextColor3 = Color3.fromRGB(255,255,255); PingLbl.TextStrokeTransparency = 0.5; PingLbl.Text = "PING: --"
     MCXC.Cache.FPSLbl = FPSLbl; MCXC.Cache.PingLbl = PingLbl; MCXC.Cache.StatFrame = StatFrame
@@ -141,6 +141,7 @@ function MaruUI:CreateWindow(title)
         local tab = {Btn = btn, Ind = ind, Frm = frm}; table.insert(self.Tabs, tab)
         btn.MouseButton1Click:Connect(function() for _, t in ipairs(self.Tabs) do t.Frm.Visible = (t == tab); Utils.Tween(t.Btn, {TextColor3 = (t == tab) and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(t.Ind, {Size = (t == tab) and UDim2.new(0,3,0,20) or UDim2.new(0,3,0,0)}, 0.2) end end)
         if #self.Tabs == 1 then frm.Visible=true; btn.TextColor3=Theme.Text; ind.Size=UDim2.new(0,3,0,20) end
+        
         return {
             Frame = frm, LayoutIndex = 0,
             CreateToggle = function(self, text, key, cb)
@@ -178,6 +179,11 @@ function MaruUI:CreateWindow(title)
                 local b = Instance.new("TextBox", c); b.Size = UDim2.new(0.55,-10,0,26); b.Position = UDim2.new(0.45,0,0.5,-13); b.BackgroundColor3 = Color3.fromRGB(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = MCXC.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,55)
                 b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end)
                 return c
+            end,
+            CreateButton = function(self, text, color, cb)
+                self.LayoutIndex = self.LayoutIndex + 1; local b = Instance.new("TextButton", self.Frame); b.Size = UDim2.new(1,0,0,35); b.BackgroundColor3 = Theme.ElementBG; b.LayoutOrder = self.LayoutIndex; b.Text = text; b.TextColor3 = color or Theme.Text; b.Font = Enum.Font.GothamBold; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0,6); local s = Instance.new("UIStroke", b); s.Color = color or Theme.Accent; s.Transparency = 0.5
+                b.MouseButton1Click:Connect(function() Utils.Tween(b, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb then cb() end end)
+                return b
             end
         }
     end
@@ -234,41 +240,41 @@ MCXC.Cache.BtnC, MCXC.Cache.StrC = CreateActionBtn("C", 0.8, 0.4, Theme.Danger, 
 MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CreateActionBtn("C2", 0.8, 0.55, Theme.Accent, "ShowC2", "BtnSizeC2")
 MCXC.Cache.BtnX, MCXC.Cache.StrX = CreateActionBtn("X", 0.8, 0.7, Color3.fromRGB(255,200,50), "ShowX", "BtnSizeX")
 
+pcall(function()
+    if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = MCXC.Config.ShowC end
+    if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible = MCXC.Config.ShowC2 end
+    if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = MCXC.Config.ShowX end
+end)
+
 MCXC.Cache.BtnC.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end end end)
 MCXC.Cache.BtnC2.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end end end)
 MCXC.Cache.BtnX.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end end)
 Players.PlayerRemoving:Connect(function(p) if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end end)
 workspace.DescendantAdded:Connect(function(v) if MCXC.Config.FixLag then if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0 elseif v:IsA("Explosion") then v.Visible = false elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency = 1 end end end)
 
-task.spawn(function()
-    local frames = 0
-    local lastUpdate = tick()
-    RunService.RenderStepped:Connect(function()
-        frames = frames + 1
-        local now = tick()
-        if now - lastUpdate >= 1 then
-            local fps = frames
-            frames = 0
-            lastUpdate = now
-            local ping = math.floor(Utils.GetPing())
-            if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then
-                MCXC.Cache.FPSLbl.Text = "FPS: " .. tostring(fps)
-                MCXC.Cache.PingLbl.Text = "PING: " .. tostring(ping) .. "ms"
-                if fps < 20 or ping > 150 then
-                    MCXC.Cache.FPSLbl.TextColor3 = Theme.Danger
-                    MCXC.Cache.PingLbl.TextColor3 = Theme.Danger
-                else
-                    MCXC.Cache.FPSLbl.TextColor3 = Color3.fromRGB(255,255,255)
-                    MCXC.Cache.PingLbl.TextColor3 = Color3.fromRGB(255,255,255)
-                end
-            end
-        end
-    end)
-end)
-
+local fpsFrames = 0
 RunService.Heartbeat:Connect(function()
     pcall(function()
+        fpsFrames = fpsFrames + 1
         local now = tick()
+        if now - MCXC.State.LastStatTick >= 1 then 
+            MCXC.State.LastStatTick = now
+            local fps = fpsFrames
+            fpsFrames = 0
+            local ping = math.floor(Utils.GetPing())
+            MCXC.State.Ping = ping / 1000
+            if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then 
+                MCXC.Cache.FPSLbl.Text = "FPS: " .. tostring(fps)
+                MCXC.Cache.PingLbl.Text = "PING: " .. tostring(ping) .. "ms"
+                if fps < 20 or ping > 150 then 
+                    MCXC.Cache.FPSLbl.TextColor3 = Theme.Danger
+                    MCXC.Cache.PingLbl.TextColor3 = Theme.Danger 
+                else 
+                    MCXC.Cache.FPSLbl.TextColor3 = Color3.fromRGB(255,255,255)
+                    MCXC.Cache.PingLbl.TextColor3 = Color3.fromRGB(255,255,255) 
+                end 
+            end 
+        end
         local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end
         if MCXC.Config.Macro then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
         if now - MCXC.State.LastTick >= 0.05 then
@@ -307,9 +313,3 @@ RunService.Heartbeat:Connect(function()
                         pcall(function() gui.NameLbl.Text = p.Name; gui.NameLbl.TextColor3 = mainC; gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true end)
                     elseif MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end
                 else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end; if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end end end end end) end)
-
-pcall(function()
-    if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = MCXC.Config.ShowC end
-    if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible = MCXC.Config.ShowC2 end
-    if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = MCXC.Config.ShowX end
-end)
