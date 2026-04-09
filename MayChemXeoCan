@@ -75,11 +75,19 @@ function Combat.IsBusy(char)
 end
 
 function Combat.SW(t)
-    local s = tick(); local adj = math.max(0, t - (MCXC.State.Ping * 0.5))
+    local s = tick(); local adj = math.max(0.001, t - (MCXC.State.Ping * 0.6))
     while tick() - s < adj do
         if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then return false end
         RunService.Heartbeat:Wait()
     end; return true
+end
+
+function Combat.GetTargetHealth()
+    if MCXC.State.CurrentTarget and MCXC.State.CurrentTarget.Character then
+        local hum = MCXC.State.CurrentTarget.Character:FindFirstChild("Humanoid")
+        if hum then return hum.Health end
+    end
+    return 0
 end
 
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
@@ -93,12 +101,18 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
         Combat.SW(0.005)
         local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
         local curWepType = "0"; local currentHeldKey = nil; local comboFailed = false; local firstSkillChecked = false; local firstSkillFired = false
+        local skillCount = 0; local initHP = Combat.GetTargetHealth(); local dmgChecked = false
         if cT then curWepType = GetToolType(cT) end
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=string.sub(seq,2) end
         
         for i = 1, #seq do
             if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then comboFailed = true; break end
             local key = string.sub(seq, i, i)
+            if string.match(key, "[ZXCVF]") then skillCount = skillCount + 1 end
+            if skillCount == 2 and not dmgChecked then
+                dmgChecked = true; local curHP = Combat.GetTargetHealth()
+                if curHP >= initHP and MCXC.State.CurrentTarget then MCXC.State.CancelCombo = true; comboFailed = true; break end
+            end
             if string.match(key, "[1-4]") then
                 curWepType = key; local tT = LP.Character:FindFirstChildOfClass("Tool")
                 if not tT or GetToolType(tT)~=key then
@@ -126,7 +140,7 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
         if currentHeldKey then pcall(function() VIM:SendKeyEvent(false, currentHeldKey, false, game) end) end
         MCXC.State.IsCombo = false; MCXC.State.CurrentCombo = nil; MCXC.State.CancelCombo = false
         
-        if comboFailed and not firstSkillFired then
+        if comboFailed and not firstSkillFired or comboFailed and dmgChecked then
             Utils.Tween(btnRef, {BackgroundColor3=Color3.fromRGB(200,30,30), BackgroundTransparency=0.1}, 0.1)
             task.delay(0.4, function() Utils.Tween(btnRef, {BackgroundColor3=Color3.fromRGB(15,15,15), BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
             Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.15); MCXC.State.ComboQueue = nil
