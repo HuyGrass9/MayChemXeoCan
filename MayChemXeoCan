@@ -18,7 +18,7 @@ local MCXC = {
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45,
         ShowC = false, ShowC2 = false, ShowX = false, Macro = true,
         UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false,
-        ShowStats = true, CancelOnTap = true, AimbotDetector = false,
+        ShowStats = true, CancelOnTap = true,
         BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}, MapPos = {0.05, 0, 0.05, 0}
     },
     State = {
@@ -141,8 +141,7 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
         Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans, BackgroundColor3=Color3.fromRGB(15,15,15)}, 0.15); Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.15)
         
         if MCXC.State.ComboQueue then
-            local nextQ = MCXC.State.ComboQueue
-            MCXC.State.ComboQueue = nil
+            local nextQ = MCXC.State.ComboQueue; MCXC.State.ComboQueue = nil
             if nextQ == "C" then Combat.ExecuteCombo("C", MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger)
             elseif nextQ == "C2" then Combat.ExecuteCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end
         end
@@ -258,7 +257,6 @@ local function RefreshHoldUI(text)
 end
 TabC:CreateInput("Hold Setup (e.g 3Z2C)", "HoldSetup", function(val) RefreshHoldUI(val) end); RefreshHoldUI(MCXC.Config.HoldSetup)
 
-TabV:CreateToggle("Aimbot Detector", "AimbotDetector", nil)
 local sldESP; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if sldESP then sldESP.Visible=v end; if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then pcall(function() c:Destroy() end) end end; MCXC.Cache.ESP={} end end)
 sldESP = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true); sldESP.Visible = MCXC.Config.ESP
 local sldTracer; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sldTracer then sldTracer.Visible=v end; if not v then if MCXC.Cache.TracerLine then pcall(function() MCXC.Cache.TracerLine.Beam:Destroy(); MCXC.Cache.TracerLine.A1:Destroy(); MCXC.Cache.TracerLine.A2:Destroy() end); MCXC.Cache.TracerLine=nil end end end)
@@ -361,10 +359,10 @@ RunService.Heartbeat:Connect(function()
                 local tR = tracerTarget.Character.HumanoidRootPart; local trObj = MCXC.Cache.TracerLine; trObj.A1.Parent = myR; trObj.A2.Parent = tR; trObj.Beam.Parent = tR; trObj.Beam.Enabled = true; trObj.Targ = tracerTarget
             else if MCXC.Cache.TracerLine then pcall(function() MCXC.Cache.TracerLine.Beam.Enabled = false end) end end
             
-            for i = 1, #plrs do local p = plrs[i]; if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                    local tR = p.Character.HumanoidRootPart; local dist = (tR.Position - myR.Position).Magnitude; local isClose = (p == tracerTarget)
-                    
-                    if MCXC.Config.AimbotDetector then
+            if MCXC.Config.ESP then
+                for i = 1, #plrs do local p = plrs[i]; if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                        local tR = p.Character.HumanoidRootPart; local dist = (tR.Position - myR.Position).Magnitude
+                        
                         if not MCXC.State.AimData[p.Name] then MCXC.State.AimData[p.Name] = {Hist={}, Score=0, Triggers=0, Flagged=false, Last=false} end
                         local eD = MCXC.State.AimData[p.Name]; local isB = Combat.IsBusy(p.Character); local look = tR.CFrame.LookVector
                         if dist > 15 and not eD.Flagged then
@@ -375,8 +373,25 @@ RunService.Heartbeat:Connect(function()
                             end
                             eD.Last = isB; table.insert(eD.Hist, ang); if #eD.Hist > 5 then table.remove(eD.Hist, 1) end
                         end
-                    end
 
+                        if dist <= MCXC.Config.RenderDist then
+                            if MCXC.Cache.ESP[p.Name] then local s, parentCheck = pcall(function() return MCXC.Cache.ESP[p.Name].Parent end); if not s or parentCheck ~= MCXC.Cache.ESPFolder or MCXC.Cache.ESP[p.Name].Adornee ~= tR then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end end
+                            if not MCXC.Cache.ESP[p.Name] then
+                                local bg = Instance.new("BillboardGui"); bg.Size = UDim2.new(0,100,0,38); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,4,0); bg.Name = "ESPGui"; local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UDim.new(0,2)
+                                local nLbl = Instance.new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,13); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 11; nLbl.TextStrokeTransparency = 0; nLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); nLbl.LayoutOrder = 1
+                                local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(0.5,0,0,8); hpBg.BackgroundColor3 = Color3.fromRGB(20,20,20); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0,2); local hpStr = Instance.new("UIStroke", hpBg); hpStr.Color = Color3.fromRGB(0,0,0); hpStr.Thickness = 1
+                                local hpFill = Instance.new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0,2); local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 8; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
+                                local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 10; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); wLbl.LayoutOrder = 3
+                                bg.Parent = MCXC.Cache.ESPFolder; MCXC.Cache.ESP[p.Name] = bg end
+                            local hp, mhp = 0, 0; pcall(function() hp = math.floor(p.Character.Humanoid.Health); mhp = math.floor(p.Character.Humanoid.MaxHealth) end); local w = p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"; local gui = MCXC.Cache.ESP[p.Name]; gui.Adornee = tR; local isClose = (p == tracerTarget); local mainC = isClose and Theme.Target or Color3.fromRGB(255,255,255)
+                            local dispName = p.Name; if eD.Flagged then dispName = "[AIMBOT USER] " .. dispName; mainC = Color3.fromRGB(255, 0, 0) end
+                            pcall(function() gui.NameLbl.Text = dispName; gui.NameLbl.TextColor3 = mainC; gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true end)
+                        elseif MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end
+                else if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end end end
+            else for _,c in pairs(MCXC.Cache.ESP) do if c then pcall(function() c.Enabled = false end) end end end
+            
+            for i = 1, #plrs do local p = plrs[i]; if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                    local tR = p.Character.HumanoidRootPart; local dist = (tR.Position - myR.Position).Magnitude; local isClose = (p == tracerTarget)
                     if MCXC.Config.ShowMap then
                         if dist <= MCXC.Config.MapRange then
                             local of2 = Vector2.new(tR.Position.X - myR.Position.X, tR.Position.Z - myR.Position.Z); local sc = (MCXC.Config.MapSize / 2) / MCXC.Config.MapRange; local uX, uY = of2:Dot(cR2) * sc, -of2:Dot(cF2) * sc
@@ -384,23 +399,5 @@ RunService.Heartbeat:Connect(function()
                             local dot = MCXC.Cache.MapDots[p.Name]; dot.BackgroundColor3 = isClose and Theme.Target or Theme.Danger; dot.Position = UDim2.new(0.5, uX-3, 0.5, uY-3); dot.Visible = true
                         elseif MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end
                     else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end end
-                    
-                    if MCXC.Config.ESP and dist <= MCXC.Config.RenderDist then
-                        if MCXC.Cache.ESP[p.Name] then local s, parentCheck = pcall(function() return MCXC.Cache.ESP[p.Name].Parent end); if not s or parentCheck ~= MCXC.Cache.ESPFolder or MCXC.Cache.ESP[p.Name].Adornee ~= tR then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end end
-                        if not MCXC.Cache.ESP[p.Name] then
-                            local bg = Instance.new("BillboardGui"); bg.Size = UDim2.new(0,100,0,38); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,4,0); bg.Name = "ESPGui"; local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UDim.new(0,2)
-                            local nLbl = Instance.new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,13); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 11; nLbl.TextStrokeTransparency = 0; nLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); nLbl.LayoutOrder = 1
-                            local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(0.5,0,0,8); hpBg.BackgroundColor3 = Color3.fromRGB(20,20,20); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0,2); local hpStr = Instance.new("UIStroke", hpBg); hpStr.Color = Color3.fromRGB(0,0,0); hpStr.Thickness = 1
-                            local hpFill = Instance.new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0,2); local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 8; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
-                            local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 10; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); wLbl.LayoutOrder = 3
-                            bg.Parent = MCXC.Cache.ESPFolder; MCXC.Cache.ESP[p.Name] = bg end
-                        local hp, mhp = 0, 0; pcall(function() hp = math.floor(p.Character.Humanoid.Health); mhp = math.floor(p.Character.Humanoid.MaxHealth) end); local w = p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"; local gui = MCXC.Cache.ESP[p.Name]; gui.Adornee = tR; local mainC = isClose and Theme.Target or Color3.fromRGB(255,255,255)
-                        
-                        local dispName = p.Name
-                        if MCXC.Config.AimbotDetector and MCXC.State.AimData[p.Name] and MCXC.State.AimData[p.Name] and MCXC.State.AimData[p.Name].Flagged then
-                            dispName = "[AIMBOT USER] " .. dispName; mainC = Color3.fromRGB(255, 0, 0)
-                        end
-                        
-                        pcall(function() gui.NameLbl.Text = dispName; gui.NameLbl.TextColor3 = mainC; gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true end)
-                    elseif MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end
-                else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end; if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end end end end end) end)
+                else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end end end
+        end end) end)
