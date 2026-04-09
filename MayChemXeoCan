@@ -18,13 +18,13 @@ local MCXC = {
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45,
         ShowC = false, ShowC2 = false, ShowX = false, Macro = true,
         UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false,
-        ShowStats = true, CancelOnTap = true,
+        ShowStats = true, CancelOnTap = true, AimbotDetector = true,
         BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}, MapPos = {0.05, 0, 0.05, 0}
     },
     State = {
-        IsCombo = false, CurrentCombo = nil, ComboQueue = nil, CancelCombo = false,
-        MenuOpen = false, LastTick = tick(), SetupMode = false, CurrentTarget = nil,
-        LastStatTick = tick(), Ping = 0.05, LagFixed = false
+        IsCombo = false, CancelCombo = false, MenuOpen = false, LastTick = tick(),
+        SetupMode = false, CurrentTarget = nil, Ping = 0.05,
+        LagFixed = false, AimData = {}
     },
     Cache = { ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {} }
 }
@@ -258,6 +258,7 @@ local function RefreshHoldUI(text)
 end
 TabC:CreateInput("Hold Setup (e.g 3Z2C)", "HoldSetup", function(val) RefreshHoldUI(val) end); RefreshHoldUI(MCXC.Config.HoldSetup)
 
+TabV:CreateToggle("Aimbot Detector (Hawk-Eye)", "AimbotDetector", nil)
 local sldESP; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if sldESP then sldESP.Visible=v end; if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then pcall(function() c:Destroy() end) end end; MCXC.Cache.ESP={} end end)
 sldESP = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true); sldESP.Visible = MCXC.Config.ESP
 local sldTracer; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sldTracer then sldTracer.Visible=v end; if not v then if MCXC.Cache.TracerLine then pcall(function() MCXC.Cache.TracerLine.Beam:Destroy(); MCXC.Cache.TracerLine.A1:Destroy(); MCXC.Cache.TracerLine.A2:Destroy() end); MCXC.Cache.TracerLine=nil end end end)
@@ -335,7 +336,7 @@ MCXC.Cache.BtnX.InputBegan:Connect(function(i)
     end 
 end)
 
-Players.PlayerRemoving:Connect(function(p) if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end end)
+Players.PlayerRemoving:Connect(function(p) if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end; if MCXC.State.AimData[p.Name] then MCXC.State.AimData[p.Name] = nil end end)
 workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then Utils.ApplyLagFixToObj(v) end end)
 task.spawn(function() while true do task.wait(10); pcall(function() collectgarbage("collect") end); if MCXC.State.LagFixed then pcall(function() for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplyLagFixToObj(v) end end) end end end)
 
@@ -365,6 +366,23 @@ RunService.Heartbeat:Connect(function()
             else if MCXC.Cache.TracerLine then pcall(function() MCXC.Cache.TracerLine.Beam.Enabled = false end) end end
             for i = 1, #plrs do local p = plrs[i]; if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
                     local tR = p.Character.HumanoidRootPart; local dist = (tR.Position - myR.Position).Magnitude; local isClose = (p == tracerTarget)
+                    
+                    if MCXC.Config.AimbotDetector then
+                        if not MCXC.State.AimData[p.Name] then MCXC.State.AimData[p.Name] = {Hist={}, Score=0, Triggers=0, Flagged=false, Last=false} end
+                        local eD = MCXC.State.AimData[p.Name]; local isB = Combat.IsBusy(p.Character)
+                        local dir = (myR.Position - tR.Position).Unit; local look = tR.CFrame.LookVector
+                        local ang = math.deg(math.acos(math.clamp(look:Dot(dir), -1, 1)))
+                        if isB and not eD.Last then
+                            local prev = eD.Hist[1] or 180
+                            if prev > 40 and ang < 15 then
+                                eD.Triggers = eD.Triggers + 1; eD.Score = eD.Score + 3
+                                if eD.Triggers >= 3 then eD.Score = eD.Score + 5 end
+                                if eD.Score >= 10 then eD.Flagged = true end
+                            end
+                        end
+                        eD.Last = isB; table.insert(eD.Hist, ang); if #eD.Hist > 5 then table.remove(eD.Hist, 1) end
+                    end
+
                     if MCXC.Config.ShowMap then
                         if dist <= MCXC.Config.MapRange then
                             local of2 = Vector2.new(tR.Position.X - myR.Position.X, tR.Position.Z - myR.Position.Z); local sc = (MCXC.Config.MapSize / 2) / MCXC.Config.MapRange; local uX, uY = of2:Dot(cR2) * sc, -of2:Dot(cF2) * sc
@@ -382,6 +400,12 @@ RunService.Heartbeat:Connect(function()
                             local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 10; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); wLbl.LayoutOrder = 3
                             bg.Parent = MCXC.Cache.ESPFolder; MCXC.Cache.ESP[p.Name] = bg end
                         local hp, mhp = 0, 0; pcall(function() hp = math.floor(p.Character.Humanoid.Health); mhp = math.floor(p.Character.Humanoid.MaxHealth) end); local w = p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"; local gui = MCXC.Cache.ESP[p.Name]; gui.Adornee = tR; local mainC = isClose and Theme.Target or Color3.fromRGB(255,255,255)
-                        pcall(function() gui.NameLbl.Text = p.Name; gui.NameLbl.TextColor3 = mainC; gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true end)
+
+                        local dispName = p.Name
+                        if MCXC.Config.AimbotDetector and MCXC.State.AimData[p.Name] and MCXC.State.AimData[p.Name].Flagged then
+                            dispName = "[AIMBOT] " .. dispName; mainC = Theme.Danger
+                        end
+                        
+                        pcall(function() gui.NameLbl.Text = dispName; gui.NameLbl.TextColor3 = mainC; gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true end)
                     elseif MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end
                 else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end; if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end end end end end) end)
