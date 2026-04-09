@@ -370,13 +370,12 @@ workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then Utils.
 task.spawn(function() while true do task.wait(10); pcall(function() collectgarbage("collect") end); if MCXC.State.LagFixed then pcall(function() for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplyLagFixToObj(v) end end) end end end)
 
 local fpsFrames = 0; local lastFpsTick = tick()
-RunService.RenderStepped:Connect(function() fpsFrames = fpsFrames + 1 end)
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
-        local now = tick()
+        local now = tick(); fpsFrames = fpsFrames + 1
         if now - lastFpsTick >= 1 then 
-            local fps = fpsFrames; fpsFrames = 0; lastFpsTick = now; local ping = math.floor(Utils.GetPing()); MCXC.State.Ping = ping / 1000
+            local fps = math.floor(fpsFrames / (now - lastFpsTick)); fpsFrames = 0; lastFpsTick = now; local ping = math.floor(Utils.GetPing()); MCXC.State.Ping = ping / 1000
             if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then 
                 MCXC.Cache.FPSLbl.Text = "FPS: " .. tostring(fps); MCXC.Cache.PingLbl.Text = "PING: " .. tostring(ping) .. "ms"
                 if fps < 20 or ping > 150 then MCXC.Cache.FPSLbl.TextColor3 = Theme.Danger; MCXC.Cache.PingLbl.TextColor3 = Theme.Danger 
