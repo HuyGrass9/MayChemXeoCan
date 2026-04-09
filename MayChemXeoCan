@@ -35,7 +35,7 @@ local Theme = {
     Danger = Color3.fromRGB(255, 50, 70), Target = Color3.fromRGB(255, 210, 0)
 }
 
-local ConfigName = "Macro_MCXC_V68.json"
+local ConfigName = "MCXC_Macro_Config.json"
 pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(MCXC.Config)) end) end
 
@@ -52,7 +52,8 @@ end
 function Utils.ApplyLagFixToObj(v)
     pcall(function()
         if v:IsA("BasePart") and not (v.Parent and v.Parent:FindFirstChild("Humanoid")) then v.CastShadow = false; v.Material = Enum.Material.SmoothPlastic
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0
+        elseif v:IsA("Beam") then if v.Name ~= "MCXC_Tracer" then v.Enabled = false end
         elseif v:IsA("Explosion") then v.Visible = false; v.BlastPressure = 0; v.BlastRadius = 0
         elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency = 1 end
     end)
@@ -62,36 +63,23 @@ local Combat = {}
 function Combat.IsStunned(char)
     if not char then return false end
     for _, v in ipairs(char:GetChildren()) do 
-        if v:IsA("BoolValue") and v.Value then 
-            local n = string.lower(v.Name)
-            if string.find(n, "stun") or string.find(n, "cant") then return true end 
-        end 
-    end
-    return false
+        if v:IsA("BoolValue") and v.Value then local n = string.lower(v.Name); if string.find(n, "stun") or string.find(n, "cant") then return true end end 
+    end; return false
 end
 
 function Combat.IsBusy(char)
     if not char then return false end
     for _, v in ipairs(char:GetChildren()) do 
-        if v:IsA("BoolValue") and v.Value then 
-            local n = string.lower(v.Name)
-            if string.find(n, "busy") or string.find(n, "using") or string.find(n, "cast") or string.find(n, "stun") then return true end 
-        end 
-    end
-    return false
+        if v:IsA("BoolValue") and v.Value then local n = string.lower(v.Name); if string.find(n, "busy") or string.find(n, "using") or string.find(n, "cast") or string.find(n, "stun") then return true end end 
+    end; return false
 end
 
 function Combat.SW(t)
-    local s = tick()
-    local adj = math.max(0, t - (MCXC.State.Ping * 0.5))
+    local s = tick(); local adj = math.max(0, t - (MCXC.State.Ping * 0.5))
     while tick() - s < adj do
-        if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then
-            MCXC.State.CancelCombo = true
-            return false
-        end
+        if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then return false end
         RunService.Heartbeat:Wait()
-    end
-    return true
+    end; return true
 end
 
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
@@ -109,31 +97,29 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=string.sub(seq,2) end
         
         for i = 1, #seq do
-            if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end
+            if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end
             local key = string.sub(seq, i, i)
             if string.match(key, "[1-4]") then
-                curWepType = key
-                local tT = LP.Character:FindFirstChildOfClass("Tool")
+                curWepType = key; local tT = LP.Character:FindFirstChildOfClass("Tool")
                 if not tT or GetToolType(tT)~=key then
                     local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
                     VIM:SendKeyEvent(true, kc, false, game); if not Combat.SW(0.005) then break end; VIM:SendKeyEvent(false, kc, false, game)
-                    local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; RunService.Heartbeat:Wait() end
-                    if MCXC.State.CancelCombo then break end
-                    local finalTk = LP.Character:FindFirstChildOfClass("Tool")
-                    if not finalTk or GetToolType(finalTk)~=key then MCXC.State.CancelCombo = true; break end
+                    local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; RunService.Heartbeat:Wait() end
+                    if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end; local finalTk = LP.Character:FindFirstChildOfClass("Tool")
+                    if not finalTk or GetToolType(finalTk)~=key then break end
                     if not Combat.SW(0.005) then break end
                 end
             elseif string.match(key, "[ZXCVF]") then
-                local kc = Enum.KeyCode[key]; local holdKey = "Hold_"..curWepType..key
-                local holdTime = MCXC.Config.HoldEnabled and (MCXC.Config[holdKey] or 0) or 0
-                currentHeldKey = kc
-                VIM:SendKeyEvent(true, kc, false, game)
+                local kc = Enum.KeyCode[key]; local holdKey = "Hold_"..curWepType..key; local holdTime = MCXC.Config.HoldEnabled and (MCXC.Config[holdKey] or 0) or 0
+                currentHeldKey = kc; VIM:SendKeyEvent(true, kc, false, game)
                 if holdTime > 0 then if not Combat.SW(holdTime) then break end else if not Combat.SW(0.005) then break end end
-                VIM:SendKeyEvent(false, kc, false, game)
-                currentHeldKey = nil
+                VIM:SendKeyEvent(false, kc, false, game); currentHeldKey = nil
                 local wR = tick(); local trg = false
-                while tick()-wR < 0.4 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end; if Combat.IsBusy(LP.Character) then trg=true; break end; RunService.Heartbeat:Wait() end
-                if trg and not MCXC.State.CancelCombo then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end; RunService.Heartbeat:Wait() end end
+                while tick()-wR < 0.4 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; RunService.Heartbeat:Wait() end
+                if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end
+                if not trg then break end
+                local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end; RunService.Heartbeat:Wait() end
+                if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end
                 if not Combat.SW(0.005) then break end
             end
         end
@@ -142,8 +128,7 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
         Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans, BackgroundColor3=Color3.fromRGB(15,15,15)}, 0.15); Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.15)
         
         if MCXC.State.ComboQueue then
-            local nextQ = MCXC.State.ComboQueue
-            MCXC.State.ComboQueue = nil
+            local nextQ = MCXC.State.ComboQueue; MCXC.State.ComboQueue = nil
             if nextQ == "C" then Combat.ExecuteCombo("C", MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger)
             elseif nextQ == "C2" then Combat.ExecuteCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end
         end
@@ -157,7 +142,8 @@ function MaruUI:CreateWindow(title)
     if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
     local gui = Instance.new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    MCXC.Cache.ESPFolder = Instance.new("Folder", gui); MCXC.Cache.ESPFolder.Name = "ESPFolder"
+    MCXC.Cache.ESPFolder = CoreGui:FindFirstChild("MCXC_ESPFolder")
+    if not MCXC.Cache.ESPFolder then MCXC.Cache.ESPFolder = Instance.new("Folder", CoreGui); MCXC.Cache.ESPFolder.Name = "MCXC_ESPFolder" end
 
     local StatFrame = Instance.new("Frame", gui); StatFrame.Size = UDim2.new(0,100,0,40); StatFrame.Position = UDim2.new(0,10,0,55); StatFrame.BackgroundTransparency = 1; StatFrame.Visible = MCXC.Config.ShowStats
     local FPSLbl = Instance.new("TextLabel", StatFrame); FPSLbl.Size = UDim2.new(1,0,0,18); FPSLbl.BackgroundTransparency = 1; FPSLbl.Font = Enum.Font.GothamBold; FPSLbl.TextSize = 12; FPSLbl.TextXAlignment = Enum.TextXAlignment.Left; FPSLbl.TextColor3 = Color3.fromRGB(255,255,255); FPSLbl.TextStrokeTransparency = 0.5; FPSLbl.Text = "FPS: --"
@@ -282,9 +268,7 @@ TabS:CreateToggle("Enable 120 FPS", "UnlockFPS", function(v) pcall(function() if
 
 TabS:CreateDoubleButton("Fix Lag", Theme.Accent, function()
     MCXC.State.LagFixed = true
-    pcall(function()
-        for _,p in ipairs(workspace:GetDescendants()) do Utils.ApplyLagFixToObj(p) end
-    end)
+    pcall(function() for _,p in ipairs(workspace:GetDescendants()) do Utils.ApplyLagFixToObj(p) end end)
 end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
 LP.Chatted:Connect(function(msg) if string.lower(msg) == "mcxc" then Gui.Enabled = true end end)
 
@@ -357,7 +341,7 @@ RunService.Heartbeat:Connect(function()
             for i = 1, #plrs do local p = plrs[i]; if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then local d = (p.Character.HumanoidRootPart.Position - myR.Position).Magnitude; if d < minD then minD = d; tracerTarget = p end end end
             MCXC.State.CurrentTarget = tracerTarget
             if MCXC.Config.ViewTracer and tracerTarget and minD <= MCXC.Config.TracerRange then
-                if not MCXC.Cache.TracerLine then local a1 = Instance.new("Attachment"); local a2 = Instance.new("Attachment"); local b = Instance.new("Beam"); b.Attachment0 = a1; b.Attachment1 = a2; b.FaceCamera = true; b.Width0 = 0.6; b.Width1 = 0.6; b.Transparency = NumberSequence.new(0.1); b.Color = ColorSequence.new(Theme.Target); MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2, Targ = nil} end
+                if not MCXC.Cache.TracerLine then local a1 = Instance.new("Attachment"); local a2 = Instance.new("Attachment"); local b = Instance.new("Beam"); b.Name = "MCXC_Tracer"; b.Attachment0 = a1; b.Attachment1 = a2; b.FaceCamera = true; b.Width0 = 0.6; b.Width1 = 0.6; b.Transparency = NumberSequence.new(0.1); b.Color = ColorSequence.new(Theme.Target); MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2, Targ = nil} end
                 local tR = tracerTarget.Character.HumanoidRootPart; local trObj = MCXC.Cache.TracerLine; trObj.A1.Parent = myR; trObj.A2.Parent = tR; trObj.Beam.Parent = tR; trObj.Beam.Enabled = true; trObj.Targ = tracerTarget
             else if MCXC.Cache.TracerLine then pcall(function() MCXC.Cache.TracerLine.Beam.Enabled = false end) end end
             for i = 1, #plrs do local p = plrs[i]; if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
