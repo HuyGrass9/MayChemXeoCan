@@ -18,14 +18,13 @@ local MCXC = {
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45,
         ShowC = false, ShowC2 = false, ShowX = false, Macro = true,
         UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, FixLag = false,
-        ShowStats = true, CancelOnTap = true,
-        PulseVision = false, PulseSensitivity = 1.2
+        ShowStats = true, CancelOnTap = true
     },
     State = {
         IsCombo = false, CancelCombo = false, MenuOpen = false, LastTick = tick(),
-        SetupMode = false, LastStatTick = tick(), CurrentTarget = nil, Ping = 0.05
+        SetupMode = false, CurrentTarget = nil
     },
-    Cache = { ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {}, PulseParts = {} }
+    Cache = { ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {} }
 }
 
 local Theme = {
@@ -133,6 +132,7 @@ function MaruUI:CreateWindow(title)
     ToggleIcon.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; if MCXC.State.MenuOpen then Main.Visible=true; Main.Size=UDim2.new(0,460,0,0); Utils.Tween(Main, {Size=UDim2.new(0,460,0,290)}, 0.3) else local t=Utils.Tween(Main, {Size=UDim2.new(0,460,0,0)}, 0.2); t.Completed:Wait(); Main.Visible=false end end)
     Utils.MakeDraggable(Sidebar, Main)
     local Window = {Tabs = {}, CurrentTab = nil, Container = Content, Sidebar = Sidebar}
+    
     function Window:CreateTab(name)
         local btn = Instance.new("TextButton", self.Sidebar); btn.Size = UDim2.new(1,0,0,38); btn.Position = UDim2.new(0,0,0,50 + (#self.Tabs * 38)); btn.BackgroundTransparency = 1; btn.Text = "  "..name; btn.TextColor3 = Theme.TextDark; btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left
         local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,3,0,0); ind.Position = UDim2.new(0,0,0.5,0); ind.BackgroundColor3 = Theme.Accent; ind.BorderSizePixel = 0; ind.AnchorPoint = Vector2.new(0,0.5)
@@ -208,8 +208,6 @@ local function RefreshHoldUI(text)
 end
 TabC:CreateInput("Hold Setup (e.g 3Z2C)", "HoldSetup", function(val) RefreshHoldUI(val) end); RefreshHoldUI(MCXC.Config.HoldSetup)
 
-local sldPulse; TabV:CreateToggle("Pulse Vision (Prediction)", "PulseVision", function(v) if sldPulse then sldPulse.Visible=v end; if not v then for _,p in pairs(MCXC.Cache.PulseParts) do if p then p.Parent=nil; p:Destroy() end end; MCXC.Cache.PulseParts={} end end)
-sldPulse = TabV:CreateSlider("AI Sensitivity", 0.5, 3.0, "PulseSensitivity", false); sldPulse.Visible = MCXC.Config.PulseVision
 local sldESP; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if sldESP then sldESP.Visible=v end; if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then pcall(function() c:Destroy() end) end end; MCXC.Cache.ESP={} end end)
 sldESP = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true); sldESP.Visible = MCXC.Config.ESP
 local sldTracer; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sldTracer then sldTracer.Visible=v end; if not v then if MCXC.Cache.TracerLine then pcall(function() MCXC.Cache.TracerLine.Beam:Destroy(); MCXC.Cache.TracerLine.A1:Destroy(); MCXC.Cache.TracerLine.A2:Destroy() end); MCXC.Cache.TracerLine=nil end end end)
@@ -224,26 +222,53 @@ TabS:CreateToggle("Fix Lag Max (No Effects)", "FixLag", function(v)
 TabS:CreateButton("Hide All UI", Theme.Danger, function() Gui.Enabled = false end); LP.Chatted:Connect(function(msg) if string.lower(msg) == "mcxc" then Gui.Enabled = true end end)
 
 local MapFrame = Instance.new("Frame", Gui); MapFrame.Size = UDim2.new(0,MCXC.Config.MapSize,0,MCXC.Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Theme.BG; MapFrame.BackgroundTransparency = MCXC.Config.UITrans; MapFrame.Visible = MCXC.Config.ShowMap; MapFrame.ClipsDescendants = true; Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(0.5,0); Instance.new("UIStroke", MapFrame).Color = Theme.Accent; Instance.new("UIStroke", MapFrame).Thickness = 2
+local MapCrossX = Instance.new("Frame", MapFrame); MapCrossX.Size = UDim2.new(1,0,0,1); MapCrossX.Position = UDim2.new(0,0,0.5,0); MapCrossX.BackgroundColor3 = Theme.Accent; MapCrossX.BackgroundTransparency = 0.6; MapCrossX.BorderSizePixel = 0
+local MapCrossY = Instance.new("Frame", MapFrame); MapCrossY.Size = UDim2.new(0,1,1,0); MapCrossY.Position = UDim2.new(0.5,0,0,0); MapCrossY.BackgroundColor3 = Theme.Accent; MapCrossY.BackgroundTransparency = 0.6; MapCrossY.BorderSizePixel = 0
+local MapRing = Instance.new("Frame", MapFrame); MapRing.Size = UDim2.new(0.6,0,0.6,0); MapRing.Position = UDim2.new(0.2,0,0.2,0); MapRing.BackgroundTransparency = 1; Instance.new("UICorner", MapRing).CornerRadius = UDim.new(1,0); local MapRingStr = Instance.new("UIStroke", MapRing); MapRingStr.Color = Theme.Accent; MapRingStr.Transparency = 0.6; MapRingStr.Thickness = 1
+local MapCenter = Instance.new("Frame", MapFrame); MapCenter.Size = UDim2.new(0,6,0,6); MapCenter.Position = UDim2.new(0.5,-3,0.5,-3); MapCenter.BackgroundColor3 = Color3.fromRGB(255,255,255); MapCenter.ZIndex = 5; Instance.new("UICorner", MapCenter).CornerRadius = UDim.new(1,0)
 local DotsContainer = Instance.new("Folder", MapFrame); MCXC.Cache.MapFrame = MapFrame; Utils.MakeDraggable(MapFrame, MapFrame); table.insert(MCXC.Cache.UIElements, MapFrame)
 local function CreateActionBtn(name, x, y, color, showKey, sizeKey)
     local b = Instance.new("TextButton", Gui); b.Size = UDim2.new(0,MCXC.Config[sizeKey],0,MCXC.Config[sizeKey]); b.Position = UDim2.new(x,0,y,0); b.BackgroundColor3 = Color3.fromRGB(15,15,15); b.BackgroundTransparency = MCXC.Config.UITrans; b.Text = name; b.TextColor3 = color; b.Font = Enum.Font.GothamBlack; b.TextSize = math.clamp(MCXC.Config[sizeKey]*0.4, 12, 35); b.Visible = MCXC.Config[showKey]; b.Active = true; b.Selectable = false; b.Draggable = false; b.ZIndex = 5; Instance.new("UICorner", b).CornerRadius = UDim.new(0.5,0); local s = Instance.new("UIStroke", b); s.Color = color; s.Thickness = 1.5; s.Transparency = 0.2; return b, s end
+
 MCXC.Cache.BtnC, MCXC.Cache.StrC = CreateActionBtn("C", 0.8, 0.4, Theme.Danger, "ShowC", "BtnSizeC")
 MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CreateActionBtn("C2", 0.8, 0.55, Theme.Accent, "ShowC2", "BtnSizeC2")
 MCXC.Cache.BtnX, MCXC.Cache.StrX = CreateActionBtn("X", 0.8, 0.7, Color3.fromRGB(255,200,50), "ShowX", "BtnSizeX")
+
 MCXC.Cache.BtnC.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end end end)
 MCXC.Cache.BtnC2.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end end end)
 MCXC.Cache.BtnX.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end end)
-Players.PlayerRemoving:Connect(function(p) if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end; if MCXC.Cache.PulseParts[p.Name] then pcall(function() MCXC.Cache.PulseParts[p.Name]:Destroy() end); MCXC.Cache.PulseParts[p.Name] = nil end end)
+Players.PlayerRemoving:Connect(function(p) if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end end)
 workspace.DescendantAdded:Connect(function(v) if MCXC.Config.FixLag then if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0 elseif v:IsA("Explosion") then v.Visible = false elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency = 1 end end end)
+
+task.spawn(function()
+    local frames = 0
+    local lastUpdate = tick()
+    RunService.RenderStepped:Connect(function()
+        frames = frames + 1
+        local now = tick()
+        if now - lastUpdate >= 1 then
+            local fps = frames
+            frames = 0
+            lastUpdate = now
+            local ping = math.floor(Utils.GetPing())
+            if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then
+                MCXC.Cache.FPSLbl.Text = "FPS: " .. tostring(fps)
+                MCXC.Cache.PingLbl.Text = "PING: " .. tostring(ping) .. "ms"
+                if fps < 20 or ping > 150 then
+                    MCXC.Cache.FPSLbl.TextColor3 = Theme.Danger
+                    MCXC.Cache.PingLbl.TextColor3 = Theme.Danger
+                else
+                    MCXC.Cache.FPSLbl.TextColor3 = Color3.fromRGB(255,255,255)
+                    MCXC.Cache.PingLbl.TextColor3 = Color3.fromRGB(255,255,255)
+                end
+            end
+        end
+    end)
+end)
 
 RunService.Heartbeat:Connect(function()
     pcall(function()
         local now = tick()
-        if now - MCXC.State.LastStatTick >= 1 then 
-            MCXC.State.LastStatTick = now; local fps = 60; pcall(function() fps = math.floor(workspace:GetRealPhysicsFPS()) end)
-            local ping = math.floor(Utils.GetPing()); MCXC.State.Ping = ping / 1000
-            if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text = "FPS: " .. tostring(fps); MCXC.Cache.PingLbl.Text = "PING: " .. tostring(ping) .. "ms"; if fps < 20 or ping > 150 then MCXC.Cache.FPSLbl.TextColor3 = Theme.Danger; MCXC.Cache.PingLbl.TextColor3 = Theme.Danger else MCXC.Cache.FPSLbl.TextColor3 = Color3.fromRGB(255,255,255); MCXC.Cache.PingLbl.TextColor3 = Color3.fromRGB(255,255,255) end end 
-        end
         local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end
         if MCXC.Config.Macro then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
         if now - MCXC.State.LastTick >= 0.05 then
@@ -262,19 +287,6 @@ RunService.Heartbeat:Connect(function()
             for i = 1, #plrs do local p = plrs[i]
                 if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
                     local tR = p.Character.HumanoidRootPart; local dist = (tR.Position - myR.Position).Magnitude; local isClose = (p == tracerTarget)
-                    if MCXC.Config.PulseVision then
-                        if not MCXC.Cache.PulseParts[p.Name] then
-                            local g = Instance.new("Part"); g.Shape = Enum.PartType.Ball; g.Size = Vector3.new(3,3,3); g.Material = Enum.Material.Neon; g.Transparency = 0.4; g.CanCollide = false; g.Anchored = true; g.Name = "PulseVision_"..p.Name; pcall(function() g.Parent = workspace.Terrain end)
-                            local ui = Instance.new("BillboardGui", g); ui.Size = UDim2.new(0,40,0,15); ui.AlwaysOnTop = true; ui.StudsOffset = Vector3.new(0,2,0)
-                            local tx = Instance.new("TextLabel", ui); tx.Size = UDim2.new(1,0,1,0); tx.BackgroundTransparency = 1; tx.TextColor3 = Color3.fromRGB(255,255,255); tx.Text = "PULSE"; tx.Font = Enum.Font.GothamBlack; tx.TextSize = 10; tx.TextStrokeTransparency = 0.3
-                            MCXC.Cache.PulseParts[p.Name] = g
-                        end
-                        pcall(function()
-                            local pulse = MCXC.Cache.PulseParts[p.Name]; pulse.Color = isClose and Theme.Target or Theme.Accent
-                            local vel = tR.AssemblyLinearVelocity; local futTime = MCXC.State.Ping * MCXC.Config.PulseSensitivity
-                            pulse.Position = tR.Position + (vel * futTime); pulse.Parent = workspace.Terrain
-                        end)
-                    elseif MCXC.Cache.PulseParts[p.Name] then pcall(function() MCXC.Cache.PulseParts[p.Name].Parent = nil end) end
                     if MCXC.Config.ShowMap then
                         if dist <= MCXC.Config.MapRange then
                             local of2 = Vector2.new(tR.Position.X - myR.Position.X, tR.Position.Z - myR.Position.Z); local sc = (MCXC.Config.MapSize / 2) / MCXC.Config.MapRange; local uX, uY = of2:Dot(cR2) * sc, -of2:Dot(cF2) * sc
@@ -294,4 +306,10 @@ RunService.Heartbeat:Connect(function()
                         local hp, mhp = 0, 0; pcall(function() hp = math.floor(p.Character.Humanoid.Health); mhp = math.floor(p.Character.Humanoid.MaxHealth) end); local w = p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"; local gui = MCXC.Cache.ESP[p.Name]; gui.Adornee = tR; local mainC = isClose and Theme.Target or Color3.fromRGB(255,255,255)
                         pcall(function() gui.NameLbl.Text = p.Name; gui.NameLbl.TextColor3 = mainC; gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true end)
                     elseif MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end
-                else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end; if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end; if MCXC.Cache.PulseParts[p.Name] then pcall(function() MCXC.Cache.PulseParts[p.Name].Parent = nil end) end end end end end) end)
+                else if MCXC.Cache.MapDots[p.Name] then pcall(function() MCXC.Cache.MapDots[p.Name].Visible = false end) end; if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name].Enabled = false end) end end end end end) end)
+
+pcall(function()
+    if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = MCXC.Config.ShowC end
+    if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible = MCXC.Config.ShowC2 end
+    if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = MCXC.Config.ShowX end
+end)
