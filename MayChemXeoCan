@@ -82,14 +82,6 @@ function Combat.SW(t)
     end; return true
 end
 
-function Combat.GetTargetHealth()
-    if MCXC.State.CurrentTarget and MCXC.State.CurrentTarget.Character then
-        local hum = MCXC.State.CurrentTarget.Character:FindFirstChild("Humanoid")
-        if hum then return hum.Health end
-    end
-    return 0
-end
-
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
 local function GetToolType(tool) if not tool then return "0" end; local n, v = string.lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt then v = string.lower(tostring(tt.Value)) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if string.find(n,k) or string.find(v,k) then return tostring(i) end end end; return "0" end
 
@@ -100,19 +92,14 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
     task.spawn(function()
         Combat.SW(0.005)
         local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
-        local curWepType = "0"; local currentHeldKey = nil; local comboFailed = false; local firstSkillChecked = false; local firstSkillFired = false
-        local skillCount = 0; local initHP = Combat.GetTargetHealth(); local dmgChecked = false
+        local curWepType = "0"; local currentHeldKey = nil; local comboFailed = false
         if cT then curWepType = GetToolType(cT) end
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=string.sub(seq,2) end
         
         for i = 1, #seq do
             if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then comboFailed = true; break end
             local key = string.sub(seq, i, i)
-            if string.match(key, "[ZXCVF]") then skillCount = skillCount + 1 end
-            if skillCount == 2 and not dmgChecked then
-                dmgChecked = true; local curHP = Combat.GetTargetHealth()
-                if curHP >= initHP and MCXC.State.CurrentTarget then MCXC.State.CancelCombo = true; comboFailed = true; break end
-            end
+            
             if string.match(key, "[1-4]") then
                 curWepType = key; local tT = LP.Character:FindFirstChildOfClass("Tool")
                 if not tT or GetToolType(tT)~=key then
@@ -128,10 +115,11 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
                 currentHeldKey = kc; VIM:SendKeyEvent(true, kc, false, game)
                 if holdTime > 0 then if not Combat.SW(holdTime) then comboFailed=true; break end else if not Combat.SW(0.005) then comboFailed=true; break end end
                 VIM:SendKeyEvent(false, kc, false, game); currentHeldKey = nil
+                
                 local wR = tick(); local trg = false
                 while tick()-wR < 0.4 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; RunService.Heartbeat:Wait() end
-                if not firstSkillChecked then firstSkillChecked = true; if not trg then comboFailed = true; break end; firstSkillFired = true end
-                if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) or not trg then comboFailed=true; break end
+                if not trg or MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then comboFailed=true; break end
+                
                 local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then break end; RunService.Heartbeat:Wait() end
                 if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then comboFailed=true; break end
                 if not Combat.SW(0.005) then comboFailed=true; break end
@@ -140,7 +128,7 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
         if currentHeldKey then pcall(function() VIM:SendKeyEvent(false, currentHeldKey, false, game) end) end
         MCXC.State.IsCombo = false; MCXC.State.CurrentCombo = nil; MCXC.State.CancelCombo = false
         
-        if comboFailed and not firstSkillFired or comboFailed and dmgChecked then
+        if comboFailed then
             Utils.Tween(btnRef, {BackgroundColor3=Color3.fromRGB(200,30,30), BackgroundTransparency=0.1}, 0.1)
             task.delay(0.4, function() Utils.Tween(btnRef, {BackgroundColor3=Color3.fromRGB(15,15,15), BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end)
             Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.15); MCXC.State.ComboQueue = nil
@@ -264,28 +252,35 @@ function MaruUI:CreateWindow(title)
                 UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then update(i) end end)
                 UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then if drag then drag=false; Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); SaveConfig() end end end)
                 return c
-            end,
-            CreateInput = function(self, text, key, cb)
-                self.LayoutIndex = self.LayoutIndex + 1; local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,40); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LayoutIndex; Instance.new("UICorner", c).CornerRadius = UDim.new(0,6)
-                local l = Instance.new("TextLabel", c); l.Size = UDim2.new(0.4,0,1,0); l.Position = UDim2.new(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left
-                local b = Instance.new("TextBox", c); b.Size = UDim2.new(0.55,-10,0,26); b.Position = UDim2.new(0.45,0,0.5,-13); b.BackgroundColor3 = Color3.fromRGB(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = MCXC.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,55)
-                b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end)
-                return c
-            end,
-            CreateDoubleButton = function(self, text1, color1, cb1, text2, color2, cb2)
-                self.LayoutIndex = self.LayoutIndex + 1; local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,35); c.BackgroundTransparency = 1; c.LayoutOrder = self.LayoutIndex
-                local b1 = Instance.new("TextButton", c); b1.Size = UDim2.new(0.48,0,1,0); b1.BackgroundColor3 = Theme.ElementBG; b1.Text = text1; b1.TextColor3 = color1; b1.Font = Enum.Font.GothamBold; b1.TextSize = 11; Instance.new("UICorner", b1).CornerRadius = UDim.new(0,6); local s1 = Instance.new("UIStroke", b1); s1.Color = color1; s1.Transparency = 0.5
-                local b2 = Instance.new("TextButton", c); b2.Size = UDim2.new(0.48,0,1,0); b2.Position = UDim2.new(0.52,0,0,0); b2.BackgroundColor3 = Theme.ElementBG; b2.Text = text2; b2.TextColor3 = color2; b2.Font = Enum.Font.GothamBold; b2.TextSize = 11; Instance.new("UICorner", b2).CornerRadius = UDim.new(0,6); local s2 = Instance.new("UIStroke", b2); s2.Color = color2; s2.Transparency = 0.5
-                b1.MouseButton1Click:Connect(function() Utils.Tween(b1, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b1, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb1 then cb1() end end)
-                b2.MouseButton1Click:Connect(function() Utils.Tween(b2, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b2, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb2 then cb2() end end)
-                return c
             end
         }
     end
     return Window, gui
 end
 
+local function LoadUIComponents(Window)
+    return {
+        CreateInput = function(self, text, key, cb)
+            self.LayoutIndex = self.LayoutIndex + 1; local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,40); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LayoutIndex; Instance.new("UICorner", c).CornerRadius = UDim.new(0,6)
+            local l = Instance.new("TextLabel", c); l.Size = UDim2.new(0.4,0,1,0); l.Position = UDim2.new(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left
+            local b = Instance.new("TextBox", c); b.Size = UDim2.new(0.55,-10,0,26); b.Position = UDim2.new(0.45,0,0.5,-13); b.BackgroundColor3 = Color3.fromRGB(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = MCXC.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,55)
+            b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end)
+            return c
+        end,
+        CreateDoubleButton = function(self, text1, color1, cb1, text2, color2, cb2)
+            self.LayoutIndex = self.LayoutIndex + 1; local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,35); c.BackgroundTransparency = 1; c.LayoutOrder = self.LayoutIndex
+            local b1 = Instance.new("TextButton", c); b1.Size = UDim2.new(0.48,0,1,0); b1.BackgroundColor3 = Theme.ElementBG; b1.Text = text1; b1.TextColor3 = color1; b1.Font = Enum.Font.GothamBold; b1.TextSize = 11; Instance.new("UICorner", b1).CornerRadius = UDim.new(0,6); local s1 = Instance.new("UIStroke", b1); s1.Color = color1; s1.Transparency = 0.5
+            local b2 = Instance.new("TextButton", c); b2.Size = UDim2.new(0.48,0,1,0); b2.Position = UDim2.new(0.52,0,0,0); b2.BackgroundColor3 = Theme.ElementBG; b2.Text = text2; b2.TextColor3 = color2; b2.Font = Enum.Font.GothamBold; b2.TextSize = 11; Instance.new("UICorner", b2).CornerRadius = UDim.new(0,6); local s2 = Instance.new("UIStroke", b2); s2.Color = color2; s2.Transparency = 0.5
+            b1.MouseButton1Click:Connect(function() Utils.Tween(b1, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b1, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb1 then cb1() end end)
+            b2.MouseButton1Click:Connect(function() Utils.Tween(b2, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b2, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb2 then cb2() end end)
+            return c
+        end
+    }
+end
+
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
+local ext = LoadUIComponents()
+for _, tab in ipairs(Win.Tabs) do for k, v in pairs(ext) do tab[k] = v end end
 local TabC = Win:CreateTab("Combat"); local TabV = Win:CreateTab("Visuals"); local TabS = Win:CreateTab("Settings")
 
 TabC:CreateToggle("Macro", "Macro", nil); TabC:CreateInput("Combo C", "ComboC")
