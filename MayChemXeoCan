@@ -70,18 +70,33 @@ function Combat.IsBusy(char)
     return false
 end
 
+function Combat.SW(t)
+    local s = tick()
+    while tick() - s < t do
+        if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then
+            MCXC.State.CancelCombo = true
+            return false
+        end
+        task.wait()
+    end
+    return true
+end
+
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
 local function GetToolType(tool) if not tool then return "0" end; local n, v = string.lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt then v = string.lower(tostring(tt.Value)) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if string.find(n,k) or string.find(v,k) then return tostring(i) end end end; return "0" end
 
 function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
     if MCXC.State.IsCombo then return end
-    MCXC.State.IsCombo = true; Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.1); Utils.Tween(stroke, {Thickness=2.5, Color=Color3.fromRGB(255,255,255)}, 0.1)
+    MCXC.State.IsCombo = true; MCXC.State.CancelCombo = false
+    Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.05); Utils.Tween(stroke, {Thickness=2.5, Color=Color3.fromRGB(255,255,255)}, 0.05)
     task.spawn(function()
         task.wait(0.01)
         local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
         local curWepType = "0"
+        local currentHeldKey = nil
         if cT then curWepType = GetToolType(cT) end
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=string.sub(seq,2) end
+        
         for i = 1, #seq do
             if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end
             local key = string.sub(seq, i, i)
@@ -90,24 +105,32 @@ function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
                 local tT = LP.Character:FindFirstChildOfClass("Tool")
                 if not tT or GetToolType(tT)~=key then
                     local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.01); VIM:SendKeyEvent(false, kc, false, game)
+                    VIM:SendKeyEvent(true, kc, false, game); if not Combat.SW(0.01) then break end; VIM:SendKeyEvent(false, kc, false, game)
                     local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; task.wait() end
-                    task.wait(0.01)
+                    if MCXC.State.CancelCombo then break end
+                    if not Combat.SW(0.01) then break end
                 end
             elseif string.match(key, "[ZXCVF]") then
                 local kc = Enum.KeyCode[key]; local holdKey = "Hold_"..curWepType..key
                 local holdTime = MCXC.Config.HoldEnabled and (MCXC.Config[holdKey] or 0) or 0
+                currentHeldKey = kc
                 VIM:SendKeyEvent(true, kc, false, game)
-                if holdTime > 0 then task.wait(holdTime) else task.wait(0.01) end
+                if holdTime > 0 then 
+                    if not Combat.SW(holdTime) then break end 
+                else 
+                    if not Combat.SW(0.01) then break end 
+                end
                 VIM:SendKeyEvent(false, kc, false, game)
+                currentHeldKey = nil
                 local wR = tick(); local trg = false
                 while tick()-wR < 0.4 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end; if Combat.IsBusy(LP.Character) then trg=true; break end; task.wait() end
                 if trg and not MCXC.State.CancelCombo then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo or Combat.IsStunned(LP.Character) then MCXC.State.CancelCombo = true; break end; task.wait() end end
-                task.wait(0.01)
+                if not Combat.SW(0.01) then break end
             end
         end
+        if currentHeldKey then pcall(function() VIM:SendKeyEvent(false, currentHeldKey, false, game) end) end
         MCXC.State.IsCombo = false; MCXC.State.CancelCombo = false
-        Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2); Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.2)
+        Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans}, 0.15); Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.15)
     end)
 end
 
@@ -179,11 +202,6 @@ function MaruUI:CreateWindow(title)
                 local b = Instance.new("TextBox", c); b.Size = UDim2.new(0.55,-10,0,26); b.Position = UDim2.new(0.45,0,0.5,-13); b.BackgroundColor3 = Color3.fromRGB(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = MCXC.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,55)
                 b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end)
                 return c
-            end,
-            CreateButton = function(self, text, color, cb)
-                self.LayoutIndex = self.LayoutIndex + 1; local b = Instance.new("TextButton", self.Frame); b.Size = UDim2.new(1,0,0,35); b.BackgroundColor3 = Theme.ElementBG; b.LayoutOrder = self.LayoutIndex; b.Text = text; b.TextColor3 = color or Theme.Text; b.Font = Enum.Font.GothamBold; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0,6); local s = Instance.new("UIStroke", b); s.Color = color or Theme.Accent; s.Transparency = 0.5
-                b.MouseButton1Click:Connect(function() Utils.Tween(b, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb then cb() end end)
-                return b
             end
         }
     end
@@ -225,7 +243,6 @@ TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false); TabS:CreateToggle(
 TabS:CreateToggle("Fix Lag Max (No Effects)", "FixLag", function(v)
     if v then Lighting.GlobalShadows = false; Lighting.FogEnd = 9e9; for _, obj in pairs(Lighting:GetChildren()) do if obj:IsA("PostEffect") or obj:IsA("Atmosphere") then obj.Enabled = false end end
         for _,p in ipairs(workspace:GetDescendants()) do if p:IsA("BasePart") and not p.Parent:FindFirstChild("Humanoid") then p.CastShadow = false; p.Material = Enum.Material.SmoothPlastic elseif p:IsA("ParticleEmitter") or p:IsA("Trail") or p:IsA("Beam") or p:IsA("Fire") or p:IsA("Smoke") or p:IsA("Sparkles") then p.Enabled = false elseif p:IsA("Texture") or p:IsA("Decal") then p.Transparency = 1 end end end end)
-TabS:CreateButton("Hide All UI", Theme.Danger, function() Gui.Enabled = false end); LP.Chatted:Connect(function(msg) if string.lower(msg) == "mcxc" then Gui.Enabled = true end end)
 
 local MapFrame = Instance.new("Frame", Gui); MapFrame.Size = UDim2.new(0,MCXC.Config.MapSize,0,MCXC.Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Theme.BG; MapFrame.BackgroundTransparency = MCXC.Config.UITrans; MapFrame.Visible = MCXC.Config.ShowMap; MapFrame.ClipsDescendants = true; Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(0.5,0); Instance.new("UIStroke", MapFrame).Color = Theme.Accent; Instance.new("UIStroke", MapFrame).Thickness = 2
 local MapCrossX = Instance.new("Frame", MapFrame); MapCrossX.Size = UDim2.new(1,0,0,1); MapCrossX.Position = UDim2.new(0,0,0.5,0); MapCrossX.BackgroundColor3 = Theme.Accent; MapCrossX.BackgroundTransparency = 0.6; MapCrossX.BorderSizePixel = 0
@@ -246,16 +263,19 @@ pcall(function()
     if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = MCXC.Config.ShowX end
 end)
 
-MCXC.Cache.BtnC.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end end end)
-MCXC.Cache.BtnC2.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end end end)
-MCXC.Cache.BtnX.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end end)
+MCXC.Cache.BtnC.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=0.1}, 0.05); task.delay(0.1, function() Utils.Tween(MCXC.Cache.BtnC, {BackgroundTransparency=MCXC.Config.UITrans}, 0.1) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end end end)
+MCXC.Cache.BtnC2.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then if MCXC.State.IsCombo then if MCXC.Config.CancelOnTap then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=0.1}, 0.05); task.delay(0.1, function() Utils.Tween(MCXC.Cache.BtnC2, {BackgroundTransparency=MCXC.Config.UITrans}, 0.1) end) end else Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end end end)
+MCXC.Cache.BtnX.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then MCXC.State.CancelCombo = true; Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.05); task.delay(0.1, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.1) end) end end)
 Players.PlayerRemoving:Connect(function(p) if MCXC.Cache.ESP[p.Name] then pcall(function() MCXC.Cache.ESP[p.Name]:Destroy() end); MCXC.Cache.ESP[p.Name] = nil end end)
 workspace.DescendantAdded:Connect(function(v) if MCXC.Config.FixLag then if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0 elseif v:IsA("Explosion") then v.Visible = false elseif v:IsA("Texture") or v:IsA("Decal") then v.Transparency = 1 end end end)
 
 local fpsFrames = 0
+RunService.RenderStepped:Connect(function()
+    fpsFrames = fpsFrames + 1
+end)
+
 RunService.Heartbeat:Connect(function()
     pcall(function()
-        fpsFrames = fpsFrames + 1
         local now = tick()
         if now - MCXC.State.LastStatTick >= 1 then 
             MCXC.State.LastStatTick = now
