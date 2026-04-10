@@ -1,183 +1,291 @@
 if not game:IsLoaded() then game.Loaded:Wait() end
-local Plyrs, RS, VIM, CGui, TS, HS, St, UIS, Lg = game:GetService("Players"), game:GetService("RunService"), game:GetService("VirtualInputManager"), game:GetService("CoreGui"), game:GetService("TweenService"), game:GetService("HttpService"), game:GetService("Stats"), game:GetService("UserInputService"), game:GetService("Lighting")
-local LP = Plyrs.LocalPlayer
-local V3, V2, U2, UD = Vector3.new, Vector2.new, UDim2.new, UDim.new
-local C3, CS, NS = Color3.fromRGB, ColorSequence.new, NumberSequence.new
-local t_tick, t_spawn, t_wait, t_delay = tick, task.spawn, task.wait, task.delay
-local m_floor, m_clamp, m_max, m_huge = math.floor, math.clamp, math.max, math.huge
-local s_lower, s_upper, s_sub, s_find, s_match = string.lower, string.upper, string.sub, string.find, string.match
-local I_new = Instance.new
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VIM = game:GetService("VirtualInputManager")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local Stats = game:GetService("Stats")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local LP = Players.LocalPlayer
 
 local MCXC = {
-    Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 250, ESP = false, ViewTracer = false, ShowMap = false, MapSize = 120, MapRange = 600, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}, MapPos = {0.05, 0, 0.05, 0}},
-    State = {Status = "IDLE", MenuOpen = false, LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, LagFixed = false, CurrentCombo = nil, ComboQueue = nil, PlrData = {}},
-    Cache = {ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {}}
+    Config = {
+        ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", BaseDelay = 0.05, ActionDelay = 0.15,
+        RenderDist = 1500, TracerRange = 250, ESP = false, ViewTracer = false, ShowMap = false, MapSize = 120, MapRange = 600,
+        BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true,
+        UnlockFPS = false, Shader = false, UITrans = 0.3
+    },
+    State = { IsCombo = false, CancelCombo = false, MenuOpen = false, LastTick = tick(), SetupMode = false, Ping = 0.05 },
+    Cache = { ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {} }
 }
-local Theme = {BG = C3(15, 15, 18), Sidebar = C3(10, 10, 12), ElementBG = C3(22, 22, 26), Accent = C3(0, 170, 255), Text = C3(255, 255, 255), TextDark = C3(160, 160, 170), Danger = C3(255, 50, 70), Target = C3(255, 210, 0), Font = Enum.Font.GothamMedium, FontBold = Enum.Font.GothamBold, FontBlack = Enum.Font.GothamBlack}
-local ConfigName = "MCXC_V47_Final.json"
-pcall(function() if isfile and isfile(ConfigName) then local s = HS:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
-local function SaveConfig() pcall(function() writefile(ConfigName, HS:JSONEncode(MCXC.Config)) end) end
+
+local Theme = {
+    BG = Color3.fromRGB(15, 15, 18), Sidebar = Color3.fromRGB(10, 10, 12), ElementBG = Color3.fromRGB(22, 22, 26),
+    Accent = Color3.fromRGB(0, 170, 255), Text = Color3.fromRGB(255, 255, 255), TextDark = Color3.fromRGB(120, 120, 130), 
+    Danger = Color3.fromRGB(255, 50, 70), Target = Color3.fromRGB(255, 210, 0), Safe = Color3.fromRGB(0, 255, 100)
+}
+
+local ConfigName = "Macro_MCXC_V59.json"
+pcall(function() if isfile and isfile(ConfigName) then local s = HttpService:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
+local function SaveConfig() pcall(function() writefile(ConfigName, HttpService:JSONEncode(MCXC.Config)) end) end
 
 local Utils = {}
-function Utils.DistSq(p1, p2) local dx, dy, dz = p1.X-p2.X, p1.Y-p2.Y, p1.Z-p2.Z; return dx*dx + dy*dy + dz*dz end
-function Utils.Tween(obj, props, time) local tw = TS:Create(obj, TweenInfo.new(time or 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props); tw:Play(); return tw end
-function Utils.GetPing() local p = 0; pcall(function() p = St.Network.ServerStatsItem["Data Ping"]:GetValue() end); return p end
+function Utils.Tween(obj, props, time) local tw = TweenService:Create(obj, TweenInfo.new(time or 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props); tw:Play(); return tw end
+function Utils.GetPing() pcall(function() MCXC.State.Ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000 end); return math.clamp(MCXC.State.Ping, 0.02, 0.3) end
 function Utils.MakeDraggable(topbar, object)
     local dragging, dragInput, dragStart, startPos
     topbar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = object.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
     topbar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
-    UIS.InputChanged:Connect(function(input) if input == dragInput and dragging then local delta = input.Position - dragStart; object.Position = U2(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+    UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then local delta = input.Position - dragStart; object.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 end
 
-function Utils.Apply120FPS(v)
-    pcall(function()
-        if v then settings().Rendering.QualityLevel = Enum.QualityLevel.Level01; if setfpscap then setfpscap(144) end
-        else settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic; if setfpscap then setfpscap(60) end end
-    end)
-end
-
-function Utils.ApplyFixLag(v)
-    pcall(function()
-        if not v or not v:IsDescendantOf(workspace) then return end
-        if v:IsDescendantOf(LP.Character) or v:IsA("Tool") then return end -- BẢO VỆ YORU VÀ CHIÊU CỦA BA
-        if v:IsA("BasePart") and not v.Parent:FindFirstChildOfClass("Humanoid") then v.CastShadow = false; v.Material = Enum.Material.SmoothPlastic
-        elseif v:IsA("MeshPart") then v.TextureID = ""; v.RenderFidelity = Enum.RenderFidelity.Performance
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then v.Enabled = false
-        elseif v:IsA("Explosion") or v:IsA("Fire") or v:IsA("Smoke") then v:Destroy() end
-    end)
-end
+function MCXC.BuyRemote(...) pcall(function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(...) end) end
 
 local Combat = {}
-function Combat.CheckStates(char)
-    if typeof(char) ~= "Instance" or not char:IsA("Model") then return false, false end
-    local stun, busy = false, false
-    for _, v in ipairs(char:GetChildren()) do if v.ClassName == "BoolValue" and v.Value == true then local n = s_lower(v.Name); if s_find(n, "stun") or s_find(n, "cant") then stun = true end; if s_find(n, "busy") or s_find(n, "using") or s_find(n, "cast") then busy = true end; if stun and busy then break end end end; return stun, busy
+function Combat.IsBusy(char)
+    if not char then return false end
+    for _, v in ipairs(char:GetChildren()) do if v:IsA("BoolValue") and v.Value then local n = string.lower(v.Name); if string.find(n, "busy") or string.find(n, "using") or string.find(n, "cast") then return true end end end
+    return false
 end
-function Combat.SW(t)
-    local s = t_tick(); local adj = m_max(0.001, t - (MCXC.State.Ping * 0.6))
-    while t_tick() - s < adj do local st, _ = Combat.CheckStates(LP.Character); if MCXC.State.Status == "IDLE" or st then return false end; RS.Heartbeat:Wait() end; return true
-end
+
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
-local function GetToolType(tool) if typeof(tool) ~= "Instance" then return "0" end; local n, v = s_lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt and typeof(tt.Value) == "string" then v = s_lower(tt.Value) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if s_find(n,k) or s_find(v,k) then return tostring(i) end end end; return "0" end
-function Combat.ExecuteCombo(comboId, comboStr, onStart, onFail, onSuccess)
-    if MCXC.State.Status == "CASTING" then return end
-    MCXC.State.Status = "CASTING"; MCXC.State.CurrentCombo = comboId; if onStart then onStart() end
-    t_spawn(function()
-        Combat.SW(0.005); local seq = s_upper(comboStr); local first = s_sub(seq,1,1); local cT = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
-        local curWepType, currentHeldKey, comboFailed = "0", nil, false
-        if cT then curWepType = GetToolType(cT) end
-        if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=s_sub(seq,2) end
+local function GetToolType(tool) if not tool then return "0" end; local n, v = string.lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt then v = string.lower(tostring(tt.Value)) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if string.find(n,k) or string.find(v,k) then return tostring(i) end end end; return "0" end
+
+function Combat.ExecuteCombo(comboStr, btnRef, stroke, baseColor)
+    if MCXC.State.IsCombo then return end
+    MCXC.State.IsCombo = true; Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.1); Utils.Tween(stroke, {Thickness=2.5, Color=Color3.fromRGB(255,255,255)}, 0.1)
+    task.spawn(function()
+        task.wait(0.01); local seq = string.upper(comboStr); local first = string.sub(seq,1,1); local cT = LP.Character:FindFirstChildOfClass("Tool")
+        if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=string.sub(seq,2) end
         for i = 1, #seq do
-            local st, _ = Combat.CheckStates(LP.Character); if MCXC.State.Status == "IDLE" or st then comboFailed = true; break end
-            local key = s_sub(seq, i, i)
-            if s_match(key, "[1-4]") then
-                curWepType = key; local tT = LP.Character:FindFirstChildOfClass("Tool")
-                if not tT or GetToolType(tT)~=key then
+            if MCXC.State.CancelCombo then break end
+            local key = string.sub(seq, i, i)
+            if string.match(key, "[1-4]") then
+                local tT = LP.Character:FindFirstChildOfClass("Tool"); if not tT or GetToolType(tT)~=key then
                     local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game); Combat.SW(0.01); VIM:SendKeyEvent(false, kc, false, game)
-                    local w=t_tick(); while t_tick()-w<0.3 do if MCXC.State.Status == "IDLE" then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; RS.Heartbeat:Wait() end
-                    if not LP.Character:FindFirstChildOfClass("Tool") or GetToolType(LP.Character:FindFirstChildOfClass("Tool"))~=key then comboFailed=true; break end
+                    VIM:SendKeyEvent(true, kc, false, game); task.wait(0.02); VIM:SendKeyEvent(false, kc, false, game); local w=tick(); while tick()-w<0.3 do if MCXC.State.CancelCombo then break end; local tk=LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; task.wait() end; task.wait(0.05)
                 end
-            elseif s_match(key, "[ZXCVF]") then
-                local kc = Enum.KeyCode[key]; local holdTime = MCXC.Config.HoldEnabled and (MCXC.Config["Hold_"..curWepType..key] or 0) or 0
-                currentHeldKey = kc; VIM:SendKeyEvent(true, kc, false, game)
-                if not Combat.SW(m_max(0.01, holdTime)) then comboFailed=true; break end
-                VIM:SendKeyEvent(false, kc, false, game); currentHeldKey = nil; local wR, trg = t_tick(), false
-                while t_tick()-wR < 0.25 do local stn, bsy = Combat.CheckStates(LP.Character); if MCXC.State.Status == "IDLE" or stn then break end; if bsy then trg=true; break end; RS.Heartbeat:Wait() end
-                if trg then local wA=t_tick(); while t_tick()-wA < 3.0 do local stn, bsy = Combat.CheckStates(LP.Character); if MCXC.State.Status == "IDLE" or stn or not bsy then break end; RS.Heartbeat:Wait() end end
-                if MCXC.State.Status == "IDLE" then comboFailed=true; break end; Combat.SW(0.01)
+            elseif string.match(key, "[ZXCVF]") then
+                local kc = Enum.KeyCode[key]; VIM:SendKeyEvent(true, kc, false, game); task.wait(0.05); VIM:SendKeyEvent(false, kc, false, game)
+                local wR = tick(); local trg = false
+                while tick()-wR < 0.4 do if MCXC.State.CancelCombo then break end; if Combat.IsBusy(LP.Character) then trg=true; break end; task.wait() end
+                if trg then local wA=tick(); while Combat.IsBusy(LP.Character) and tick()-wA < 3.0 do if MCXC.State.CancelCombo then break end; task.wait() end; task.wait(MCXC.Config.ActionDelay) else task.wait(MCXC.Config.BaseDelay) end
             end
         end
-        if currentHeldKey then pcall(function() VIM:SendKeyEvent(false, currentHeldKey, false, game) end) end
-        MCXC.State.Status = "IDLE"; if comboFailed then if onFail then onFail() end else if onSuccess then onSuccess() end end
+        MCXC.State.IsCombo = false; MCXC.State.CancelCombo = false; Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2); Utils.Tween(stroke, {Thickness=1.5, Color=baseColor}, 0.2)
     end)
-end
-
-local Visuals = {}
-function Visuals.UpdateTracer(tR, myR)
-    if not MCXC.Cache.TracerLine then local a1, a2, b = I_new("Attachment"), I_new("Attachment"), I_new("Beam"); b.Name = "MCXC_Tracer"; b.Attachment0 = a1; b.Attachment1 = a2; b.FaceCamera, b.Width0, b.Width1, b.Transparency, b.Color = true, 0.6, 0.6, NS(0.1), CS(Theme.Target); MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2} end
-    local trObj = MCXC.Cache.TracerLine; trObj.A1.Parent, trObj.A2.Parent, trObj.Beam.Parent, trObj.Beam.Enabled = myR, tR, tR, true
-end
-function Visuals.ClearTracer() if MCXC.Cache.TracerLine then MCXC.Cache.TracerLine.Beam.Enabled = false end end
-
-function Visuals.UpdateESP(p, tR, dSq, isClose, hp, mhp, wep)
-    if dSq > MCXC.Config.RenderDist*MCXC.Config.RenderDist or not MCXC.Config.ESP then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
-    local cam = workspace.CurrentCamera; local _, onScreen = cam:WorldToViewportPoint(tR.Position)
-    if not onScreen then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
-    local bg = MCXC.Cache.ESP[p.Name]
-    if not bg or bg.Parent ~= MCXC.Cache.ESPFolder then
-        if bg then bg:Destroy() end; bg = I_new("BillboardGui", MCXC.Cache.ESPFolder); bg.Size, bg.AlwaysOnTop, bg.StudsOffset, bg.Name = U2(0,100,0,50), true, V3(0,4,0), "ESPGui"; I_new("UIListLayout", bg).SortOrder = 0
-        local nL = I_new("TextLabel", bg); nL.Name, nL.Size, nL.BackgroundTransparency, nL.Font, nL.TextSize, nL.TextStrokeTransparency, nL.TextColor3 = "NameLbl", U2(1,0,0,14), 1, Theme.Font, 12, 0, C3(0,0,0)
-        local hB = I_new("Frame", bg); hB.Name, hB.Size, hB.BackgroundColor3 = "HpBg", U2(0.6,0,0,7), C3(20,20,20); I_new("UICorner", hB).CornerRadius = UD(0,2)
-        local hF = I_new("Frame", hB); hF.Name, hF.Size = "HpFill", U2(1,0,1,0); I_new("UICorner", hF).CornerRadius = UD(0,2)
-        local dL = I_new("TextLabel", bg); dL.Name, dL.Size, dL.BackgroundTransparency, dL.Font, dL.TextSize, dL.TextColor3 = "DistLbl", U2(1,0,0,10), 1, Theme.Font, 10, Theme.Text
-        local wL = I_new("TextLabel", bg); wL.Name, wL.Size, wL.BackgroundTransparency, wL.Font, wL.TextSize, wL.TextColor3 = "WepLbl", U2(1,0,0,11), 1, Theme.Font, 11, C3(0,0,0); MCXC.Cache.ESP[p.Name] = bg
-    end
-    local mainC = isClose and Theme.Target or Theme.Text; bg.Adornee = tR; bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainC; bg.HpBg.HpFill.Size = U2(m_clamp(hp/mhp, 0, 1), 0, 1, 0); bg.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; bg.DistLbl.Text = m_floor(dSq^0.5).." Studs"; bg.WepLbl.Text = "[W: "..s_upper(s_sub(wep,1,10)).."]"; bg.WepLbl.TextColor3 = mainC; bg.Enabled = true
 end
 
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
-    local p = CGui; pcall(function() if gethui then p = gethui() end end); if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
-    local gui = I_new("ScreenGui", p); gui.Name, gui.ResetOnSpawn = "MaruMCXC", false; MCXC.Cache.ESPFolder = CGui:FindFirstChild("MCXC_ESPFolder") or I_new("Folder", CGui); MCXC.Cache.ESPFolder.Name = "MCXC_ESPFolder"
-    local StatF = I_new("Frame", gui); StatF.Name, StatF.Size, StatF.Position, StatF.BackgroundTransparency, StatF.Visible = "StatsFrame", U2(0,120,0,45), U2(0,10,0,40), 1, MCXC.Config.ShowStats
-    local fL = I_new("TextLabel", StatF); fL.Size, fL.BackgroundTransparency, fL.Font, fL.TextSize, fL.TextColor3, fL.TextXAlignment, fL.Text = U2(1,0,0,20), 1, Theme.FontBlack, 13, Theme.Text, 0, ""
-    local pL = I_new("TextLabel", StatF); pL.Size, pL.Position, pL.BackgroundTransparency, pL.Font, pL.TextSize, pL.TextColor3, pL.TextXAlignment, pL.Text = U2(1,0,0,20), U2(0,0,0,20), 1, Theme.FontBlack, 13, Theme.Text, 0, ""
-    MCXC.Cache.FPSLbl, MCXC.Cache.PingLbl, MCXC.Cache.StatFrame = fL, pL, StatF
-    local Tgl = I_new("ImageButton", gui); Tgl.Size, Tgl.Position, Tgl.Image, Tgl.BackgroundColor3, Tgl.BackgroundTransparency = U2(0,45,0,45), U2(0.5,-22,0,15), "rbxthumb://type=Asset&id=8073107254&w=150&h=150", Theme.BG, MCXC.Config.UITrans; I_new("UICorner", Tgl).CornerRadius = UD(1,0); I_new("UIStroke", Tgl).Color, I_new("UIStroke", Tgl).Thickness = Theme.Accent, 2; table.insert(MCXC.Cache.UIElements, Tgl)
-    local Main = I_new("Frame", gui); Main.Size, Main.Position, Main.BackgroundColor3, Main.BackgroundTransparency, Main.ClipsDescendants, Main.Visible = U2(0,460,0,290), U2(0.5,-230,0.5,-145), Theme.BG, MCXC.Config.UITrans, true, false; I_new("UICorner", Main).CornerRadius = UD(0,8); I_new("UIStroke", Main).Color = C3(40,40,45)
-    local Sidebar = I_new("Frame", Main); Sidebar.Size, Sidebar.BackgroundColor3, Sidebar.BackgroundTransparency = U2(0,130,1,0), Theme.Sidebar, MCXC.Config.UITrans
-    local Title = I_new("TextLabel", Sidebar); Title.Size, Title.BackgroundTransparency, Title.Text, Title.TextColor3, Title.Font, Title.TextSize = U2(1,0,0,50), 1, title, Theme.Accent, Theme.FontBold, 13
-    local Content = I_new("Frame", Main); Content.Size, Content.Position, Content.BackgroundTransparency = U2(1,-130,1,0), U2(0,130,0,0), 1; table.insert(MCXC.Cache.UIElements, Main); table.insert(MCXC.Cache.UIElements, Sidebar)
-    Tgl.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; if MCXC.State.MenuOpen then Main.Visible = true; Utils.Tween(Main, {Size=U2(0,460,0,290)}, 0.3) else local tw = Utils.Tween(Main, {Size=U2(0,460,0,0)}, 0.2); tw.Completed:Wait(); Main.Visible = false end end); Utils.MakeDraggable(Tgl, Tgl); Utils.MakeDraggable(Sidebar, Main); local Window = {Tabs = {}, Container = Content, Sidebar = Sidebar}
-
-function Window:CreateTab(name)
-        local btn = I_new("TextButton", self.Sidebar); btn.Size, btn.Position, btn.BackgroundTransparency, btn.Text, btn.TextColor3, btn.Font, btn.TextSize = U2(1,0,0,38), U2(0,0,0,60 + (#self.Tabs * 38)), 1, "  "..name, Theme.TextDark, Theme.FontBold, 12
-        local ind = I_new("Frame", btn); ind.Size, ind.Position, ind.BackgroundColor3, ind.BorderSizePixel, ind.AnchorPoint = U2(0,3,0,0), U2(0,0,0.5,0), Theme.Accent, 0, V2(0,0.5)
-        local frm = I_new("ScrollingFrame", self.Container); frm.Size, frm.Position, frm.BackgroundTransparency, frm.Visible, frm.ScrollBarThickness, frm.AutomaticCanvasSize, frm.CanvasSize = U2(1,-16,1,-16), U2(0,8,0,8), 1, false, 2, Enum.AutomaticSize.Y, U2(0,0,0,0); I_new("UIListLayout", frm).Padding = UD(0,8)
-        local tab = {Btn = btn, Ind = ind, Frm = frm}; table.insert(self.Tabs, tab)
-        btn.MouseButton1Click:Connect(function() for _, t in ipairs(self.Tabs) do t.Frm.Visible = (t == tab); Utils.Tween(t.Btn, {TextColor3 = (t == tab) and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(t.Ind, {Size = (t == tab) and U2(0,3,0,20) or U2(0,3,0,0)}, 0.2) end end)
-        if #self.Tabs == 1 then frm.Visible, btn.TextColor3, ind.Size = true, Theme.Text, U2(0,3,0,20) end
-        return { Frame = frm, LIdx = 0,
-            CreateToggle = function(s, text, key, cb) s.LIdx = s.LIdx + 1; local c = I_new("Frame", s.Frame); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,40), Theme.ElementBG, s.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize, l.TextXAlignment = U2(1,-60,1,0), U2(10,0,0,0), 1, text, MCXC.Config[key] and Theme.Text or Theme.TextDark, Theme.Font, 12, 0
-                local swBG = I_new("Frame", c); swBG.Size, swBG.Position, swBG.BackgroundColor3 = U2(0,34,0,18), U2(1,-44,0.5,-9), MCXC.Config[key] and Theme.Accent or C3(50,50,55); I_new("UICorner", swBG).CornerRadius = UD(1,0)
-                local swDot = I_new("Frame", swBG); swDot.Size, swDot.Position, swDot.BackgroundColor3 = U2(0,14,0,14), MCXC.Config[key] and U2(1,-17,0.5,-7) or U2(0,3,0.5,-7), Theme.Text; I_new("UICorner", swDot).CornerRadius = UD(1,0)
-                local b = I_new("TextButton", c); b.Size, b.BackgroundTransparency, b.Text = U2(1,0,1,0), 1, ""; b.MouseButton1Click:Connect(function() MCXC.Config[key] = not MCXC.Config[key]; Utils.Tween(l, {TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(swBG, {BackgroundColor3 = MCXC.Config[key] and Theme.Accent or C3(50,50,55)}, 0.2); Utils.Tween(swDot, {Position = MCXC.Config[key] and U2(1,-17,0.5,-7) or U2(0,3,0.5,-7)}, 0.2); SaveConfig(); if cb then cb(MCXC.Config[key]) end end); return c end,
-            CreateSlider = function(s, text, min, max, key, isInt) s.LIdx = s.LIdx + 1; local c = I_new("Frame", s.Frame); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,50), Theme.ElementBG, s.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize, l.TextXAlignment = U2(1,-20,0,25), U2(10,0,0,5), 1, text, Theme.TextDark, Theme.Font, 12, 0
-                local vL = I_new("TextLabel", c); vL.Size, vL.Position, vL.BackgroundTransparency, vL.TextColor3, vL.Font, vL.TextSize, vL.TextXAlignment, vL.ZIndex = U2(0.3,0,0,25), U2(0.7,-10,0,5), 1, Theme.Accent, Theme.FontBold, 12, 1, 5; vL.Text = tostring(MCXC.Config[key])
-                local tr = I_new("Frame", c); tr.Size, tr.Position, tr.BackgroundColor3 = U2(1,-20,0,6), U2(0,10,0,35), C3(40,40,45); I_new("UICorner", tr).CornerRadius = UD(1,0)
-                local fill = I_new("Frame", tr); fill.Size, fill.BackgroundColor3 = U2((MCXC.Config[key]-min)/(max-min),0,1,0), Theme.Accent; I_new("UICorner", fill).CornerRadius = UD(1,0)
-                local tB = I_new("TextButton", c); tB.Size, tB.BackgroundTransparency, tB.Text = U2(1,0,1,0), 1, ""; local drag = false
-                local function upd(i) local p = m_clamp((i.Position.X - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1); local val = min + (max-min)*p; if isInt then val = m_floor(val) else val = m_floor(val*100)/100 end; fill.Size, vL.Text, MCXC.Config[key] = U2(p,0,1,0), tostring(val), val
-                    if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size=U2(0,val,0,val) end; if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size=U2(0,val,0,val) end; if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size=U2(0,val,0,val) end; if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end end end
-                tB.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; upd(i) end end); UIS.InputEnded:Connect(function() drag=false; SaveConfig() end); UIS.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then upd(i) end end); return c end,
-            CreateInput = function(s, text, key, cb) s.LIdx = s.LIdx + 1; local c = I_new("Frame", s.Frame); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,45), Theme.ElementBG, s.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(10,0,0,0), 1, text, Theme.TextDark, Theme.Font, 12; local b = I_new("TextBox", c); b.Size, b.Position, b.BackgroundColor3, b.TextColor3, b.Font, b.TextSize, b.Text, b.ClearTextOnFocus = U2(0.55,-10,0,30), U2(0.45,0,0.5,-15), C3(20,20,22), Theme.Accent, Theme.FontBold, 12, tostring(MCXC.Config[key] or ""), false; I_new("UICorner", b).CornerRadius, I_new("UIStroke", b).Color = UD(0,4), C3(50,50,55); b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end); return c end,
-            CreateDoubleButton = function(s, t1, c1, cb1, t2, c2, cb2) s.LIdx = s.LIdx + 1; local c = I_new("Frame", s.Frame); c.Size, c.BackgroundTransparency, c.LayoutOrder = U2(1,0,0,40), 1, s.LIdx
-                local b1 = I_new("TextButton", c); b1.Size, b1.BackgroundColor3, b1.Text, b1.TextColor3, b1.Font, b1.TextSize = U2(0.48,0,1,0), Theme.ElementBG, t1, c1, Theme.FontBold, 12; I_new("UICorner", b1).CornerRadius, I_new("UIStroke", b1).Color, I_new("UIStroke", b1).Transparency = UD(0,6), c1, 0.5; local b2 = I_new("TextButton", c); b2.Size, b2.Position, b2.BackgroundColor3, b2.Text, b2.TextColor3, b2.Font, b2.TextSize = U2(0.48,0,1,0), U2(0.52,0,0,0), Theme.ElementBG, t2, c2, Theme.FontBold, 12; I_new("UICorner", b2).CornerRadius, I_new("UIStroke", b2).Color, I_new("UIStroke", b2).Transparency = UD(0,6), c2, 0.5
-                b1.MouseButton1Click:Connect(function() Utils.Tween(b1, {BackgroundColor3=C3(40,40,45)}, 0.1); t_delay(0.1, function() Utils.Tween(b1, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb1 then cb1() end end); b2.MouseButton1Click:Connect(function() Utils.Tween(b2, {BackgroundColor3=C3(40,40,45)}, 0.1); t_delay(0.1, function() Utils.Tween(b2, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb2 then cb2() end end); return c end } end
+    local p = pcall(gethui) and gethui() or CoreGui
+    if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
+    local gui = Instance.new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    local ToggleIcon = Instance.new("ImageButton", gui); ToggleIcon.Size = UDim2.new(0,45,0,45); ToggleIcon.Position = UDim2.new(0.5,-22,0,15); ToggleIcon.Image = "rbxassetid://185299921"; ToggleIcon.BackgroundColor3 = Theme.BG; ToggleIcon.BackgroundTransparency = MCXC.Config.UITrans; ToggleIcon.ZIndex = 10; Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1,0); Instance.new("UIStroke", ToggleIcon).Color = Theme.Accent; Instance.new("UIStroke", ToggleIcon).Thickness = 2
+    Utils.MakeDraggable(ToggleIcon, ToggleIcon); table.insert(MCXC.Cache.UIElements, ToggleIcon)
+    
+    local Main = Instance.new("Frame", gui); Main.Size = UDim2.new(0,460,0,290); Main.Position = UDim2.new(0.5,-230,0.5,-145); Main.BackgroundColor3 = Theme.BG; Main.BackgroundTransparency = MCXC.Config.UITrans; Main.ClipsDescendants = true; Main.Visible = false; Main.ZIndex = 9; Instance.new("UICorner", Main).CornerRadius = UDim.new(0,8); Instance.new("UIStroke", Main).Color = Color3.fromRGB(40,40,45)
+    local Sidebar = Instance.new("Frame", Main); Sidebar.Size = UDim2.new(0,130,1,0); Sidebar.BackgroundColor3 = Theme.Sidebar; Sidebar.BackgroundTransparency = MCXC.Config.UITrans; Sidebar.BorderSizePixel = 0
+    local TitleLbl = Instance.new("TextLabel", Sidebar); TitleLbl.Size = UDim2.new(1,0,0,45); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = title; TitleLbl.TextColor3 = Theme.Accent; TitleLbl.Font = Enum.Font.GothamBlack; TitleLbl.TextSize = 11; TitleLbl.TextWrapped = true
+    local Content = Instance.new("Frame", Main); Content.Size = UDim2.new(1,-130,1,0); Content.Position = UDim2.new(0,130,0,0); Content.BackgroundTransparency = 1
+    table.insert(MCXC.Cache.UIElements, Main); table.insert(MCXC.Cache.UIElements, Sidebar)
+    
+    ToggleIcon.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; if MCXC.State.MenuOpen then Main.Visible=true; Main.Size=UDim2.new(0,460,0,0); Utils.Tween(Main, {Size=UDim2.new(0,460,0,290)}, 0.3) else local t=Utils.Tween(Main, {Size=UDim2.new(0,460,0,0)}, 0.2); t.Completed:Wait(); Main.Visible=false end end)
+    Utils.MakeDraggable(Sidebar, Main)
+    
+    local Window = {Tabs = {}, CurrentTab = nil, Container = Content, Sidebar = Sidebar}
+    
+    function Window:CreateTab(name)
+        local btn = Instance.new("TextButton", self.Sidebar); btn.Size = UDim2.new(1,0,0,38); btn.Position = UDim2.new(0,0,0,50 + (#self.Tabs * 38)); btn.BackgroundTransparency = 1; btn.Text = "  "..name; btn.TextColor3 = Theme.TextDark; btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left
+        local ind = Instance.new("Frame", btn); ind.Size = UDim2.new(0,3,0,0); ind.Position = UDim2.new(0,0,0.5,0); ind.BackgroundColor3 = Theme.Accent; ind.BorderSizePixel = 0; ind.AnchorPoint = Vector2.new(0,0.5)
+        local frm = Instance.new("ScrollingFrame", self.Container); frm.Size = UDim2.new(1,-16,1,-16); frm.Position = UDim2.new(0,8,0,8); frm.BackgroundTransparency = 1; frm.Visible = false; frm.ScrollBarThickness = 2; frm.ScrollBarImageColor3 = Theme.ElementBG; frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        local lay = Instance.new("UIListLayout", frm); lay.Padding = UDim.new(0,8); lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        
+        local tab = {Btn = btn, Ind = ind, Frm = frm}
+        table.insert(self.Tabs, tab)
+        
+        btn.MouseButton1Click:Connect(function() for _, t in ipairs(self.Tabs) do t.Frm.Visible = (t == tab); Utils.Tween(t.Btn, {TextColor3 = (t == tab) and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(t.Ind, {Size = (t == tab) and UDim2.new(0,3,0,20) or UDim2.new(0,3,0,0)}, 0.2) end end)
+        if #self.Tabs == 1 then frm.Visible=true; btn.TextColor3=Theme.Text; ind.Size=UDim2.new(0,3,0,20) end
+        
+        return {
+            Frame = frm,
+            CreateToggle = function(self, text, key, cb)
+                local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,38); c.BackgroundColor3 = Theme.ElementBG; Instance.new("UICorner", c).CornerRadius = UDim.new(0,6)
+                local l = Instance.new("TextLabel", c); l.Size = UDim2.new(1,-50,1,0); l.Position = UDim2.new(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left; l.TextWrapped = true
+                local swBG = Instance.new("Frame", c); swBG.Size = UDim2.new(0,34,0,16); swBG.Position = UDim2.new(1,-44,0.5,-8); swBG.BackgroundColor3 = MCXC.Config[key] and Theme.Accent or Color3.fromRGB(50,50,55); Instance.new("UICorner", swBG).CornerRadius = UDim.new(1,0)
+                local swDot = Instance.new("Frame", swBG); swDot.Size = UDim2.new(0,12,0,12); swDot.Position = MCXC.Config[key] and UDim2.new(1,-14,0.5,-6) or UDim2.new(0,2,0.5,-6); swDot.BackgroundColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", swDot).CornerRadius = UDim.new(1,0)
+                local btn = Instance.new("TextButton", c); btn.Size = UDim2.new(1,0,1,0); btn.BackgroundTransparency = 1; btn.Text = ""
+                btn.MouseButton1Click:Connect(function() MCXC.Config[key] = not MCXC.Config[key]; Utils.Tween(l, {TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(swBG, {BackgroundColor3 = MCXC.Config[key] and Theme.Accent or Color3.fromRGB(50,50,55)}, 0.2); Utils.Tween(swDot, {Position = MCXC.Config[key] and UDim2.new(1,-14,0.5,-6) or UDim2.new(0,2,0.5,-6)}, 0.2); SaveConfig(); if cb then cb(MCXC.Config[key]) end end)
+                return c
+            end,
+            CreateSlider = function(self, text, min, max, key, isInt)
+                local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,45); c.BackgroundColor3 = Theme.ElementBG; Instance.new("UICorner", c).CornerRadius = UDim.new(0,6)
+                local l = Instance.new("TextLabel", c); l.Size = UDim2.new(1,-20,0,20); l.Position = UDim2.new(0,10,0,5); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left
+                local vL = Instance.new("TextLabel", c); vL.Size = UDim2.new(1,-20,0,20); vL.Position = UDim2.new(0,10,0,5); vL.BackgroundTransparency = 1; vL.Text = tostring(MCXC.Config[key]); vL.TextColor3 = Theme.Accent; vL.Font = Enum.Font.GothamBold; vL.TextSize = 11; vL.TextXAlignment = Enum.TextXAlignment.Right
+                local track = Instance.new("Frame", c); track.Size = UDim2.new(1,-20,0,4); track.Position = UDim2.new(0,10,0,28); track.BackgroundColor3 = Color3.fromRGB(40,40,45); Instance.new("UICorner", track).CornerRadius = UDim.new(1,0)
+                local fill = Instance.new("Frame", track); fill.Size = UDim2.new((MCXC.Config[key]-min)/(max-min),0,1,0); fill.BackgroundColor3 = Theme.Accent; Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
+                local thumb = Instance.new("Frame", fill); thumb.Size = UDim2.new(0,10,0,10); thumb.Position = UDim2.new(1,-5,0.5,-5); thumb.BackgroundColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", thumb).CornerRadius = UDim.new(1,0)
+                local tBtn = Instance.new("TextButton", c); tBtn.Size = UDim2.new(1,0,0,25); tBtn.Position = UDim2.new(0,0,0,20); tBtn.BackgroundTransparency = 1; tBtn.Text = ""
+                local drag = false
+                local function update(i)
+                    local pct = math.clamp((i.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+                    local val = min + (max-min)*pct; if isInt then val = math.floor(val) else val = math.floor(val*100)/100 end
+                    fill.Size = UDim2.new(pct,0,1,0); vL.Text = tostring(val); MCXC.Config[key] = val
+                    if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size=UDim2.new(0,val,0,val) end; if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size=UDim2.new(0,val,0,val) end
+                    if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size=UDim2.new(0,val,0,val) end; if key=="MapSize" and MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Size=UDim2.new(0,val,0,val) end
+                    if key=="UITrans" then
+                        for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end
+                        if MCXC.Cache.BtnC then MCXC.Cache.BtnC.BackgroundTransparency = val; MCXC.Cache.BtnC2.BackgroundTransparency = val; MCXC.Cache.BtnX.BackgroundTransparency = val end
+                    end
+                end
+                tBtn.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; Utils.Tween(l, {TextColor3=Theme.Text}, 0.2); update(i) end end)
+                UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then update(i) end end)
+                UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then if drag then drag=false; Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); SaveConfig() end end end)
+                return c
+            end,
+            CreateInput = function(self, text, key)
+                local c = Instance.new("Frame", self.Frame); c.Size = UDim2.new(1,0,0,40); c.BackgroundColor3 = Theme.ElementBG; Instance.new("UICorner", c).CornerRadius = UDim.new(0,6)
+                local l = Instance.new("TextLabel", c); l.Size = UDim2.new(0.4,0,1,0); l.Position = UDim2.new(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left
+                local b = Instance.new("TextBox", c); b.Size = UDim2.new(0.55,-10,0,26); b.Position = UDim2.new(0.45,0,0.5,-13); b.BackgroundColor3 = Color3.fromRGB(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = MCXC.Config[key]; b.ClearTextOnFocus = false; Instance.new("UICorner", b).CornerRadius = UDim.new(0,4); Instance.new("UIStroke", b).Color = Color3.fromRGB(50,50,55)
+                b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end)
+                b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig() end)
+                return c
+            end,
+            CreateButton = function(self, text, color, cb)
+                local b = Instance.new("TextButton", self.Frame); b.Size = UDim2.new(1,0,0,35); b.BackgroundColor3 = Theme.ElementBG; b.Text = text; b.TextColor3 = color or Theme.Text; b.Font = Enum.Font.GothamBold; b.TextSize = 11; Instance.new("UICorner", b).CornerRadius = UDim.new(0,6); local s = Instance.new("UIStroke", b); s.Color = color or Theme.Accent; s.Transparency = 0.5
+                b.MouseButton1Click:Connect(function() Utils.Tween(b, {BackgroundColor3=Color3.fromRGB(40,40,45)}, 0.1); task.delay(0.1, function() Utils.Tween(b, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb then cb() end end)
+                return b
+            end
+        }
+    end
     return Window, gui
 end
+
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
-local TabC, TabV, TabS = Win:CreateTab("Combat"), Win:CreateTab("Visuals"), Win:CreateTab("Settings")
-TabC:CreateToggle("Macro", "Macro", nil); TabC:CreateInput("Combo C", "ComboC")
-local sC; TabC:CreateToggle("Show Button C", "ShowC", function(v) if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible=v end; sC.Visible=v end); sC = TabC:CreateSlider("Size C", 40, 100, "BtnSizeC", true); sC.Visible = MCXC.Config.ShowC
-TabC:CreateInput("Combo C2", "ComboC2")
-local sC2; TabC:CreateToggle("Show Button C2", "ShowC2", function(v) if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible=v end; sC2.Visible=v end); sC2 = TabC:CreateSlider("Size C2", 40, 100, "BtnSizeC2", true); sC2.Visible = MCXC.Config.ShowC2
-local sX; TabC:CreateToggle("Show Button X", "ShowX", function(v) if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible=v end; sX.Visible=v end); sX = TabC:CreateSlider("Size X", 30, 80, "BtnSizeX", true); sX.Visible = MCXC.Config.ShowX
-TabC:CreateToggle("Cancel Combo on Tap", "CancelOnTap", nil); TabC:CreateToggle("Enable Hold Skills", "HoldEnabled", nil)
-local HoldFrame = I_new("Frame", TabC.Frame); HoldFrame.Size, HoldFrame.BackgroundTransparency, HoldFrame.LayoutOrder, HoldFrame.AutomaticSize = U2(1,0,0,0), 1, 9999, 1; I_new("UIListLayout", HoldFrame).Padding = UD(0,8); local holdSlidersObj = {}
-local function RefreshHoldUI(text) for _, s in pairs(holdSlidersObj) do s:Destroy() end; holdSlidersObj = {}; if not text or text == "" then return end; for w, k in string.gmatch(s_upper(text), "([1-4])([ZXCVF])") do local skill = w..k; local cKey = "Hold_"..skill; if not MCXC.Config[cKey] then MCXC.Config[cKey] = 0.5 end; local s = TabC:CreateSlider("Hold "..skill.." (s)", 0, 5, cKey, false); s.Parent = HoldFrame; table.insert(holdSlidersObj, s) end end
-TabC:CreateInput("Hold Setup (e.g 3Z2C)", "HoldSetup", function(val) RefreshHoldUI(val) end); RefreshHoldUI(MCXC.Config.HoldSetup)
-local sE; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) sE.Visible=v; if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then c.Enabled = false end end end end); sE = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true); sE.Visible = MCXC.Config.ESP
-local sT; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) sT.Visible=v; if not v then Visuals.ClearTracer() end end); sT = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true); sT.Visible = MCXC.Config.ViewTracer
-TabS:CreateToggle("120 FPS", "UnlockFPS", function(v) MCXC.Config.UnlockFPS = v; Utils.Apply120FPS(v); SaveConfig() end); TabS:CreateDoubleButton("Fix Lag", Theme.Accent, function() MCXC.State.LagFixed = true; for _, v in ipairs(game:GetDescendants()) do Utils.ApplyFixLag(v) end end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
-LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end); workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then Utils.ApplyFixLag(v) end end)
-local function CreateActionBtn(name, posArr, color, showKey, sizeKey) local b = I_new("TextButton", Gui); b.Size, b.BackgroundColor3, b.BackgroundTransparency, b.Text, b.TextColor3, b.Font, b.TextSize, b.Visible, b.ZIndex = U2(0,MCXC.Config[sizeKey],0,MCXC.Config[sizeKey]), C3(15,15,15), MCXC.Config.UITrans, name, color, Theme.FontBold, m_floor(MCXC.Config[sizeKey]*0.4), MCXC.Config[showKey], 5; pcall(function() b.Position = U2(unpack(posArr)) end); I_new("UICorner", b).CornerRadius = UD(0.5,0); local s = I_new("UIStroke", b); s.Color, s.Thickness, s.Transparency = color, 1.5, 0.2; return b, s end
-MCXC.Cache.BtnC, MCXC.Cache.StrC = CreateActionBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC"); MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CreateActionBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2"); MCXC.Cache.BtnX, MCXC.Cache.StrX = CreateActionBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
-local function HandleComboClick(comboId, comboStr, btnRef, strRef, color) if MCXC.State.SetupMode then return end; if MCXC.State.Status == "CASTING" then if MCXC.State.CurrentCombo == comboId then if MCXC.Config.CancelOnTap then MCXC.State.Status = "IDLE"; Utils.Tween(btnRef, {BackgroundTransparency=0.1}, 0.05); t_delay(0.1, function() Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans}, 0.1) end) end else if MCXC.State.ComboQueue == comboId then MCXC.State.ComboQueue = nil; Utils.Tween(btnRef, {BackgroundColor3=C3(15,15,15)}, 0.1); Utils.Tween(strRef, {Color=color}, 0.1) else MCXC.State.ComboQueue = comboId; Utils.Tween(btnRef, {BackgroundColor3=C3(80,80,20)}, 0.1); Utils.Tween(strRef, {Color=Theme.Target}, 0.1) end end else Combat.ExecuteCombo(comboId, comboStr, function() Utils.Tween(btnRef, {BackgroundTransparency=0.1, BackgroundColor3=C3(15,15,15)}, 0.05); Utils.Tween(strRef, {Thickness=2.5, Color=Theme.Text}, 0.05) end, function() Utils.Tween(btnRef, {BackgroundColor3=Theme.Danger, BackgroundTransparency=0.1}, 0.1); t_delay(0.4, function() Utils.Tween(btnRef, {BackgroundColor3=C3(15,15,15)}, 0.2) end); Utils.Tween(strRef, {Thickness=1.5, Color=color}, 0.15); MCXC.State.ComboQueue = nil end, function() Utils.Tween(btnRef, {BackgroundTransparency=MCXC.Config.UITrans, BackgroundColor3=C3(15,15,15)}, 0.15); Utils.Tween(strRef, {Thickness=1.5, Color=color}, 0.15); if MCXC.State.ComboQueue then local nQ = MCXC.State.ComboQueue; MCXC.State.ComboQueue = nil; if nQ == "C" then HandleComboClick("C", MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) elseif nQ == "C2" then HandleComboClick("C2", MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end end end) end end
-MCXC.Cache.BtnC.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then HandleComboClick("C", MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end end); MCXC.Cache.BtnC2.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then HandleComboClick("C2", MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end end); MCXC.Cache.BtnX.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then MCXC.State.Status = "IDLE"; MCXC.State.ComboQueue = nil; Utils.Tween(MCXC.Cache.BtnC, {BackgroundColor3=C3(15,15,15)}, 0.1); Utils.Tween(MCXC.Cache.StrC, {Color=Theme.Danger}, 0.1); Utils.Tween(MCXC.Cache.BtnC2, {BackgroundColor3=C3(15,15,15)}, 0.1); Utils.Tween(MCXC.Cache.StrC2, {Color=Theme.Accent}, 0.1); Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.05); t_delay(0.1, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.1) end) end end)
-RS.Heartbeat:Connect(function() table.clear(MCXC.State.PlrData); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local minD, targ = m_huge, nil; for _, p in ipairs(Plyrs:GetPlayers()) do if p ~= LP and p.Character then local tR, hum = p.Character:FindFirstChild("HumanoidRootPart"), p.Character:FindFirstChild("Humanoid"); if tR and hum and hum.Health > 0 then local dSq = Utils.DistSq(tR.Position, myR.Position); if dSq < minD then minD, targ = dSq, p end; local w = p.Character:FindFirstChildOfClass("Tool"); MCXC.State.PlrData[p.Name] = {tR = tR, dSq = dSq, hp = m_floor(hum.Health), mhp = m_floor(hum.MaxHealth), wep = w and w.Name or "None"} end end end; MCXC.State.CurrentTarget = targ end)
-local fF, lFT = 0, t_tick(); RS.RenderStepped:Connect(function() local n = t_tick(); fF = fF + 1; if n - lFT >= 1 then local fps = m_floor(fF / (n - lFT)); fF, lFT = 0, n; if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..tostring(fps), "PING: "..tostring(m_floor(Utils.GetPing())).."ms" end end; local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local cam = workspace.CurrentCamera; local targ = MCXC.State.CurrentTarget; if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then Visuals.UpdateTracer(MCXC.State.PlrData[targ.Name].tR, myR) else Visuals.ClearTracer() end; for _, p in ipairs(Plyrs:GetPlayers()) do if p ~= LP then local d = MCXC.State.PlrData[p.Name]; if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.hp, d.mhp, d.wep) else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end end end end)
+local TabC = Win:CreateTab("Combat"); local TabV = Win:CreateTab("Visuals"); local TabShop = Win:CreateTab("Shop Beta"); local TabS = Win:CreateTab("Settings")
+
+TabC:CreateInput("Combo C", "ComboC"); TabC:CreateInput("Combo C2", "ComboC2"); TabC:CreateToggle("Macro", "Macro", nil)
+
+TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then c:Destroy() end end; MCXC.Cache.ESP={} end end)
+local sldTracer; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sldTracer then sldTracer.Visible=v end; if not v then if MCXC.Cache.TracerLine then MCXC.Cache.TracerLine.Beam:Destroy(); MCXC.Cache.TracerLine.A1:Destroy(); MCXC.Cache.TracerLine.A2:Destroy(); MCXC.Cache.TracerLine=nil end end end)
+sldTracer = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true); sldTracer.Visible = MCXC.Config.ViewTracer
+
+local sldMap1, sldMap2
+TabV:CreateToggle("Show Minimap (Radar)", "ShowMap", function(v) if MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Visible=v end; if sldMap1 then sldMap1.Visible=v end; if sldMap2 then sldMap2.Visible=v end end)
+sldMap1 = TabV:CreateSlider("Minimap Range", 500, 3000, "MapRange", true); sldMap2 = TabV:CreateSlider("Minimap Size", 80, 200, "MapSize", true)
+sldMap1.Visible = MCXC.Config.ShowMap; sldMap2.Visible = MCXC.Config.ShowMap
+
+TabShop:CreateButton("Equip Sanguine Art", Theme.Danger, function() MCXC.BuyRemote("BuyMartialArt", "Sanguine Art") end)
+TabShop:CreateButton("Equip Godhuman", Theme.Accent, function() MCXC.BuyRemote("BuyMartialArt", "Godhuman") end)
+TabShop:CreateButton("Equip Sharkman Karate", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Sharkman Karate") end)
+TabShop:CreateButton("Equip Electric Claw", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Electric Claw") end)
+TabShop:CreateButton("Equip Dragon Talon", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Dragon Talon") end)
+TabShop:CreateButton("Equip Death Step", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Death Step") end)
+TabShop:CreateButton("Equip Superhuman", Theme.Text, function() MCXC.BuyRemote("BuyMartialArt", "Superhuman") end)
+TabShop:CreateButton("Reset Stats (Frags)", Theme.Target, function() MCXC.BuyRemote("BlackbeardReward", "Refund", "1"); MCXC.BuyRemote("BlackbeardReward", "Refund", "2") end)
+TabShop:CreateButton("Reroll Race (Frags)", Theme.Target, function() MCXC.BuyRemote("BlackbeardReward", "Reroll", "1"); MCXC.BuyRemote("BlackbeardReward", "Reroll", "2") end)
+TabShop:CreateButton("Change to Cyborg", Theme.Safe, function() MCXC.BuyRemote("CyborgTrainer", "Buy") end)
+TabShop:CreateButton("Change to Ghoul", Theme.Danger, function() MCXC.BuyRemote("GhoulBlood", "Buy") end)
+
+local sldC; TabS:CreateToggle("Show C", "ShowC", function(v) if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible=v end; if sldC then sldC.Visible=v end end)
+sldC = TabS:CreateSlider("Size C", 40, 100, "BtnSizeC", true); sldC.Visible = MCXC.Config.ShowC
+local sldC2; TabS:CreateToggle("Show C2", "ShowC2", function(v) if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible=v end; if sldC2 then sldC2.Visible=v end end)
+sldC2 = TabS:CreateSlider("Size C2", 40, 100, "BtnSizeC2", true); sldC2.Visible = MCXC.Config.ShowC2
+local sldX; TabS:CreateToggle("Show X", "ShowX", function(v) if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible=v end; if sldX then sldX.Visible=v end end)
+sldX = TabS:CreateSlider("Size X", 30, 80, "BtnSizeX", true); sldX.Visible = MCXC.Config.ShowX
+
+TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) MCXC.State.SetupMode=v; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable=v end; if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable=v end; if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable=v end; if MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Draggable=v end end)
+TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
+TabS:CreateToggle("Unlock 120 FPS", "UnlockFPS", function(v) pcall(function() if setfpscap then setfpscap(v and 120 or 60) end end) end); pcall(function() if setfpscap then setfpscap(MCXC.Config.UnlockFPS and 120 or 60) end end)
+TabS:CreateToggle("Shaders (Graphics)", "Shader", function(v) if v then local cc = Instance.new("ColorCorrectionEffect", Lighting); cc.Name = "MCXC_CC"; cc.Saturation = 0.2; cc.Contrast = 0.1; local bl = Instance.new("BloomEffect", Lighting); bl.Name = "MCXC_Bloom"; bl.Intensity = 0.6; bl.Size = 20; local sr = Instance.new("SunRaysEffect", Lighting); sr.Name = "MCXC_Sun"; sr.Intensity = 0.05 else for _,l in pairs(Lighting:GetChildren()) do if string.find(l.Name, "MCXC_") then l:Destroy() end end end end)
+TabS:CreateButton("Fix Lag (No Shadows)", Theme.Accent, function() pcall(function() settings().Rendering.QualityLevel=1; for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then v.CastShadow=false; v.Material=Enum.Material.SmoothPlastic end end; Lighting.GlobalShadows=false end) end)
+TabS:CreateButton("Hide All UI", Theme.Danger, function() Gui.Enabled = false end); LP.Chatted:Connect(function(msg) if string.lower(msg) == "mcxc" then Gui.Enabled = true end end)
+
+local MapFrame = Instance.new("Frame", Gui); MapFrame.Size = UDim2.new(0,MCXC.Config.MapSize,0,MCXC.Config.MapSize); MapFrame.Position = UDim2.new(0.05,0,0.05,0); MapFrame.BackgroundColor3 = Theme.BG; MapFrame.BackgroundTransparency = MCXC.Config.UITrans; MapFrame.Visible = MCXC.Config.ShowMap; MapFrame.ClipsDescendants = true; Instance.new("UICorner", MapFrame).CornerRadius = UDim.new(0.5,0); Instance.new("UIStroke", MapFrame).Color = Theme.Accent; Instance.new("UIStroke", MapFrame).Thickness = 2
+local MapCrossX = Instance.new("Frame", MapFrame); MapCrossX.Size = UDim2.new(1,0,0,1); MapCrossX.Position = UDim2.new(0,0,0.5,0); MapCrossX.BackgroundColor3 = Theme.Accent; MapCrossX.BackgroundTransparency = 0.6; MapCrossX.BorderSizePixel = 0
+local MapCrossY = Instance.new("Frame", MapFrame); MapCrossY.Size = UDim2.new(0,1,1,0); MapCrossY.Position = UDim2.new(0.5,0,0,0); MapCrossY.BackgroundColor3 = Theme.Accent; MapCrossY.BackgroundTransparency = 0.6; MapCrossY.BorderSizePixel = 0
+local MapRing = Instance.new("Frame", MapFrame); MapRing.Size = UDim2.new(0.6,0,0.6,0); MapRing.Position = UDim2.new(0.2,0,0.2,0); MapRing.BackgroundTransparency = 1; Instance.new("UICorner", MapRing).CornerRadius = UDim.new(1,0); local MapRingStr = Instance.new("UIStroke", MapRing); MapRingStr.Color = Theme.Accent; MapRingStr.Transparency = 0.6; MapRingStr.Thickness = 1
+local MapCenter = Instance.new("Frame", MapFrame); MapCenter.Size = UDim2.new(0,6,0,6); MapCenter.Position = UDim2.new(0.5,-3,0.5,-3); MapCenter.BackgroundColor3 = Color3.fromRGB(255,255,255); MapCenter.ZIndex = 5; Instance.new("UICorner", MapCenter).CornerRadius = UDim.new(1,0)
+local DotsContainer = Instance.new("Folder", MapFrame)
+MCXC.Cache.MapFrame = MapFrame; Utils.MakeDraggable(MapFrame, MapFrame); table.insert(MCXC.Cache.UIElements, MapFrame)
+
+local function CreateActionBtn(name, x, y, color, showKey, sizeKey)
+    local b = Instance.new("TextButton", Gui); b.Size = UDim2.new(0,MCXC.Config[sizeKey],0,MCXC.Config[sizeKey]); b.Position = UDim2.new(x,0,y,0); b.BackgroundColor3 = Color3.fromRGB(15,15,15); b.BackgroundTransparency = MCXC.Config.UITrans; b.Text = name; b.TextColor3 = color; b.Font = Enum.Font.GothamBlack; b.TextSize = math.clamp(MCXC.Config[sizeKey]*0.4, 12, 35); b.Visible = MCXC.Config[showKey]; b.Active = true; b.Selectable = false; b.Draggable = false; b.ZIndex = 5; Instance.new("UICorner", b).CornerRadius = UDim.new(0.5,0)
+    local s = Instance.new("UIStroke", b); s.Color = color; s.Thickness = 1.5; s.Transparency = 0.2
+    return b, s
+end
+
+MCXC.Cache.BtnC, MCXC.Cache.StrC = CreateActionBtn("C", 0.8, 0.4, Theme.Danger, "ShowC", "BtnSizeC")
+MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CreateActionBtn("C2", 0.8, 0.55, Theme.Accent, "ShowC2", "BtnSizeC2")
+MCXC.Cache.BtnX, MCXC.Cache.StrX = CreateActionBtn("X", 0.8, 0.7, Color3.fromRGB(255,200,50), "ShowX", "BtnSizeX")
+
+MCXC.Cache.BtnC.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not MCXC.State.IsCombo then Combat.ExecuteCombo(MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end end)
+MCXC.Cache.BtnC2.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) and not MCXC.State.IsCombo then Combat.ExecuteCombo(MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end end)
+MCXC.Cache.BtnX.InputBegan:Connect(function(i) if MCXC.State.SetupMode then return end; if (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1) then MCXC.State.CancelCombo=true; Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=0.1}, 0.1); task.delay(0.2, function() Utils.Tween(MCXC.Cache.BtnX, {BackgroundTransparency=MCXC.Config.UITrans}, 0.2) end) end end)
+
+Players.PlayerRemoving:Connect(function(p) if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy(); MCXC.Cache.ESP[p.Name] = nil end; if MCXC.Cache.MapDots[p.Name] then MCXC.Cache.MapDots[p.Name]:Destroy(); MCXC.Cache.MapDots[p.Name] = nil end; if MCXC.Cache.TracerLine and MCXC.Cache.TracerLine.Targ == p then MCXC.Cache.TracerLine.Beam.Enabled = false end end)
+
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        local now = tick(); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if not myR then return end
+
+        if MCXC.Config.Macro then for _,v in ipairs(LP.Character:GetChildren()) do if v:IsA("BoolValue") and v.Value==true and (string.find(string.lower(v.Name),"stun") or string.find(string.lower(v.Name),"cant") or string.find(string.lower(v.Name),"nodash")) then v.Value=false end end end
+        
+        if now - MCXC.State.LastTick >= 0.1 then
+            MCXC.State.LastTick = now; local cam = workspace.CurrentCamera; local cF2, cR2 = Vector2.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Z).Unit, Vector2.new(cam.CFrame.RightVector.X, cam.CFrame.RightVector.Z).Unit
+            
+            local tracerTarget = nil; local minD = math.huge
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                    local d = (p.Character.HumanoidRootPart.Position - myR.Position).Magnitude
+                    if d < minD then minD = d; tracerTarget = p end
+                end
+            end
+            
+            if MCXC.Config.ViewTracer and tracerTarget and minD <= MCXC.Config.TracerRange then
+                if not MCXC.Cache.TracerLine then local a1 = Instance.new("Attachment"); local a2 = Instance.new("Attachment"); local b = Instance.new("Beam"); b.Attachment0 = a1; b.Attachment1 = a2; b.FaceCamera = true; b.Width0 = 0.6; b.Width1 = 0.6; b.Transparency = NumberSequence.new(0.1); b.Color = ColorSequence.new(Theme.Target); MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2, Targ = nil} end
+                local tR = tracerTarget.Character.HumanoidRootPart; local trObj = MCXC.Cache.TracerLine; trObj.A1.Parent = myR; trObj.A2.Parent = tR; trObj.Beam.Parent = tR; trObj.Beam.Enabled = true; trObj.Targ = tracerTarget
+            else if MCXC.Cache.TracerLine then MCXC.Cache.TracerLine.Beam.Enabled = false end end
+            
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                    local tR = p.Character.HumanoidRootPart; local dist = (tR.Position - myR.Position).Magnitude; local isClose = (p == tracerTarget)
+                    
+                    if MCXC.Config.ShowMap then
+                        if dist <= MCXC.Config.MapRange then
+                            local of2 = Vector2.new(tR.Position.X - myR.Position.X, tR.Position.Z - myR.Position.Z); local sc = (MCXC.Config.MapSize / 2) / MCXC.Config.MapRange; local uX, uY = of2:Dot(cR2) * sc, -of2:Dot(cF2) * sc
+                            if not MCXC.Cache.MapDots[p.Name] then local d = Instance.new("Frame", DotsContainer); d.Size = UDim2.new(0,6,0,6); Instance.new("UICorner",d).CornerRadius = UDim.new(1,0); d.ZIndex = 4; MCXC.Cache.MapDots[p.Name] = d end
+                            local dot = MCXC.Cache.MapDots[p.Name]; dot.BackgroundColor3 = isClose and Theme.Target or Theme.Danger; dot.Position = UDim2.new(0.5, uX-3, 0.5, uY-3); dot.Visible = true
+                        elseif MCXC.Cache.MapDots[p.Name] then MCXC.Cache.MapDots[p.Name].Visible = false end
+                    else if MCXC.Cache.MapDots[p.Name] then MCXC.Cache.MapDots[p.Name].Visible = false end end
+                    
+                    if MCXC.Config.ESP and dist <= MCXC.Config.RenderDist then
+                        if not MCXC.Cache.ESP[p.Name] or MCXC.Cache.ESP[p.Name].Parent ~= tR then
+                            if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy() end
+                            local bg = Instance.new("BillboardGui", tR); bg.Size = UDim2.new(0,100,0,35); bg.AlwaysOnTop = true; bg.StudsOffset = Vector3.new(0,3.5,0); bg.Name = "ESPGui"
+                            local llay = Instance.new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UDim.new(0,2)
+                            local nLbl = Instance.new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = UDim2.new(1,0,0,14); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 12; nLbl.TextStrokeTransparency = 0; nLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); nLbl.LayoutOrder = 1
+                            local hpBg = Instance.new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = UDim2.new(0.5,0,0,10); hpBg.BackgroundColor3 = Color3.fromRGB(20,20,20); hpBg.LayoutOrder = 2; Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0,2); local hpStr = Instance.new("UIStroke", hpBg); hpStr.Color = Color3.fromRGB(0,0,0); hpStr.Thickness = 1
+                            local hpFill = Instance.new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = UDim2.new(1,0,1,0); Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0,2)
+                            local hpTxt = Instance.new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = UDim2.new(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 9; hpTxt.TextColor3 = Color3.fromRGB(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = Color3.fromRGB(0,0,0); hpTxt.ZIndex = 2
+                            local wLbl = Instance.new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = UDim2.new(1,0,0,13); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 11; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); wLbl.LayoutOrder = 3
+                            MCXC.Cache.ESP[p.Name] = bg
+                        end
+                        local hp, mhp = 0, 0; pcall(function() hp = math.floor(p.Character.Humanoid.Health); mhp = math.floor(p.Character.Humanoid.MaxHealth) end); local w = p.Character:FindFirstChildOfClass("Tool"); w = w and w.Name or "None"
+                        local gui = MCXC.Cache.ESP[p.Name]; gui.Adornee = tR
+                        local mainC = isClose and Theme.Target or Color3.fromRGB(255,255,255)
+                        gui.NameLbl.Text = p.Name; gui.NameLbl.TextColor3 = mainC
+                        gui.HpBg.HpTxt.Text = hp.." / "..mhp; gui.HpBg.HpFill.Size = UDim2.new(math.clamp(hp/mhp, 0, 1), 0, 1, 0); gui.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC
+                        gui.WepLbl.Text = "[W: "..string.sub(w,1,12).."]"; gui.WepLbl.TextColor3 = mainC; gui.Enabled = true
+                    elseif MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end
+                else
+                    if MCXC.Cache.MapDots[p.Name] then MCXC.Cache.MapDots[p.Name].Visible = false end; if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end
+                end
+            end
+        end
+    end)
+end)
