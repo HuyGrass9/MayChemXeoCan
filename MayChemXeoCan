@@ -100,20 +100,32 @@ function Visuals.UpdateTracer(tR, myR)
 end
 function Visuals.ClearTracer() if MCXC.Cache.TracerLine then MCXC.Cache.TracerLine.Beam.Enabled = false end end
 
-function Visuals.UpdateESP(p, tR, dSq, isClose, hp, mhp, wep)
+function Visuals.UpdateESP(p, tR, dSq, isClose, hp, mhp, wep, lvl)
+    if not tR or not tR:IsDescendantOf(workspace) then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
     if dSq > MCXC.Config.RenderDist*MCXC.Config.RenderDist or not MCXC.Config.ESP then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
     local cam = workspace.CurrentCamera; local _, onScreen = cam:WorldToViewportPoint(tR.Position)
     if not onScreen then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
+    
     local bg = MCXC.Cache.ESP[p.Name]
     if not bg or bg.Parent ~= MCXC.Cache.ESPFolder then
-        if bg then bg:Destroy() end; bg = I_new("BillboardGui", MCXC.Cache.ESPFolder); bg.Size, bg.AlwaysOnTop, bg.StudsOffset, bg.Name = U2(0,100,0,50), true, V3(0,4,0), "ESPGui"; I_new("UIListLayout", bg).SortOrder = 0
-        local nL = I_new("TextLabel", bg); nL.Name, nL.Size, nL.BackgroundTransparency, nL.Font, nL.TextSize, nL.TextStrokeTransparency, nL.TextColor3 = "NameLbl", U2(1,0,0,14), 1, Theme.Font, 12, 0, C3(0,0,0)
-        local hB = I_new("Frame", bg); hB.Name, hB.Size, hB.BackgroundColor3 = "HpBg", U2(0.6,0,0,7), C3(20,20,20); I_new("UICorner", hB).CornerRadius = UD(0,2)
-        local hF = I_new("Frame", hB); hF.Name, hF.Size = "HpFill", U2(1,0,1,0); I_new("UICorner", hF).CornerRadius = UD(0,2)
-        local dL = I_new("TextLabel", bg); dL.Name, dL.Size, dL.BackgroundTransparency, dL.Font, dL.TextSize, dL.TextColor3 = "DistLbl", U2(1,0,0,10), 1, Theme.Font, 10, Theme.Text
-        local wL = I_new("TextLabel", bg); wL.Name, wL.Size, wL.BackgroundTransparency, wL.Font, wL.TextSize, wL.TextColor3 = "WepLbl", U2(1,0,0,11), 1, Theme.Font, 11, C3(0,0,0); MCXC.Cache.ESP[p.Name] = bg
+        if bg then bg:Destroy() end; bg = I_new("BillboardGui", MCXC.Cache.ESPFolder); bg.Name = p.Name.."_ESP"; bg.Size, bg.AlwaysOnTop, bg.StudsOffset = U2(0,160,0,42), true, V3(0,5,0)
+        local topL = I_new("TextLabel", bg); topL.Name, topL.Size, topL.BackgroundTransparency, topL.Font, topL.TextSize = "TopLbl", U2(1,0,0,12), 1, Theme.FontBold, 11
+        local midF = I_new("Frame", bg); midF.Name, midF.Size, midF.Position, midF.BackgroundTransparency = "MidFrm", U2(1,0,0,14), U2(0,0,0,14), 1
+        local hIco = I_new("TextLabel", midF); hIco.Size, hIco.Position, hIco.BackgroundTransparency, hIco.Text, hIco.TextSize = U2(0,16,0,16), U2(0,0,0,-1), 1, "❤️", 12
+        local bBg = I_new("Frame", midF); bBg.Name, bBg.Size, bBg.Position, bBg.BackgroundColor3 = "BarBg", U2(1,-20,1,0), U2(0,20,0,0), C3(25,25,25); I_new("UICorner", bBg).CornerRadius = UD(0,4); I_new("UIStroke", bBg).Color = C3(0,0,0)
+        local bF = I_new("Frame", bBg); bF.Name, bF.Size = "Fill", U2(1,0,1,0); I_new("UICorner", bF).CornerRadius = UD(0,4)
+        local hTxt = I_new("TextLabel", bBg); hTxt.Name, hTxt.Size, hTxt.BackgroundTransparency, hTxt.Font, hTxt.TextSize, hTxt.TextColor3 = "HpTxt", U2(1,0,1,0), 1, Theme.FontBold, 9, C3(255,255,255)
+        local botL = I_new("TextLabel", bg); botL.Name, botL.Size, botL.Position, botL.BackgroundTransparency, botL.Font, botL.TextSize = "BotLbl", U2(1,0,0,12), U2(0,0,0,30), 1, Theme.Font, 10
+        MCXC.Cache.ESP[p.Name] = bg
     end
-    local mainC = isClose and Theme.Target or Theme.Text; bg.Adornee = tR; bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainC; bg.HpBg.HpFill.Size = U2(m_clamp(hp/mhp, 0, 1), 0, 1, 0); bg.HpBg.HpFill.BackgroundColor3 = (hp<=4000) and Theme.Danger or mainC; bg.DistLbl.Text = m_floor(dSq^0.5).." Studs"; bg.WepLbl.Text = "[W: "..s_upper(s_sub(wep,1,10)).."]"; bg.WepLbl.TextColor3 = mainC; bg.Enabled = true
+    
+    local mainC = isClose and Theme.Target or Theme.Text; local pct = m_clamp(hp/mhp, 0, 1)
+    local barC = C3(45,200,75); if pct <= 0.3 then barC = C3(255,50,50) elseif pct <= 0.6 then barC = C3(255,150,0) end
+    bg.Adornee = tR; bg.Enabled = true
+    bg.TopLbl.Text, bg.TopLbl.TextColor3 = "[Lv."..lvl.."] "..p.Name, mainC
+    bg.MidFrm.BarBg.Fill.Size, bg.MidFrm.BarBg.Fill.BackgroundColor3 = U2(pct,0,1,0), barC
+    bg.MidFrm.BarBg.HpTxt.Text = tostring(hp).." / "..tostring(mhp)
+    bg.BotLbl.Text, bg.BotLbl.TextColor3 = "["..m_floor(dSq^0.5).."m] | W: "..s_upper(s_sub(wep,1,12)), mainC
 end
 
 local MaruUI = {}
@@ -174,8 +186,7 @@ local HoldF = I_new("Frame", TabC.Frame); HoldF.Name = "HoldContainer"; HoldF.Si
 local holdObj = {}
 local function RefreshH(txt) 
     for _, s in pairs(holdObj) do s:Destroy() end; holdObj = {}
-    if not txt or txt == "" then return end
-    local idx = 0
+    if not txt or txt == "" then return end; local idx = 0
     for w, k in string.gmatch(s_upper(txt), "([1-4])([ZXCVF])") do 
         idx = idx + 1; local sk = w..k; local key = "Hold_"..sk
         if not MCXC.Config[key] then MCXC.Config[key] = 0.5 end
@@ -204,5 +215,51 @@ local function HandleCombo(id, str, br, sr, col) if MCXC.State.SetupMode then re
 MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end)
 MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end)
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function() MCXC.State.Status = "IDLE" end)
-RS.Heartbeat:Connect(function() table.clear(MCXC.State.PlrData); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local minD, targ = m_huge, nil; for _, p in ipairs(Plyrs:GetPlayers()) do if p ~= LP and p.Character then local tR, hum = p.Character:FindFirstChild("HumanoidRootPart"), p.Character:FindFirstChild("Humanoid"); if tR and hum and hum.Health > 0 then local dSq = Utils.DistSq(tR.Position, myR.Position); if dSq < minD then minD, targ = dSq, p end; local w = p.Character:FindFirstChildOfClass("Tool"); MCXC.State.PlrData[p.Name] = {tR = tR, dSq = dSq, hp = m_floor(hum.Health), mhp = m_floor(hum.MaxHealth), wep = w and w.Name or "None"} end end end; MCXC.State.CurrentTarget = targ end)
-local fF, lFT = 0, t_tick(); RS.RenderStepped:Connect(function() local n = t_tick(); fF = fF + 1; if n - lFT >= 1 then local fps = m_floor(fF / (n - lFT)); fF, lFT = 0, n; if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..tostring(fps), "PING: "..tostring(m_floor(Utils.GetPing())).."ms" end end; local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local targ = MCXC.State.CurrentTarget; if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then Visuals.UpdateTracer(MCXC.State.PlrData[targ.Name].tR, myR) else Visuals.ClearTracer() end; for _, p in ipairs(Plyrs:GetPlayers()) do if p ~= LP then local d = MCXC.State.PlrData[p.Name]; if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.hp, d.mhp, d.wep) else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end end end end)
+
+RS.Heartbeat:Connect(function() 
+    table.clear(MCXC.State.PlrData)
+    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not myR then return end
+    local minD, targ, activeP = m_huge, nil, {}
+    
+    for _, p in ipairs(Plyrs:GetPlayers()) do 
+        activeP[p.Name] = true
+        if p ~= LP and p.Character then 
+            local tR, hum = p.Character:FindFirstChild("HumanoidRootPart"), p.Character:FindFirstChild("Humanoid")
+            if tR and hum and hum.Health > 0 and hum.MaxHealth > 0 then 
+                local dSq = Utils.DistSq(tR.Position, myR.Position)
+                if dSq < minD then minD, targ = dSq, p end
+                local w = p.Character:FindFirstChildOfClass("Tool")
+                local lvl = "?"; pcall(function() lvl = tostring(p.Data.Level.Value) end)
+                MCXC.State.PlrData[p.Name] = {tR = tR, dSq = dSq, hp = m_floor(hum.Health), mhp = m_floor(hum.MaxHealth), wep = w and w.Name or "None", lvl = lvl} 
+            end 
+        end 
+    end
+    
+    for name, esp in pairs(MCXC.Cache.ESP) do 
+        if not activeP[name] then if esp then esp:Destroy() end; MCXC.Cache.ESP[name] = nil end 
+    end
+    MCXC.State.CurrentTarget = targ 
+end)
+
+local fF, lFT = 0, t_tick()
+RS.RenderStepped:Connect(function() 
+    local n = t_tick(); fF = fF + 1
+    if n - lFT >= 1 then 
+        local fps = m_floor(fF / (n - lFT)); fF, lFT = 0, n
+        if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..tostring(fps), "PING: "..tostring(m_floor(Utils.GetPing())).."ms" end 
+    end
+    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not myR then return end
+    
+    local targ = MCXC.State.CurrentTarget
+    if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then Visuals.UpdateTracer(MCXC.State.PlrData[targ.Name].tR, myR) else Visuals.ClearTracer() end
+    
+    for _, p in ipairs(Plyrs:GetPlayers()) do 
+        if p ~= LP then 
+            local d = MCXC.State.PlrData[p.Name]
+            if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.hp, d.mhp, d.wep, d.lvl) 
+            else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end 
+        end 
+    end 
+end)
