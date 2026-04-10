@@ -54,7 +54,7 @@ function Combat.CheckStates(char)
     for _, v in ipairs(char:GetChildren()) do if v.ClassName == "BoolValue" and v.Value == true then local n = s_lower(v.Name); if s_find(n, "stun") or s_find(n, "cant") then stun = true end; if s_find(n, "busy") or s_find(n, "using") or s_find(n, "cast") then busy = true end; if stun and busy then break end end end; return stun, busy
 end
 function Combat.SW(t)
-    local s = t_tick(); local adj = m_max(0.001, t - (MCXC.State.Ping * 0.6))
+    local s = t_tick(); local adj = m_max(0.001, t - (Utils.GetPing()/1000 * 0.6))
     while t_tick() - s < adj do local st, _ = Combat.CheckStates(LP.Character); if MCXC.State.Status == "IDLE" or st then return false end; RS.Heartbeat:Wait() end; return true
 end
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
@@ -94,7 +94,6 @@ function Combat.ExecuteCombo(comboId, comboStr, onStart, onFail, onSuccess)
 end
 -- PHẦN 2
 local Visuals = {}
-Theme.Ally = C3(0, 255, 120)
 
 function Visuals.UpdateTracer(tR, myR, color)
     if not MCXC.Cache.TracerLine then 
@@ -111,39 +110,6 @@ end
 function Visuals.ClearTracer() if MCXC.Cache.TracerLine then MCXC.Cache.TracerLine.Beam.Enabled = false end end
 
 function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, wep, lvl)
-    -- Công nghệ culling ESP từ file txt: Không trong camera = tắt
-    if not tR or not tR:IsDescendantOf(workspace) then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
-    if dSq > MCXC.Config.RenderDist*MCXC.Config.RenderDist or not MCXC.Config.ESP then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
-    local cam = workspace.CurrentCamera; local _, onScreen = cam:WorldToViewportPoint(tR.Position)
-    if not onScreen then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
-    
-    -- Giao diện UI chuẩn như ảnh
-    local bg = MCXC.Cache.ESP[p.Name]
-    if not bg or bg.Parent ~= MCXC.Cache.ESPFolder then
-        if bg then bg:Destroy() end
-        bg = I_new("BillboardGui", MCXC.Cache.ESPFolder); bg.Name = p.Name.."_ESP"; bg.Size, bg.AlwaysOnTop, bg.StudsOffset = U2(0,140,0,45), true, V3(0,5,0)
-        local nL = I_new("TextLabel", bg); nL.Name, nL.Size, nL.BackgroundTransparency, nL.Font, nL.TextSize = "NameLbl", U2(1,0,0,14), 1, Theme.FontBold, 12
-        local hB = I_new("Frame", bg); hB.Name, hB.Size, hB.Position, hB.BackgroundColor3 = "HpBg", U2(0.9,0,0,13), U2(0.05,0,0,15), C3(10,10,10)
-        I_new("UICorner", hB).CornerRadius = UD(0,3); I_new("UIStroke", hB).Thickness = 1.5
--- PHẦN 2
-local Visuals = {}
-
-function Visuals.UpdateTracer(tR, myR, color)
-    if not MCXC.Cache.TracerLine then 
-        local a1, a2, b = I_new("Attachment"), I_new("Attachment"), I_new("Beam")
-        b.Name = "MCXC_Tracer"; b.Attachment0 = a1; b.Attachment1 = a2
-        b.FaceCamera, b.Width0, b.Width1, b.Transparency = true, 0.8, 0.8, NS(0.1)
-        MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2} 
-    end
-    local trObj = MCXC.Cache.TracerLine
-    trObj.A1.Parent, trObj.A2.Parent, trObj.Beam.Parent = myR, tR, tR
-    trObj.Beam.Color, trObj.Beam.Enabled = CS(color or Theme.Target), true
-end
-
-function Visuals.ClearTracer() if MCXC.Cache.TracerLine then MCXC.Cache.TracerLine.Beam.Enabled = false end end
-
-function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, wep, lvl)
-    -- Anti-Bug: Check tồn tại và góc khuất Camera
     if not tR or not tR:IsDescendantOf(workspace) then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
     if dSq > MCXC.Config.RenderDist*MCXC.Config.RenderDist or not MCXC.Config.ESP then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
     local cam = workspace.CurrentCamera; local _, onScreen = cam:WorldToViewportPoint(tR.Position)
@@ -152,32 +118,19 @@ function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, wep, lvl)
     local bg = MCXC.Cache.ESP[p.Name]
     if not bg or bg.Parent ~= MCXC.Cache.ESPFolder then
         if bg then bg:Destroy() end
-        -- Khởi tạo Size và Offset chuẩn tỉ lệ
         bg = I_new("BillboardGui", MCXC.Cache.ESPFolder); bg.Name = p.Name.."_ESP"; bg.Size, bg.AlwaysOnTop, bg.StudsOffset = U2(0,140,0,45), true, V3(0,5.5,0)
-        
-        -- Lớp 1: Tên (Phông GothamBold)
         local nL = I_new("TextLabel", bg); nL.Name, nL.Size, nL.BackgroundTransparency, nL.Font, nL.TextSize = "NameLbl", U2(1,0,0,14), 1, Theme.FontBold, 12
-        
-        -- Lớp 2: Thanh máu (Viền đen 1.5, Bo góc 4)
         local hB = I_new("Frame", bg); hB.Name, hB.Size, hB.Position, hB.BackgroundColor3 = "HpBg", U2(0.9,0,0,13), U2(0.05,0,0,16), C3(10,10,10)
-        I_new("UICorner", hB).CornerRadius = UD(0,4); 
-        local str = I_new("UIStroke", hB); str.Thickness = 1.5; str.Color = C3(0,0,0)
-        
+        I_new("UICorner", hB).CornerRadius = UD(0,4); local str = I_new("UIStroke", hB); str.Thickness, str.Color = 1.5, C3(0,0,0)
         local hF = I_new("Frame", hB); hF.Name, hF.Size = "Fill", U2(1,0,1,0); I_new("UICorner", hF).CornerRadius = UD(0,4)
         local hT = I_new("TextLabel", hB); hT.Name, hT.Size, hT.BackgroundTransparency, hT.Font, hT.TextSize, hT.TextColor3 = "HpTxt", U2(1,0,1,0), 1, Theme.FontBold, 10, C3(255,255,255)
-        
-        -- Lớp 3: Khoảng cách & Vũ khí
         local bL = I_new("TextLabel", bg); bL.Name, bL.Size, bL.Position, bL.BackgroundTransparency, bL.Font, bL.TextSize = "BotLbl", U2(1,0,0,12), U2(0,0,0,32), 1, Theme.FontBold, 10
         MCXC.Cache.ESP[p.Name] = bg
     end
-    
-    -- Xử lý Logic Màu Sắc
     local mainColor = isTarget and Theme.Target or (isAlly and Theme.Ally or Theme.Text)
-    bg.Adornee = tR; bg.Enabled = true
-    bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainColor
+    bg.Adornee = tR; bg.Enabled = true; bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainColor
     bg.HpBg.Fill.Size, bg.HpBg.Fill.BackgroundColor3 = U2(m_clamp(hp/mhp, 0, 1), 0, 1, 0), mainColor
-    bg.HpBg.HpTxt.Text = hp.." / "..mhp
-    bg.BotLbl.Text, bg.BotLbl.TextColor3 = "[Lv."..lvl.."] "..m_floor(dSq^0.5).."m | "..s_upper(wep), mainColor
+    bg.HpBg.HpTxt.Text = hp.." / "..mhp; bg.BotLbl.Text, bg.BotLbl.TextColor3 = "[Lv."..lvl.."] "..m_floor(dSq^0.5).."m | "..s_upper(wep), mainColor
 end
 
 local MaruUI = {}
@@ -261,22 +214,18 @@ MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Confi
 RS.Heartbeat:Connect(function() 
     table.clear(MCXC.State.PlrData); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if not myR then return end; local minD, targ, activeP = m_huge, nil, {}
-    
     for _, p in ipairs(Plyrs:GetPlayers()) do 
         activeP[p.Name] = true
         if p ~= LP and p.Character then 
             local tR, hum = p.Character:FindFirstChild("HumanoidRootPart"), p.Character:FindFirstChild("Humanoid")
             if tR and hum and hum.Health > 0 then 
-                local dSq = Utils.DistSq(tR.Position, myR.Position)
-                local isAlly = (p.Team == LP.Team and LP.Team ~= nil)
+                local dSq = Utils.DistSq(tR.Position, myR.Position); local isAlly = (p.Team == LP.Team and LP.Team ~= nil)
                 if not isAlly and dSq < minD then minD, targ = dSq, p end
-                local w = p.Character:FindFirstChildOfClass("Tool")
-                local lvl = "?"; pcall(function() lvl = tostring(p.Data.Level.Value) end)
+                local w = p.Character:FindFirstChildOfClass("Tool"); local lvl = "?"; pcall(function() lvl = tostring(p.Data.Level.Value) end)
                 MCXC.State.PlrData[p.Name] = {tR = tR, dSq = dSq, hp = m_floor(hum.Health), mhp = m_floor(hum.MaxHealth), wep = w and w.Name or "None", lvl = lvl, isAlly = isAlly} 
             end 
         end 
     end
-    -- Thu gom rác mạnh mẽ (Tránh treo ESP)
     for name, esp in pairs(MCXC.Cache.ESP) do if not activeP[name] then if esp then esp:Destroy() end; MCXC.Cache.ESP[name] = nil end end
     MCXC.State.CurrentTarget = targ 
 end)
