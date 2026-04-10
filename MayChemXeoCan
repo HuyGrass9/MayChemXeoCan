@@ -51,6 +51,7 @@ function Utils.MakeDraggable(topbar, object)
     topbar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
     UIS.InputChanged:Connect(function(input) if input == dragInput and dragging then local delta = input.Position - dragStart; object.Position = U2(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 end
+
 function Utils.ApplyLagFixToObj(v)
     if v:IsA("BasePart") and not (v.Parent and v.Parent:FindFirstChild("Humanoid")) then v.CastShadow = false; v.Material = Enum.Material.SmoothPlastic
     elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then v.Enabled = false; v.Rate = 0
@@ -97,8 +98,7 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
         if (first=="1" or first=="2" or first=="3" or first=="4") and cT and GetToolType(cT)==first then seq=s_sub(seq,2) end
         
         for i = 1, #seq do
-            local st, _ = Combat.CheckStates(LP.Character)
-            if MCXC.State.CancelCombo or st then comboFailed = true; break end
+            local st, _ = Combat.CheckStates(LP.Character); if MCXC.State.CancelCombo or st then comboFailed = true; break end
             local key = s_sub(seq, i, i)
             if s_match(key, "[1-4]") then
                 curWepType = key; local tT = LP.Character:FindFirstChildOfClass("Tool")
@@ -118,21 +118,17 @@ function Combat.ExecuteCombo(comboId, comboStr, btnRef, stroke, baseColor)
                 
                 local wR = t_tick(); local trg = false
                 while t_tick()-wR < 0.25 do 
-                    local stn, bsy = Combat.CheckStates(LP.Character)
-                    if MCXC.State.CancelCombo or stn then break end
+                    local stn, bsy = Combat.CheckStates(LP.Character); if MCXC.State.CancelCombo or stn then break end
                     if bsy then trg=true; break end; RS.Heartbeat:Wait() 
                 end
                 
                 if trg then
                     local wA=t_tick(); while t_tick()-wA < 3.0 do 
-                        local stn, bsy = Combat.CheckStates(LP.Character)
-                        if MCXC.State.CancelCombo or stn or not bsy then break end
-                        RS.Heartbeat:Wait() 
+                        local stn, bsy = Combat.CheckStates(LP.Character); if MCXC.State.CancelCombo or stn or not bsy then break end; RS.Heartbeat:Wait() 
                     end
                 end
                 
-                local sF, _ = Combat.CheckStates(LP.Character)
-                if MCXC.State.CancelCombo or sF then comboFailed=true; break end
+                local sF, _ = Combat.CheckStates(LP.Character); if MCXC.State.CancelCombo or sF then comboFailed=true; break end
                 if not Combat.SW(0.005) then comboFailed=true; break end
             end
         end
@@ -146,10 +142,9 @@ end
 local Visuals = {}
 function Visuals.UpdateTracer(tR, myR)
     if not MCXC.Cache.TracerLine then
-        local a1 = I_new("Attachment"); local a2 = I_new("Attachment"); local b = I_new("Beam")
+        local a1, a2, b = I_new("Attachment"), I_new("Attachment"), I_new("Beam")
         b.Name = "MCXC_Tracer"; b.Attachment0 = a1; b.Attachment1 = a2; b.FaceCamera = true; b.Width0 = 0.6; b.Width1 = 0.6
-        b.Transparency = NS(0.1); b.Color = CS(Theme.Target)
-        MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2}
+        b.Transparency = NS(0.1); b.Color = CS(Theme.Target); MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2}
     end
     local trObj = MCXC.Cache.TracerLine; trObj.A1.Parent = myR; trObj.A2.Parent = tR; trObj.Beam.Parent = tR; trObj.Beam.Enabled = true
 end
@@ -168,12 +163,12 @@ function Visuals.UpdateESP(p, tR, dist, isClose, hp, mhp, wep)
     if not bg or bg.Parent ~= MCXC.Cache.ESPFolder then
         if bg then bg:Destroy() end
         bg = I_new("BillboardGui"); bg.Size = U2(0,100,0,38); bg.AlwaysOnTop = true; bg.StudsOffset = V3(0,4,0); bg.Name = "ESPGui"
-        local llay = I_new("UIListLayout", bg); llay.SortOrder = Enum.SortOrder.LayoutOrder; llay.HorizontalAlignment = Enum.HorizontalAlignment.Center; llay.Padding = UD(0,2)
-        local nLbl = I_new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = U2(1,0,0,13); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 11; nLbl.TextStrokeTransparency = 0; nLbl.TextStrokeColor3 = C3(0,0,0); nLbl.LayoutOrder = 1
-        local hpBg = I_new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = U2(0.5,0,0,8); hpBg.BackgroundColor3 = C3(20,20,20); hpBg.LayoutOrder = 2; I_new("UICorner", hpBg).CornerRadius = UD(0,2); local hpStr = I_new("UIStroke", hpBg); hpStr.Color = C3(0,0,0); hpStr.Thickness = 1
+        I_new("UIListLayout", bg).SortOrder = Enum.SortOrder.LayoutOrder
+        local nLbl = I_new("TextLabel", bg); nLbl.Name = "NameLbl"; nLbl.Size = U2(1,0,0,13); nLbl.BackgroundTransparency = 1; nLbl.Font = Enum.Font.GothamBlack; nLbl.TextSize = 11; nLbl.TextStrokeTransparency = 0; nLbl.TextColor3 = C3(0,0,0); nLbl.LayoutOrder = 1
+        local hpBg = I_new("Frame", bg); hpBg.Name = "HpBg"; hpBg.Size = U2(0.5,0,0,8); hpBg.BackgroundColor3 = C3(20,20,20); hpBg.LayoutOrder = 2; I_new("UICorner", hpBg).CornerRadius = UD(0,2); local hpS = I_new("UIStroke", hpBg); hpS.Color = C3(0,0,0); hpS.Thickness = 1
         local hpFill = I_new("Frame", hpBg); hpFill.Name = "HpFill"; hpFill.Size = U2(1,0,1,0); I_new("UICorner", hpFill).CornerRadius = UD(0,2)
-        local hpTxt = I_new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = U2(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 8; hpTxt.TextColor3 = C3(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.TextStrokeColor3 = C3(0,0,0); hpTxt.ZIndex = 2
-        local wLbl = I_new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = U2(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 10; wLbl.TextStrokeTransparency = 0; wLbl.TextStrokeColor3 = C3(0,0,0); wLbl.LayoutOrder = 3
+        local hpTxt = I_new("TextLabel", hpBg); hpTxt.Name = "HpTxt"; hpTxt.Size = U2(1,0,1,0); hpTxt.BackgroundTransparency = 1; hpTxt.Font = Enum.Font.GothamBold; hpTxt.TextSize = 8; hpTxt.TextColor3 = C3(255,255,255); hpTxt.TextStrokeTransparency = 0; hpTxt.ZIndex = 2
+        local wLbl = I_new("TextLabel", bg); wLbl.Name = "WepLbl"; wLbl.Size = U2(1,0,0,11); wLbl.BackgroundTransparency = 1; wLbl.Font = Enum.Font.GothamBold; wLbl.TextSize = 10; wLbl.TextStrokeTransparency = 0; wLbl.TextColor3 = C3(0,0,0); wLbl.LayoutOrder = 3
         bg.Parent = MCXC.Cache.ESPFolder; MCXC.Cache.ESP[p.Name] = bg
     end
     local mainC = isClose and Theme.Target or C3(255,255,255)
@@ -183,62 +178,77 @@ end
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
     local p = CGui; pcall(function() if gethui then p = gethui() end end); if p:FindFirstChild("MaruMCXC") then p.MaruMCXC:Destroy() end
-    local gui = I_new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.DisplayOrder = 10000; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    local gui = I_new("ScreenGui", p); gui.Name = "MaruMCXC"; gui.ResetOnSpawn = false
     MCXC.Cache.ESPFolder = CGui:FindFirstChild("MCXC_ESPFolder"); if not MCXC.Cache.ESPFolder then MCXC.Cache.ESPFolder = I_new("Folder", CGui); MCXC.Cache.ESPFolder.Name = "MCXC_ESPFolder" end
 
     local StatFrame = I_new("Frame", gui); StatFrame.Size = U2(0,100,0,40); StatFrame.Position = U2(0,10,0,55); StatFrame.BackgroundTransparency = 1; StatFrame.Visible = MCXC.Config.ShowStats
-    local FPSLbl = I_new("TextLabel", StatFrame); FPSLbl.Size = U2(1,0,0,18); FPSLbl.BackgroundTransparency = 1; FPSLbl.Font = Enum.Font.GothamBold; FPSLbl.TextSize = 12; FPSLbl.TextXAlignment = Enum.TextXAlignment.Left; FPSLbl.TextColor3 = C3(255,255,255); FPSLbl.TextStrokeTransparency = 0.5; FPSLbl.Text = "FPS: --"
-    local PingLbl = I_new("TextLabel", StatFrame); PingLbl.Size = U2(1,0,0,18); PingLbl.Position = U2(0,0,0,18); PingLbl.BackgroundTransparency = 1; PingLbl.Font = Enum.Font.GothamBold; PingLbl.TextSize = 12; PingLbl.TextXAlignment = Enum.TextXAlignment.Left; PingLbl.TextColor3 = C3(255,255,255); PingLbl.TextStrokeTransparency = 0.5; PingLbl.Text = "PING: --"
+    local FPSLbl = I_new("TextLabel", StatFrame); FPSLbl.Size = U2(1,0,0,18); FPSLbl.BackgroundTransparency = 1; FPSLbl.Font = Enum.Font.GothamBold; FPSLbl.TextSize = 12; FPSLbl.TextXAlignment = 0; FPSLbl.TextColor3 = C3(255,255,255); FPSLbl.TextStrokeTransparency = 0.5
+    local PingLbl = I_new("TextLabel", StatFrame); PingLbl.Size = U2(1,0,0,18); PingLbl.Position = U2(0,0,0,18); PingLbl.BackgroundTransparency = 1; PingLbl.Font = Enum.Font.GothamBold; PingLbl.TextSize = 12; PingLbl.TextXAlignment = 0; PingLbl.TextColor3 = C3(255,255,255); PingLbl.TextStrokeTransparency = 0.5
     MCXC.Cache.FPSLbl = FPSLbl; MCXC.Cache.PingLbl = PingLbl; MCXC.Cache.StatFrame = StatFrame
 
-    local ToggleIcon = I_new("ImageButton", gui); ToggleIcon.Size = U2(0,45,0,45); ToggleIcon.Position = U2(0.5,-22,0,15); ToggleIcon.Image = "rbxthumb://type=Asset&id=8073107254&w=150&h=150"; ToggleIcon.BackgroundColor3 = Theme.BG; ToggleIcon.BackgroundTransparency = MCXC.Config.UITrans; ToggleIcon.ZIndex = 10; I_new("UICorner", ToggleIcon).CornerRadius = UD(1,0); I_new("UIStroke", ToggleIcon).Color = Theme.Accent; I_new("UIStroke", ToggleIcon).Thickness = 2
-    Utils.MakeDraggable(ToggleIcon, ToggleIcon); table.insert(MCXC.Cache.UIElements, ToggleIcon)
-    local Main = I_new("Frame", gui); Main.Size = U2(0,460,0,290); Main.Position = U2(0.5,-230,0.5,-145); Main.BackgroundColor3 = Theme.BG; Main.BackgroundTransparency = MCXC.Config.UITrans; Main.ClipsDescendants = true; Main.Visible = false; Main.ZIndex = 9; I_new("UICorner", Main).CornerRadius = UD(0,8); I_new("UIStroke", Main).Color = C3(40,40,45)
+    local Tgl = I_new("ImageButton", gui); Tgl.Size = U2(0,45,0,45); Tgl.Position = U2(0.5,-22,0,15); Tgl.Image = "rbxthumb://type=Asset&id=8073107254&w=150&h=150"; Tgl.BackgroundColor3 = Theme.BG; Tgl.BackgroundTransparency = MCXC.Config.UITrans; I_new("UICorner", Tgl).CornerRadius = UD(1,0); I_new("UIStroke", Tgl).Color = Theme.Accent; I_new("UIStroke", Tgl).Thickness = 2
+    Utils.MakeDraggable(Tgl, Tgl); table.insert(MCXC.Cache.UIElements, Tgl)
+    local Main = I_new("Frame", gui); Main.Size = U2(0,460,0,290); Main.Position = U2(0.5,-230,0.5,-145); Main.BackgroundColor3 = Theme.BG; Main.BackgroundTransparency = MCXC.Config.UITrans; Main.ClipsDescendants = true; Main.Visible = false; I_new("UICorner", Main).CornerRadius = UD(0,8); I_new("UIStroke", Main).Color = C3(40,40,45)
     local Sidebar = I_new("Frame", Main); Sidebar.Size = U2(0,130,1,0); Sidebar.BackgroundColor3 = Theme.Sidebar; Sidebar.BackgroundTransparency = MCXC.Config.UITrans; Sidebar.BorderSizePixel = 0
-    local TitleLbl = I_new("TextLabel", Sidebar); TitleLbl.Size = U2(1,0,0,45); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = title; TitleLbl.TextColor3 = Theme.Accent; TitleLbl.Font = Enum.Font.GothamBlack; TitleLbl.TextSize = 11; TitleLbl.TextWrapped = true
+    local TitleLbl = I_new("TextLabel", Sidebar); TitleLbl.Size = U2(1,0,0,45); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = title; TitleLbl.TextColor3 = Theme.Accent; TitleLbl.Font = Enum.Font.GothamBlack; TitleLbl.TextSize = 11
     local Content = I_new("Frame", Main); Content.Size = U2(1,-130,1,0); Content.Position = U2(0,130,0,0); Content.BackgroundTransparency = 1
     table.insert(MCXC.Cache.UIElements, Main); table.insert(MCXC.Cache.UIElements, Sidebar)
-    ToggleIcon.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; if MCXC.State.MenuOpen then Main.Visible=true; Main.Size=U2(0,460,0,0); Utils.Tween(Main, {Size=U2(0,460,0,290)}, 0.3) else local t=Utils.Tween(Main, {Size=U2(0,460,0,0)}, 0.2); t.Completed:Wait(); Main.Visible=false end end)
-    Utils.MakeDraggable(Sidebar, Main); local Window = {Tabs = {}, CurrentTab = nil, Container = Content, Sidebar = Sidebar}
+    Tgl.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; if MCXC.State.MenuOpen then Main.Visible=true; Main.Size=U2(0,460,0,0); Utils.Tween(Main, {Size=U2(0,460,0,290)}, 0.3) else local t=Utils.Tween(Main, {Size=U2(0,460,0,0)}, 0.2); t.Completed:Wait(); Main.Visible=false end end)
+    Utils.MakeDraggable(Sidebar, Main); local Window = {Tabs = {}, Container = Content, Sidebar = Sidebar}
     
     function Window:CreateTab(name)
-        local btn = I_new("TextButton", self.Sidebar); btn.Size = U2(1,0,0,38); btn.Position = U2(0,0,0,50 + (#self.Tabs * 38)); btn.BackgroundTransparency = 1; btn.Text = "  "..name; btn.TextColor3 = Theme.TextDark; btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left
+        local btn = I_new("TextButton", self.Sidebar); btn.Size = U2(1,0,0,38); btn.Position = U2(0,0,0,50 + (#self.Tabs * 38)); btn.BackgroundTransparency = 1; btn.Text = "  "..name; btn.TextColor3 = Theme.TextDark; btn.Font = Enum.Font.GothamBold; btn.TextSize = 11; btn.TextXAlignment = 0
         local ind = I_new("Frame", btn); ind.Size = U2(0,3,0,0); ind.Position = U2(0,0,0.5,0); ind.BackgroundColor3 = Theme.Accent; ind.BorderSizePixel = 0; ind.AnchorPoint = V2(0,0.5)
-        local frm = I_new("ScrollingFrame", self.Container); frm.Size = U2(1,-16,1,-16); frm.Position = U2(0,8,0,8); frm.BackgroundTransparency = 1; frm.Visible = false; frm.ScrollBarThickness = 2; frm.ScrollBarImageColor3 = Theme.ElementBG; frm.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        local lay = I_new("UIListLayout", frm); lay.Padding = UD(0,8); lay.HorizontalAlignment = Enum.HorizontalAlignment.Center; lay.SortOrder = Enum.SortOrder.LayoutOrder
+        local frm = I_new("ScrollingFrame", self.Container); frm.Size = U2(1,-16,1,-16); frm.Position = U2(0,8,0,8); frm.BackgroundTransparency = 1; frm.Visible = false; frm.ScrollBarThickness = 2; frm.ScrollBarImageColor3 = Theme.ElementBG; frm.AutomaticCanvasSize = 2
+        local lay = I_new("UIListLayout", frm); lay.Padding = UD(0,8); lay.HorizontalAlignment = 1
         local tab = {Btn = btn, Ind = ind, Frm = frm}; table.insert(self.Tabs, tab)
         btn.MouseButton1Click:Connect(function() for _, t in ipairs(self.Tabs) do t.Frm.Visible = (t == tab); Utils.Tween(t.Btn, {TextColor3 = (t == tab) and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(t.Ind, {Size = (t == tab) and U2(0,3,0,20) or U2(0,3,0,0)}, 0.2) end end)
         if #self.Tabs == 1 then frm.Visible=true; btn.TextColor3=Theme.Text; ind.Size=U2(0,3,0,20) end
         
         return {
-            Frame = frm, LayoutIndex = 0,
+            Frame = frm, LIdx = 0,
             CreateToggle = function(self, text, key, cb)
-                self.LayoutIndex = self.LayoutIndex + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,38); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LayoutIndex; I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size = U2(1,-50,1,0); l.Position = U2(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left; l.TextWrapped = true
+                self.LIdx = self.LIdx + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,38); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
+                local l = I_new("TextLabel", c); l.Size = U2(1,-50,1,0); l.Position = U2(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = 0
                 local swBG = I_new("Frame", c); swBG.Size = U2(0,34,0,16); swBG.Position = U2(1,-44,0.5,-8); swBG.BackgroundColor3 = MCXC.Config[key] and Theme.Accent or C3(50,50,55); I_new("UICorner", swBG).CornerRadius = UD(1,0)
                 local swDot = I_new("Frame", swBG); swDot.Size = U2(0,12,0,12); swDot.Position = MCXC.Config[key] and U2(1,-14,0.5,-6) or U2(0,2,0.5,-6); swDot.BackgroundColor3 = C3(255,255,255); I_new("UICorner", swDot).CornerRadius = UD(1,0)
-                local btn = I_new("TextButton", c); btn.Size = U2(1,0,1,0); btn.BackgroundTransparency = 1; btn.Text = ""
-                btn.MouseButton1Click:Connect(function() MCXC.Config[key] = not MCXC.Config[key]; Utils.Tween(l, {TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(swBG, {BackgroundColor3 = MCXC.Config[key] and Theme.Accent or C3(50,50,55)}, 0.2); Utils.Tween(swDot, {Position = MCXC.Config[key] and U2(1,-14,0.5,-6) or U2(0,2,0.5,-6)}, 0.2); SaveConfig(); if cb then cb(MCXC.Config[key]) end end)
+                local b = I_new("TextButton", c); b.Size = U2(1,0,1,0); b.BackgroundTransparency = 1; b.Text = ""
+                b.MouseButton1Click:Connect(function() MCXC.Config[key] = not MCXC.Config[key]; Utils.Tween(l, {TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark}, 0.2); Utils.Tween(swBG, {BackgroundColor3 = MCXC.Config[key] and Theme.Accent or C3(50,50,55)}, 0.2); Utils.Tween(swDot, {Position = MCXC.Config[key] and U2(1,-14,0.5,-6) or U2(0,2,0.5,-6)}, 0.2); SaveConfig(); if cb then cb(MCXC.Config[key]) end end)
                 return c
             end,
             CreateSlider = function(self, text, min, max, key, isInt)
-                self.LayoutIndex = self.LayoutIndex + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,45); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LayoutIndex; I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size = U2(1,-20,0,20); l.Position = U2(0,10,0,5); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left
-                local vL = I_new("TextLabel", c); vL.Size = U2(1,-20,0,20); vL.Position = U2(0,10,0,5); vL.BackgroundTransparency = 1; vL.Text = tostring(MCXC.Config[key]); vL.TextColor3 = Theme.Accent; vL.Font = Enum.Font.GothamBold; vL.TextSize = 11; vL.TextXAlignment = Enum.TextXAlignment.Right
-                local track = I_new("Frame", c); track.Size = U2(1,-20,0,4); track.Position = U2(0,10,0,28); track.BackgroundColor3 = C3(40,40,45); I_new("UICorner", track).CornerRadius = UD(1,0)
-                local fill = I_new("Frame", track); fill.Size = U2((MCXC.Config[key]-min)/(max-min),0,1,0); fill.BackgroundColor3 = Theme.Accent; I_new("UICorner", fill).CornerRadius = UD(1,0)
-                local thumb = I_new("Frame", fill); thumb.Size = U2(0,10,0,10); thumb.Position = U2(1,-5,0.5,-5); thumb.BackgroundColor3 = C3(255,255,255); I_new("UICorner", thumb).CornerRadius = UD(1,0)
-                local tBtn = I_new("TextButton", c); tBtn.Size = U2(1,0,0,25); tBtn.Position = U2(0,0,0,20); tBtn.BackgroundTransparency = 1; tBtn.Text = ""; local drag = false
-                local function update(i)
-                    local pct = m_clamp((i.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1); local val = min + (max-min)*pct; if isInt then val = m_floor(val) else val = m_floor(val*100)/100 end
-                    fill.Size = U2(pct,0,1,0); vL.Text = tostring(val); MCXC.Config[key] = val
+                self.LIdx = self.LIdx + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,45); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
+                local l = I_new("TextLabel", c); l.Size = U2(1,-20,0,20); l.Position = U2(0,10,0,5); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = 0
+                local vL = I_new("TextLabel", c); vL.Size = U2(1,-20,0,20); vL.Position = U2(0,10,0,5); vL.BackgroundTransparency = 1; vL.Text = tostring(MCXC.Config[key]); vL.TextColor3 = Theme.Accent; vL.Font = Enum.Font.GothamBold; vL.TextSize = 11; vL.TextXAlignment = 1
+                local tr = I_new("Frame", c); tr.Size = U2(1,-20,0,4); tr.Position = U2(0,10,0,28); tr.BackgroundColor3 = C3(40,40,45); I_new("UICorner", tr).CornerRadius = UD(1,0)
+                local fill = I_new("Frame", tr); fill.Size = U2((MCXC.Config[key]-min)/(max-min),0,1,0); fill.BackgroundColor3 = Theme.Accent; I_new("UICorner", fill).CornerRadius = UD(1,0)
+                local th = I_new("Frame", fill); th.Size = U2(0,10,0,10); th.Position = U2(1,-5,0.5,-5); th.BackgroundColor3 = C3(255,255,255); I_new("UICorner", th).CornerRadius = UD(1,0)
+                local tB = I_new("TextButton", c); tB.Size = U2(1,0,0,25); tB.Position = U2(0,0,0,20); tB.BackgroundTransparency = 1; tB.Text = ""; local drag = false
+                local function upd(i)
+                    local p = m_clamp((i.Position.X - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1); local val = min + (max-min)*p; if isInt then val = m_floor(val) else val = m_floor(val*100)/100 end
+                    fill.Size = U2(p,0,1,0); vL.Text = tostring(val); MCXC.Config[key] = val
                     if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size=U2(0,val,0,val) end; if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size=U2(0,val,0,val) end
                     if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size=U2(0,val,0,val) end; if key=="MapSize" and MCXC.Cache.MapFrame then MCXC.Cache.MapFrame.Size=U2(0,val,0,val) end
                     if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.BackgroundTransparency = val; MCXC.Cache.BtnC2.BackgroundTransparency = val; MCXC.Cache.BtnX.BackgroundTransparency = val end end
                 end
-                tBtn.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; Utils.Tween(l, {TextColor3=Theme.Text}, 0.2); update(i) end end)
-                UIS.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then update(i) end end)
+                tB.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; Utils.Tween(l, {TextColor3=Theme.Text}, 0.2); upd(i) end end)
+                UIS.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then upd(i) end end)
                 UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then if drag then drag=false; Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); SaveConfig() end end end)
+                return c
+            end,
+            CreateInput = function(self, text, key, cb)
+                self.LIdx = self.LIdx + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,40); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
+                local l = I_new("TextLabel", c); l.Size = U2(0.4,0,1,0); l.Position = U2(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = 0
+                local b = I_new("TextBox", c); b.Size = U2(0.55,-10,0,26); b.Position = U2(0.45,0,0.5,-13); b.BackgroundColor3 = C3(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = tostring(MCXC.Config[key] or ""); b.ClearTextOnFocus = false; I_new("UICorner", b).CornerRadius = UD(0,4); I_new("UIStroke", b).Color = C3(50,50,55)
+                b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end)
+                return c
+            end,
+            CreateDoubleButton = function(self, t1, c1, cb1, t2, c2, cb2)
+                self.LIdx = self.LIdx + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,35); c.BackgroundTransparency = 1; c.LayoutOrder = self.LIdx
+                local b1 = I_new("TextButton", c); b1.Size = U2(0.48,0,1,0); b1.BackgroundColor3 = Theme.ElementBG; b1.Text = t1; b1.TextColor3 = c1; b1.Font = Enum.Font.GothamBold; b1.TextSize = 11; I_new("UICorner", b1).CornerRadius = UD(0,6); local s1 = I_new("UIStroke", b1); s1.Color = c1; s1.Transparency = 0.5
+                local b2 = I_new("TextButton", c); b2.Size = U2(0.48,0,1,0); b2.Position = U2(0.52,0,0,0); b2.BackgroundColor3 = Theme.ElementBG; b2.Text = t2; b2.TextColor3 = c2; b2.Font = Enum.Font.GothamBold; b2.TextSize = 11; I_new("UICorner", b2).CornerRadius = UD(0,6); local s2 = I_new("UIStroke", b2); s2.Color = c2; s2.Transparency = 0.5
+                b1.MouseButton1Click:Connect(function() Utils.Tween(b1, {BackgroundColor3=C3(40,40,45)}, 0.1); t_delay(0.1, function() Utils.Tween(b1, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb1 then cb1() end end)
+                b2.MouseButton1Click:Connect(function() Utils.Tween(b2, {BackgroundColor3=C3(40,40,45)}, 0.1); t_delay(0.1, function() Utils.Tween(b2, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb2 then cb2() end end)
                 return c
             end
         }
@@ -246,29 +256,7 @@ function MaruUI:CreateWindow(title)
     return Window, gui
 end
 
-local function LoadUIComponents(Window)
-    return {
-        CreateInput = function(self, text, key, cb)
-            self.LayoutIndex = self.LayoutIndex + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,40); c.BackgroundColor3 = Theme.ElementBG; c.LayoutOrder = self.LayoutIndex; I_new("UICorner", c).CornerRadius = UD(0,6)
-            local l = I_new("TextLabel", c); l.Size = U2(0.4,0,1,0); l.Position = U2(0,10,0,0); l.BackgroundTransparency = 1; l.Text = text; l.TextColor3 = Theme.TextDark; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextXAlignment = Enum.TextXAlignment.Left
-            local b = I_new("TextBox", c); b.Size = U2(0.55,-10,0,26); b.Position = U2(0.45,0,0.5,-13); b.BackgroundColor3 = C3(20,20,22); b.TextColor3 = Theme.Accent; b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.Text = MCXC.Config[key]; b.ClearTextOnFocus = false; I_new("UICorner", b).CornerRadius = UD(0,4); I_new("UIStroke", b).Color = C3(50,50,55)
-            b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end)
-            return c
-        end,
-        CreateDoubleButton = function(self, text1, color1, cb1, text2, color2, cb2)
-            self.LayoutIndex = self.LayoutIndex + 1; local c = I_new("Frame", self.Frame); c.Size = U2(1,0,0,35); c.BackgroundTransparency = 1; c.LayoutOrder = self.LayoutIndex
-            local b1 = I_new("TextButton", c); b1.Size = U2(0.48,0,1,0); b1.BackgroundColor3 = Theme.ElementBG; b1.Text = text1; b1.TextColor3 = color1; b1.Font = Enum.Font.GothamBold; b1.TextSize = 11; I_new("UICorner", b1).CornerRadius = UD(0,6); local s1 = I_new("UIStroke", b1); s1.Color = color1; s1.Transparency = 0.5
-            local b2 = I_new("TextButton", c); b2.Size = U2(0.48,0,1,0); b2.Position = U2(0.52,0,0,0); b2.BackgroundColor3 = Theme.ElementBG; b2.Text = text2; b2.TextColor3 = color2; b2.Font = Enum.Font.GothamBold; b2.TextSize = 11; I_new("UICorner", b2).CornerRadius = UD(0,6); local s2 = I_new("UIStroke", b2); s2.Color = color2; s2.Transparency = 0.5
-            b1.MouseButton1Click:Connect(function() Utils.Tween(b1, {BackgroundColor3=C3(40,40,45)}, 0.1); t_delay(0.1, function() Utils.Tween(b1, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb1 then cb1() end end)
-            b2.MouseButton1Click:Connect(function() Utils.Tween(b2, {BackgroundColor3=C3(40,40,45)}, 0.1); t_delay(0.1, function() Utils.Tween(b2, {BackgroundColor3=Theme.ElementBG}, 0.2) end); if cb2 then cb2() end end)
-            return c
-        end
-    }
-end
-
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
-local ext = LoadUIComponents()
-for _, tab in ipairs(Win.Tabs) do for k, v in pairs(ext) do tab[k] = v end end
 local TabC = Win:CreateTab("Combat"); local TabV = Win:CreateTab("Visuals"); local TabS = Win:CreateTab("Settings")
 
 TabC:CreateToggle("Macro", "Macro", nil); TabC:CreateInput("Combo C", "ComboC")
