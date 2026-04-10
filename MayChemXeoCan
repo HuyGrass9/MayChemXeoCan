@@ -10,13 +10,21 @@ local I_new = Instance.new
 
 local MCXC = {
     Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 250, ESP = false, ViewTracer = false, ShowMap = false, MapSize = 120, MapRange = 600, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}, MapPos = {0.05, 0, 0.05, 0}},
-    State = {Status = "IDLE", MenuOpen = false, LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, LagFixed = false, CurrentCombo = nil, ComboQueue = nil, PlrData = {}},
+    State = {Status = "IDLE", MenuOpen = false, LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, LagFixed = false, CurrentCombo = nil, ComboQueue = nil, PlrData = {}, ActivePlayers = {}},
     Cache = {ESP = {}, MapDots = {}, TracerLine = nil, UIElements = {}}
 }
 local Theme = {BG = C3(15, 15, 18), Sidebar = C3(10, 10, 12), ElementBG = C3(22, 22, 26), Accent = C3(0, 170, 255), Text = C3(255, 255, 255), TextDark = C3(160, 160, 170), Danger = C3(255, 50, 70), Target = C3(255, 210, 0), Font = Enum.Font.GothamMedium, FontBold = Enum.Font.GothamBold, FontBlack = Enum.Font.GothamBlack, Ally = C3(0, 255, 120)}
 local ConfigName = "MCXC_V47_Final.json"
 pcall(function() if isfile and isfile(ConfigName) then local s = HS:JSONDecode(readfile(ConfigName)); for k,v in pairs(s) do MCXC.Config[k]=v end end end)
 local function SaveConfig() pcall(function() writefile(ConfigName, HS:JSONEncode(MCXC.Config)) end) end
+
+local function ManagePlayer(p, remove)
+    if remove then MCXC.State.ActivePlayers[p.Name] = nil; if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy(); MCXC.Cache.ESP[p.Name] = nil end
+    else if p ~= LP then MCXC.State.ActivePlayers[p.Name] = p end end
+end
+for _, p in ipairs(Plyrs:GetPlayers()) do ManagePlayer(p) end
+Plyrs.PlayerAdded:Connect(function(p) ManagePlayer(p) end)
+Plyrs.PlayerRemoving:Connect(function(p) ManagePlayer(p, true) end)
 
 local Utils = {}
 function Utils.DistSq(p1, p2) local dx, dy, dz = p1.X-p2.X, p1.Y-p2.Y, p1.Z-p2.Z; return dx*dx + dy*dy + dz*dz end
@@ -54,7 +62,7 @@ function Combat.CheckStates(char)
     for _, v in ipairs(char:GetChildren()) do if v.ClassName == "BoolValue" and v.Value == true then local n = s_lower(v.Name); if s_find(n, "stun") or s_find(n, "cant") then stun = true end; if s_find(n, "busy") or s_find(n, "using") or s_find(n, "cast") then busy = true end; if stun and busy then break end end end; return stun, busy
 end
 function Combat.SW(t)
-    local s = t_tick(); local adj = m_max(0.001, t - (Utils.GetPing()/1000 * 0.6))
+    local s = t_tick(); local adj = m_max(0.001, t - (MCXC.State.Ping * 0.6))
     while t_tick() - s < adj do local st, _ = Combat.CheckStates(LP.Character); if MCXC.State.Status == "IDLE" or st then return false end; RS.Heartbeat:Wait() end; return true
 end
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
@@ -98,7 +106,7 @@ local Visuals = {}
 function Visuals.UpdateTracer(tR, myR, color)
     if not MCXC.Cache.TracerLine then 
         local a1, a2, b = I_new("Attachment"), I_new("Attachment"), I_new("Beam")
-        b.Name = "MCXC_Tracer"; b.Attachment0 = a1; b.Attachment1 = a2
+        b.Name = "MCXC_Tracer"; b.Attachment0, b.Attachment1 = a1, a2
         b.FaceCamera, b.Width0, b.Width1, b.Transparency = true, 0.8, 0.8, NS(0.1)
         MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2} 
     end
@@ -127,10 +135,13 @@ function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, wep, lvl)
         local bL = I_new("TextLabel", bg); bL.Name, bL.Size, bL.Position, bL.BackgroundTransparency, bL.Font, bL.TextSize = "BotLbl", U2(1,0,0,12), U2(0,0,0,32), 1, Theme.FontBold, 10
         MCXC.Cache.ESP[p.Name] = bg
     end
+    
     local mainColor = isTarget and Theme.Target or (isAlly and Theme.Ally or Theme.Text)
-    bg.Adornee = tR; bg.Enabled = true; bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainColor
+    bg.Adornee = tR; bg.Enabled = true
+    bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainColor
     bg.HpBg.Fill.Size, bg.HpBg.Fill.BackgroundColor3 = U2(m_clamp(hp/mhp, 0, 1), 0, 1, 0), mainColor
-    bg.HpBg.HpTxt.Text = hp.." / "..mhp; bg.BotLbl.Text, bg.BotLbl.TextColor3 = "[Lv."..lvl.."] "..m_floor(dSq^0.5).."m | "..s_upper(wep), mainColor
+    bg.HpBg.HpTxt.Text = hp.." / "..mhp
+    bg.BotLbl.Text, bg.BotLbl.TextColor3 = "[Lv."..lvl.."] "..m_floor(dSq^0.5).."m | "..s_upper(wep), mainColor
 end
 
 local MaruUI = {}
@@ -213,10 +224,9 @@ MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Confi
 
 RS.Heartbeat:Connect(function() 
     table.clear(MCXC.State.PlrData); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not myR then return end; local minD, targ, activeP = m_huge, nil, {}
-    for _, p in ipairs(Plyrs:GetPlayers()) do 
-        activeP[p.Name] = true
-        if p ~= LP and p.Character then 
+    if not myR then return end; local minD, targ = m_huge, nil
+    for _, p in pairs(MCXC.State.ActivePlayers) do 
+        if p.Character then 
             local tR, hum = p.Character:FindFirstChild("HumanoidRootPart"), p.Character:FindFirstChild("Humanoid")
             if tR and hum and hum.Health > 0 then 
                 local dSq = Utils.DistSq(tR.Position, myR.Position); local isAlly = (p.Team == LP.Team and LP.Team ~= nil)
@@ -226,7 +236,6 @@ RS.Heartbeat:Connect(function()
             end 
         end 
     end
-    for name, esp in pairs(MCXC.Cache.ESP) do if not activeP[name] then if esp then esp:Destroy() end; MCXC.Cache.ESP[name] = nil end end
     MCXC.State.CurrentTarget = targ 
 end)
 
@@ -234,15 +243,15 @@ local fF, lFT = 0, t_tick()
 RS.RenderStepped:Connect(function() 
     local n = t_tick(); fF = fF + 1
     if n - lFT >= 1 then 
-        local fps = m_floor(fF / (n - lFT)); fF, lFT = 0, n
-        if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..tostring(fps), "PING: "..tostring(m_floor(Utils.GetPing())).."ms" end 
+        local fps = m_floor(fF / (n - lFT)); fF, lFT = 0, n; MCXC.State.Ping = Utils.GetPing()/1000
+        if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..tostring(fps), "PING: "..tostring(m_floor(MCXC.State.Ping*1000)).."ms" end 
     end
     local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end
     local targ = MCXC.State.CurrentTarget
     if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then Visuals.UpdateTracer(MCXC.State.PlrData[targ.Name].tR, myR, Theme.Target) else Visuals.ClearTracer() end
-    for _, p in ipairs(Plyrs:GetPlayers()) do if p ~= LP then 
+    for _, p in pairs(MCXC.State.ActivePlayers) do 
         local d = MCXC.State.PlrData[p.Name]
         if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.isAlly, d.hp, d.mhp, d.wep, d.lvl) 
         else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end 
-    end end 
+    end 
 end)
