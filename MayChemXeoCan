@@ -42,14 +42,24 @@ function Utils.MakeDraggable(topbar, object)
     UIS.InputChanged:Connect(function(input) if input == dragInput and dragging then local delta = input.Position - dragStart; object.Position = U2(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 end
 
+function Utils.Apply120FPS(v)
+    pcall(function()
+        if v then settings().Rendering.QualityLevel = Enum.QualityLevel.Level01; if setfpscap then setfpscap(144) end
+        else settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic; if setfpscap then setfpscap(60) end end
+    end)
+end
+
 function Utils.ApplySkeletonFix(v)
     if not v or not v:IsDescendantOf(workspace) then return end
     if v:IsDescendantOf(LP.Character) or v:IsA("Tool") then return end
     pcall(function()
-        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Explosion") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Decal") or v:IsA("Texture") then
-            v:Destroy()
+        if v:IsA("ParticleEmitter") then
+            if v.Rate > 20 then v.Enabled = false end
+        elseif v:IsA("Explosion") or v:IsA("Fire") or v:IsA("Smoke") then
+            v.Enabled = false
         elseif v:IsA("MeshPart") then
-            v.TextureID = ""; v.Material = Enum.Material.SmoothPlastic; v.CastShadow = false; v.Reflectance = 0
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
         end
     end)
 end
@@ -70,7 +80,7 @@ function Combat.SW(t)
 end
 
 local tArr = {{"melee","human","art","claw","step","talon"},{"fruit","dragon","kitsune","dough","leopard","buddha","portal"},{"sword","katana","blade","sword","tushita","yama","cdk","trident"},{"gun","rifle","kabucha","serpent","guitar"}}
-local function GetToolType(tool) if not tool then return "0" end; local n, v = s_lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt then v = s_lower(tt.Value) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if s_find(n,k) or s_find(v,k) then return tostring(i) end end end; return "0" end
+local function GetToolType(tool) if not tool then return "0" end; local n, v = s_lower(tool.Name), ""; local tt = tool:FindFirstChild("ToolTip"); if tt and typeof(tt.Value)=="string" then v = s_lower(tt.Value) end; for i=1,4 do for _,k in ipairs(tArr[i]) do if s_find(n,k) or s_find(v,k) then return tostring(i) end end end; return "0" end
 
 function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
     if MCXC.State.Status == "CASTING" then return end
@@ -83,7 +93,8 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
             local st, _ = Combat.CheckStates(LP.Character); if MCXC.State.Status == "IDLE" or st then comboFailed = true; break end
             local key = s_sub(seq, i, i)
             if s_match(key, "[1-4]") then
-                curWepType = key; local kc = Enum.KeyCode["Number"..key]
+                curWepType = key; 
+                local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
                 VIM:SendKeyEvent(true, kc, false, game); t_wait(0.01); VIM:SendKeyEvent(false, kc, false, game)
                 local w = t_tick(); while t_tick()-w < 0.4 do if MCXC.State.Status == "IDLE" then break end; local tk = LP.Character:FindFirstChildOfClass("Tool"); if tk and GetToolType(tk)==key then break end; RS.Heartbeat:Wait() end
             elseif s_match(key, "[ZXCVF]") then
@@ -231,12 +242,12 @@ local sT; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sT then 
 
 TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) MCXC.State.SetupMode=v; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable=v end; if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable=v end; if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable=v end; if not v then pcall(function() MCXC.Config.BtnPosC, MCXC.Config.BtnPosC2, MCXC.Config.BtnPosX = {MCXC.Cache.BtnC.Position.X.Scale, MCXC.Cache.BtnC.Position.X.Offset, MCXC.Cache.BtnC.Position.Y.Scale, MCXC.Cache.BtnC.Position.Y.Offset}, {MCXC.Cache.BtnC2.Position.X.Scale, MCXC.Cache.BtnC2.Position.X.Offset, MCXC.Cache.BtnC2.Position.Y.Scale, MCXC.Cache.BtnC2.Position.Y.Offset}, {MCXC.Cache.BtnX.Position.X.Scale, MCXC.Cache.BtnX.Position.X.Offset, MCXC.Cache.BtnX.Position.Y.Scale, MCXC.Cache.BtnX.Position.Y.Offset}; SaveConfig() end) end end)
 TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false); TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end); TabS:CreateToggle("120 FPS", "UnlockFPS", function(v) MCXC.Config.UnlockFPS = v; Utils.Apply120FPS(v); SaveConfig() end)
-TabS:CreateDoubleButton("Fix Lag", Theme.Accent, function() MCXC.State.LagFixed = true; for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplySkeletonFix(v) end; Lg.GlobalShadows = false; settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
+TabS:CreateDoubleButton("Fix Lag", Theme.Accent, function() MCXC.State.LagFixed = true; for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplySkeletonFix(v) end; settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
 
 LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
 workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then table.insert(MCXC.Cache.LagQueue, v) end end)
 
-local function CrBtn(name, pos, color, skey, zkey) local b = I_new("ImageButton", Gui); b.Size, b.BackgroundColor3, b.BackgroundTransparency, b.Visible, b.ZIndex = U2(0,MCXC.Config[zkey],0,MCXC.Config[zkey]), C3(15,15,15), MCXC.Config.UITrans, MCXC.Config[skey], 5; pcall(function() b.Position = U2(unpack(pos)) end); I_new("UICorner", b).CornerRadius = UD(0.5,0); local s = I_new("UIStroke", b); s.Color, s.Thickness, s.Transparency = color, 1.5, 0.2; local l = I_new("TextLabel", b); l.Size, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(1,0,1,0), 1, name, color, Theme.FontBold, m_floor(MCXC.Config[zkey]*0.4); return b, s end
+local function CrBtn(name, pos, color, skey, zkey) local b = I_new("TextButton", Gui); b.Size, b.BackgroundColor3, b.BackgroundTransparency, b.Text, b.TextColor3, b.Font, b.TextSize, b.Visible, b.ZIndex = U2(0,MCXC.Config[zkey],0,MCXC.Config[zkey]), C3(15,15,15), MCXC.Config.UITrans, name, color, Theme.FontBold, m_floor(MCXC.Config[zkey]*0.4), MCXC.Config[skey], 5; pcall(function() b.Position = U2(unpack(pos)) end); I_new("UICorner", b).CornerRadius = UD(0.5,0); local s = I_new("UIStroke", b); s.Color, s.Thickness, s.Transparency = color, 1.5, 0.2; return b, s end
 MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC"); MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2"); MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
 
 local function ProcessQueue()
