@@ -1,3 +1,4 @@
+-- PHẦN 1
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Plyrs, RS, VIM, CGui, TS, HS, St, UIS, Lg = game:GetService("Players"), game:GetService("RunService"), game:GetService("VirtualInputManager"), game:GetService("CoreGui"), game:GetService("TweenService"), game:GetService("HttpService"), game:GetService("Stats"), game:GetService("UserInputService"), game:GetService("Lighting")
 local LP = Plyrs.LocalPlayer
@@ -19,8 +20,12 @@ pcall(function() if isfile and isfile(ConfigName) then local s = HS:JSONDecode(r
 local function SaveConfig() pcall(function() writefile(ConfigName, HS:JSONEncode(MCXC.Config)) end) end
 
 local function ManagePlayer(p, remove)
-    if remove then MCXC.State.ActivePlayers[p.Name] = nil; if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy(); MCXC.Cache.ESP[p.Name] = nil end
-    else if p ~= LP then MCXC.State.ActivePlayers[p.Name] = p end end
+    if remove then 
+        MCXC.State.ActivePlayers[p.Name] = nil
+        if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name]:Destroy(); MCXC.Cache.ESP[p.Name] = nil end
+    else 
+        if p ~= LP then MCXC.State.ActivePlayers[p.Name] = p end 
+    end
 end
 for _, p in ipairs(Plyrs:GetPlayers()) do ManagePlayer(p) end
 Plyrs.PlayerAdded:Connect(function(p) ManagePlayer(p) end)
@@ -44,14 +49,21 @@ function Utils.Apply120FPS(v)
     end)
 end
 
-function Utils.ApplyFixLag(v)
+function Utils.ApplySkeletonFix(v)
+    if not v or not v:IsDescendantOf(workspace) then return end
+    if v:IsDescendantOf(LP.Character) or v:IsA("Tool") then return end
     pcall(function()
-        if not v or not v:IsDescendantOf(workspace) then return end
-        if v:IsDescendantOf(LP.Character) or v:IsA("Tool") then return end
-        if v:IsA("BasePart") and not v.Parent:FindFirstChildOfClass("Humanoid") then v.CastShadow = false; v.Material = Enum.Material.SmoothPlastic
-        elseif v:IsA("MeshPart") then v.TextureID = ""; v.RenderFidelity = Enum.RenderFidelity.Performance
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then v.Enabled = false
-        elseif v:IsA("Explosion") or v:IsA("Fire") or v:IsA("Smoke") then v:Destroy() end
+        if v:IsA("ParticleEmitter") then
+            if v.Rate > 10 or (v.Size.Keypoints[1] and v.Size.Keypoints[1].Value > 5) then v.Enabled = false end
+        elseif v:IsA("Trail") or v:IsA("Beam") then
+            if v.Width0 > 3 or v.Width1 > 3 then v.Enabled = false end
+        elseif v:IsA("MeshPart") then
+            v.TextureID = ""; v.Material = Enum.Material.SmoothPlastic; v.CastShadow = false; v.Reflectance = 0
+        elseif v:IsA("Explosion") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+            v:Destroy()
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            v:Destroy()
+        end
     end)
 end
 
@@ -221,15 +233,18 @@ local sE; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if sE then
 local sT; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sT then sT.Visible=v end; if not v then Visuals.ClearTracer() end end); sT = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true); sT.Visible = MCXC.Config.ViewTracer
 
 TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) MCXC.State.SetupMode=v; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable=v end; if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable=v end; if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable=v end; if not v then pcall(function() MCXC.Config.BtnPosC, MCXC.Config.BtnPosC2, MCXC.Config.BtnPosX = {MCXC.Cache.BtnC.Position.X.Scale, MCXC.Cache.BtnC.Position.X.Offset, MCXC.Cache.BtnC.Position.Y.Scale, MCXC.Cache.BtnC.Position.Y.Offset}, {MCXC.Cache.BtnC2.Position.X.Scale, MCXC.Cache.BtnC2.Position.X.Offset, MCXC.Cache.BtnC2.Position.Y.Scale, MCXC.Cache.BtnC2.Position.Y.Offset}, {MCXC.Cache.BtnX.Position.X.Scale, MCXC.Cache.BtnX.Position.X.Offset, MCXC.Cache.BtnX.Position.Y.Scale, MCXC.Cache.BtnX.Position.Y.Offset}; SaveConfig() end) end end)
-TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false); TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end); TabS:CreateToggle("120 FPS", "UnlockFPS", function(v) MCXC.Config.UnlockFPS = v; Utils.Apply120FPS(v); SaveConfig() end); TabS:CreateDoubleButton("Fix Lag", Theme.Accent, function() MCXC.State.LagFixed = true; for _, v in ipairs(game:GetDescendants()) do Utils.ApplyFixLag(v) end end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
+TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false); TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end); TabS:CreateToggle("120 FPS", "UnlockFPS", function(v) MCXC.Config.UnlockFPS = v; Utils.Apply120FPS(v); SaveConfig() end)
+TabS:CreateDoubleButton("Skeleton Fix", Theme.Accent, function() MCXC.State.LagFixed = true; for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplySkeletonFix(v) end; Lg.GlobalShadows = false; Lg.FogEnd = 9e9; settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
 
-LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end); workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then Utils.ApplyFixLag(v) end end)
+LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
+workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then t_delay(0.01, function() Utils.ApplySkeletonFix(v) end) end end)
 local function CrBtn(name, pos, color, skey, zkey) local b = I_new("TextButton", Gui); b.Size, b.BackgroundColor3, b.BackgroundTransparency, b.Text, b.TextColor3, b.Font, b.TextSize, b.Visible, b.ZIndex = U2(0,MCXC.Config[zkey],0,MCXC.Config[zkey]), C3(15,15,15), MCXC.Config.UITrans, name, color, Theme.FontBold, m_floor(MCXC.Config[zkey]*0.4), MCXC.Config[skey], 5; pcall(function() b.Position = U2(unpack(pos)) end); I_new("UICorner", b).CornerRadius = UD(0.5,0); local s = I_new("UIStroke", b); s.Color, s.Thickness, s.Transparency = color, 1.5, 0.2; return b, s end
 MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC"); MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2"); MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
 local function HandleCombo(id, str, br, sr, col) if MCXC.State.SetupMode then return end; if MCXC.State.Status == "CASTING" then if MCXC.State.CurrentCombo == id then if MCXC.Config.CancelOnTap then MCXC.State.Status = "IDLE" end end else Combat.ExecuteCombo(id, str, function() Utils.Tween(sr, {Thickness=2.5, Color=Theme.Text}, 0.05) end, function() Utils.Tween(sr, {Thickness=1.5, Color=col}, 0.15) end, function() Utils.Tween(sr, {Thickness=1.5, Color=col}, 0.15) end) end end
 MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.BtnC, MCXC.Cache.StrC, Theme.Danger) end); MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.BtnC2, MCXC.Cache.StrC2, Theme.Accent) end); MCXC.Cache.BtnX.MouseButton1Click:Connect(function() MCXC.State.Status = "IDLE" end)
 
 RS.Heartbeat:Connect(function() 
+    if t_tick() - MCXC.State.LastTick > 60 then MCXC.State.LastTick = t_tick(); collectgarbage("collect") end
     table.clear(MCXC.State.PlrData); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if not myR then return end; local minD, targ = m_huge, nil
     for _, p in pairs(MCXC.State.ActivePlayers) do 
