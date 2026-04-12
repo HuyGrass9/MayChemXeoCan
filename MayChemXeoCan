@@ -8,7 +8,7 @@ local m_floor, m_clamp, m_max, m_huge = math.floor, math.clamp, math.max, math.h
 local s_lower, s_upper, s_sub, s_find, s_match = string.lower, string.upper, string.sub, string.find, string.match
 local I_new = Instance.new
 local MCXC = {
-    Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500, ESP = false, ViewTracer = false, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true, UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}},
+    Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500, ESP = false, ViewTracer = false, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}},
     State = {SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "LOAD MACRO", MenuOpen = false, LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60, LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}},
     Cache = {ESP = {}, TracerLine = nil, UIElements = {}}
 }
@@ -140,6 +140,41 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
         t_delay(0.2, function() if not s_find(MCXC.State.Status, "CASTING") and not MCXC.State.ComboQueue then MCXC.State.Status = "IDLE" end; if onEnd then onEnd() end end)
     end)
 end
+local Visuals = {}
+function Visuals.UpdateTracer(tR, myR, color)
+    if not MCXC.Cache.TracerLine or not MCXC.Cache.TracerLine.Beam.Parent then 
+        local a1, a2, b = I_new("Attachment"), I_new("Attachment"), I_new("Beam")
+        a1.Name = "A1_"..MCXC.State.SessionID; a2.Name = "A2_"..MCXC.State.SessionID; b.Name = "Tracer_"..MCXC.State.SessionID
+        b.Attachment0, b.Attachment1, b.FaceCamera, b.Width0, b.Width1, b.Transparency = a1, a2, true, 0.8, 0.8, NS(0.1)
+        MCXC.Cache.TracerLine = {Beam = b, A1 = a1, A2 = a2} 
+    end
+    local tr = MCXC.Cache.TracerLine; tr.A1.Parent, tr.A2.Parent, tr.Beam.Parent = myR, tR, tR
+    tr.Beam.Color, tr.Beam.Enabled = CS(color or Theme.Target), true
+end
+function Visuals.ClearTracer() if MCXC.Cache.TracerLine and MCXC.Cache.TracerLine.Beam then MCXC.Cache.TracerLine.Beam.Enabled = false end end
+function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, lvl)
+    if not tR or not tR:IsDescendantOf(workspace) or dSq > MCXC.Config.RenderDist*MCXC.Config.RenderDist or not MCXC.Config.ESP then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
+    local cam = workspace.CurrentCamera; local _, onScreen = cam:WorldToViewportPoint(tR.Position)
+    if not onScreen then if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end; return end
+    local bg = MCXC.Cache.ESP[p.Name]
+    if not bg or bg.Parent ~= MCXC.Cache.ESPFolder then
+        if bg then bg:Destroy() end; bg = I_new("BillboardGui", MCXC.Cache.ESPFolder); bg.Name = "ESP_"..MCXC.State.SessionID; bg.Size, bg.AlwaysOnTop, bg.StudsOffset = U2(0,55,0,18), true, V3(0,3,0)
+        local nL = I_new("TextLabel", bg); nL.Name, nL.Size, nL.BackgroundTransparency, nL.Font, nL.TextSize = "NameLbl", U2(1,0,0,8), 1, Theme.FontBold, 8
+        local strN = I_new("UIStroke", nL); strN.Thickness, strN.Color = 1.5, C3(0,0,0)
+        local hB = I_new("Frame", bg); hB.Name, hB.Size, hB.Position, hB.BackgroundColor3 = "HpBg", U2(0.9,0,0,6), U2(0.05,0,0,9), C3(10,10,10); I_new("UICorner", hB).CornerRadius = UD(0,2); local strH = I_new("UIStroke", hB); strH.Thickness, strH.Color = 1.5, C3(0,0,0)
+        local hF = I_new("Frame", hB); hF.Name, hF.Size = "Fill", U2(1,0,1,0); I_new("UICorner", hF).CornerRadius = UD(0,2)
+        local hT = I_new("TextLabel", hB); hT.Name, hT.Size, hT.BackgroundTransparency, hT.Font, hT.TextSize, hT.TextColor3 = "HpTxt", U2(1,0,1,0), 1, Theme.FontBold, 7, C3(255,255,255)
+        local bL = I_new("TextLabel", bg); bL.Name, bL.Size, bL.Position, bL.BackgroundTransparency, bL.Font, bL.TextSize = "BotLbl", U2(1,0,0,6), U2(0,0,0,16), 1, Theme.FontBold, 7
+        local strB = I_new("UIStroke", bL); strB.Thickness, strB.Color = 1.5, C3(0,0,0)
+        MCXC.Cache.ESP[p.Name] = bg
+    end
+    local mainColor = isTarget and Theme.Target or (isAlly and Theme.Ally or Theme.Text)
+    bg.Adornee, bg.Enabled = tR, true
+    bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainColor
+    bg.HpBg.Fill.Size, bg.HpBg.Fill.BackgroundColor3 = U2(m_clamp(hp/mhp, 0, 1), 0, 1, 0), mainColor
+    bg.HpBg.HpTxt.Text = hp.." / "..mhp
+    bg.BotLbl.Text, bg.BotLbl.TextColor3 = "[Lv."..lvl.."] "..m_floor(dSq^0.5).."m", mainColor
+end
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
     local p = CGui; pcall(function() if gethui then p = gethui() end end); 
@@ -175,7 +210,7 @@ function MaruUI:CreateWindow(title)
                 local vL = I_new("TextLabel", c); vL.Size, vL.Position, vL.BackgroundTransparency, vL.TextColor3, vL.Font, vL.TextSize, vL.TextXAlignment, vL.ZIndex = U2(0.3,0,0,25), U2(0.7,-10,0,5), 1, Theme.Accent, Theme.FontBold, 12, 1, 5; vL.Text = tostring(MCXC.Config[key])
                 local tr = I_new("Frame", c); tr.Size, tr.Position, tr.BackgroundColor3 = U2(1,-20,0,6), U2(0,10,0,35), C3(40,40,45); I_new("UICorner", tr).CornerRadius = UD(1,0)
                 local fill = I_new("Frame", tr); fill.Size, fill.BackgroundColor3 = U2((MCXC.Config[key]-min)/(max-min),0,1,0), Theme.Accent; I_new("UICorner", fill).CornerRadius = UD(1,0)
-                local tB = I_new("TextButton", c); tB.Size, b.BackgroundTransparency, b.Text = U2(1,0,1,0), 1, ""; local drag = false
+                local tB = I_new("TextButton", c); tB.Size, tB.BackgroundTransparency, tB.Text = U2(1,0,1,0), 1, ""; local drag = false
                 local function upd(i) local p = m_clamp((i.Position.X - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1); local val = min + (max-min)*p; if isInt then val = m_floor(val) else val = m_floor(val*100)/100 end; fill.Size, vL.Text, MCXC.Config[key] = U2(p,0,1,0), tostring(val), val; if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size=U2(0,val,0,val) end; if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size=U2(0,val,0,val) end; if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size=U2(0,val,0,val) end; if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end end end
                 tB.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; upd(i) end end); UIS.InputEnded:Connect(function() drag=false; SaveConfig() end); UIS.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then upd(i) end end); return c end,
             CreateInput = function(s, text, key, cb) s.LIdx = s.LIdx + 1; local c = I_new("Frame", s.Frame); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,45), Theme.ElementBG, s.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
@@ -185,7 +220,7 @@ function MaruUI:CreateWindow(title)
 end
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
 local TabC, TabV, TabS = Win:CreateTab("Combat"), Win:CreateTab("Visuals"), Win:CreateTab("Settings")
-TabC:CreateToggle("Fast Skill (Manual)", "Macro", nil)
+TabC:CreateToggle("Fast Skill (Manual Mode)", "Macro", nil)
 TabC:CreateInput("Combo C", "ComboC")
 local sC; TabC:CreateToggle("Show Button C", "ShowC", function(v) if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible=v end; if sC then sC.Visible=v end end); sC = TabC:CreateSlider("Size C", 40, 100, "BtnSizeC", true); sC.Visible = MCXC.Config.ShowC
 TabC:CreateInput("Combo C2", "ComboC2")
