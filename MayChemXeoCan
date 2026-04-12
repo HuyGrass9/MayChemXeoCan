@@ -108,7 +108,6 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                         RS.Heartbeat:Wait() 
                     end
                     if not wT then comboFailed = true; break end
-                    t_wait(0.1)
                 end
             elseif s_match(key, "[ZXCVF]") then
                 local kc = Enum.KeyCode[key]; local holdTime = MCXC.Config.HoldEnabled and (MCXC.Config["Hold_"..curWepType..key] or 0) or 0
@@ -141,12 +140,8 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
         MCXC.State.Status = "IDLE"
         
         if comboFailed then
-            MCXC.State.ComboQueue = nil
-            if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1) end
-            if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end
-            
-            Utils.Tween(strUI, {Thickness=3, Color=Theme.Danger}, 0.1)
-            t_delay(0.8, function() if MCXC.State.Status ~= "CASTING" then Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2) end end)
+            Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Danger}, 0.1)
+            t_delay(0.5, function() if MCXC.State.Status ~= "CASTING" then Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2) end end)
         else
             Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2)
         end
@@ -250,7 +245,7 @@ function MaruUI:CreateWindow(title)
 end
 -- PHẦN 3
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
-local TabC, TabV, TabS = Win:CreateTab("Combat"), TabV = Win:CreateTab("Visuals"), TabS = Win:CreateTab("Settings")
+local TabC, TabV, TabS = Win:CreateTab("Combat"), Win:CreateTab("Visuals"), Win:CreateTab("Settings")
 
 TabC:CreateToggle("Macro", "Macro", nil); TabC:CreateInput("Combo C", "ComboC")
 local sC; TabC:CreateToggle("Show Button C", "ShowC", function(v) if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible=v end; if sC then sC.Visible=v end end); sC = TabC:CreateSlider("Size C", 40, 100, "BtnSizeC", true); sC.Visible = MCXC.Config.ShowC
@@ -296,7 +291,7 @@ end
 local function HandleCombo(id, str, strUI, col)
     if MCXC.State.SetupMode then return end
     if MCXC.State.Status == "CASTING" then
-        if MCXC.State.CurrentCombo == id then if MCXC.Config.CancelOnTap then MCXC.State.Status = "IDLE" end
+        if MCXC.State.CurrentCombo == id then if MCXC.Config.CancelOnTap then MCXC.State.Status = "IDLE"; MCXC.State.ComboQueue = nil end
         else MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}; Utils.Tween(strUI, {Thickness=2.5, Color=C3(255, 210, 0)}, 0.15) end
     else Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue) end
 end
