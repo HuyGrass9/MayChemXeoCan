@@ -8,7 +8,7 @@ local m_floor, m_clamp, m_max, m_huge = math.floor, math.clamp, math.max, math.h
 local s_lower, s_upper, s_sub, s_find, s_match = string.lower, string.upper, string.sub, string.find, string.match
 local I_new = Instance.new
 local MCXC = {
-    Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500, ESP = false, ViewTracer = false, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true, UnlockFPS = true, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}},
+    Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500, ESP = false, ViewTracer = false, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}},
     State = {SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "LOAD MACRO", MenuOpen = false, LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}},
     Cache = {ESP = {}, TracerLine = nil, UIElements = {}}
 }
@@ -84,7 +84,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
         local charTool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
         if charTool then curWepType = GetToolType(charTool) end
         for i = 1, #seq do
-            local st, bsy = Combat.CheckStates(LP.Character)
+            local st, _ = Combat.CheckStates(LP.Character)
             if st or s_find(MCXC.State.Status, "CANCEL") then comboFailed = true; failR = "STUNNED"; break end
             local key = s_sub(seq, i, i)
             if s_match(key, "[1-4]") then
@@ -92,18 +92,28 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 curWepType = key; local targetTool = nil
                 for _, v in pairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") and GetToolType(v) == key then targetTool = v; break end end
                 if not targetTool then local charT = LP.Character:FindFirstChildOfClass("Tool"); if charT and GetToolType(charT) == key then targetTool = charT end end
-                if not targetTool then comboFailed = true; failR = "NOT READY"; break end
+                if not targetTool then comboFailed = true; failR = "NO TOOL"; break end
                 local tT = LP.Character:FindFirstChildOfClass("Tool")
                 if not tT or GetToolType(tT)~=key then
                     local kc = Enum.KeyCode.One; if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
                     VIM:SendKeyEvent(true, kc, false, game); t_wait(0.01); VIM:SendKeyEvent(false, kc, false, game)
                     local w, wT = t_tick(), false
-                    while t_tick()-w < 0.5 do 
+                    while t_tick()-w < 0.4 do 
                         local tk = LP.Character:FindFirstChildOfClass("Tool")
                         if tk and GetToolType(tk)==key then wT = true; break end
                         RS.Heartbeat:Wait() 
                     end
-                    if not wT and targetTool then pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end) end
+                    if not wT and targetTool then 
+                        pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
+                        local w2 = t_tick()
+                        while t_tick()-w2 < 0.2 do
+                            local tk = LP.Character:FindFirstChildOfClass("Tool")
+                            if tk and GetToolType(tk)==key then wT = true; break end
+                            RS.Heartbeat:Wait()
+                        end
+                    end
+                    if not wT then comboFailed = true; failR = "EQUIP FAIL"; break end
+                    t_wait(0.05)
                 end
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
@@ -112,31 +122,38 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 if not Combat.SW(m_max(0.01, holdTime)) then comboFailed = true; failR = "STUNNED"; break end
                 VIM:SendKeyEvent(false, kc, false, game); currentHeldKey = nil
                 local wR, fired = t_tick(), false
-                while t_tick() - wR < 0.5 do
+                while t_tick() - wR < 0.4 do
                     local stn, bsy2 = Combat.CheckStates(LP.Character)
-                    if stn then break end; if bsy2 then fired = true; break end
+                    if stn then comboFailed = true; failR = "STUNNED"; break end
+                    if bsy2 then fired = true; break end
                     RS.Heartbeat:Wait()
                 end
+                if comboFailed then break end
+                if not fired then comboFailed = true; failR = "COOLDOWN"; break end
                 local wA = t_tick()
                 while t_tick() - wA < 3 do
                     local stn, bsy2 = Combat.CheckStates(LP.Character)
-                    if stn or not bsy2 then break end
+                    if stn then comboFailed = true; failR = "INTERRUPTED"; break end
+                    if not bsy2 then break end
                     RS.Heartbeat:Wait()
                 end
-                if Combat.CheckStates(LP.Character) then comboFailed = true; failR = "STUNNED"; break end
+                if comboFailed then break end
+                t_wait(0.05)
             end
         end
         if currentHeldKey then pcall(function() VIM:SendKeyEvent(false, currentHeldKey, false, game) end) end
         if comboFailed then
             MCXC.State.Status = "CANCEL: " .. failR; MCXC.State.ComboQueue = nil
-            Utils.Tween(strUI, {Thickness=3, Color=Theme.Danger}, 0.1)
+            Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Danger}, 0.1)
             t_delay(0.5, function() Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2) end)
         else
             MCXC.State.Status = "DONE: " .. comboId
             Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2)
         end
-        t_delay(0.5, function() if not s_find(MCXC.State.Status, "CASTING") then MCXC.State.Status = "IDLE" end end)
-        if onEnd then onEnd() end
+        t_delay(0.3, function() 
+            if not s_find(MCXC.State.Status, "CASTING") and not MCXC.State.ComboQueue then MCXC.State.Status = "IDLE" end
+            if onEnd then onEnd() end 
+        end)
     end)
 end
 local Visuals = {}
@@ -248,7 +265,13 @@ workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then Utils.
 local function CrBtn(name, pos, color, skey, zkey) local b = I_new("TextButton", Gui); b.Size, b.BackgroundColor3, b.BackgroundTransparency, b.Text, b.TextColor3, b.Font, b.TextSize, b.Visible, b.ZIndex = U2(0,MCXC.Config[zkey],0,MCXC.Config[zkey]), C3(15,15,15), MCXC.Config.UITrans, name, color, Theme.FontBold, m_floor(MCXC.Config[zkey]*0.4), MCXC.Config[skey], 5; pcall(function() b.Position = U2(unpack(pos)) end); I_new("UICorner", b).CornerRadius = UD(0.5,0); local s = I_new("UIStroke", b); s.Color, s.Thickness, s.Transparency = color, 1.5, 0.2; return b, s end
 MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC"); MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2"); MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
 local function ProcessQueue()
-    if not s_find(MCXC.State.Status, "CASTING") and MCXC.State.ComboQueue then
+    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
+        if s_find(MCXC.State.Status, "CANCEL") then 
+            MCXC.State.ComboQueue = nil
+            if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1) end
+            if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end
+            return 
+        end
         local q = MCXC.State.ComboQueue; MCXC.State.ComboQueue = nil
         Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
     end
@@ -259,7 +282,7 @@ local function HandleCombo(id, str, strUI, col)
         if MCXC.State.CurrentCombo == id then
             if MCXC.Config.CancelOnTap then 
                 MCXC.State.Status = "CANCEL: MANUAL"; MCXC.State.ComboQueue = nil
-                Utils.Tween(MCXC.Cache.StrC, {Color=Theme.Danger}, 0.1); Utils.Tween(MCXC.Cache.StrC2, {Color=Theme.Accent}, 0.1)
+                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1); Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
             end
         else 
             MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
@@ -298,8 +321,8 @@ RS.RenderStepped:Connect(function()
     if MCXC.Cache.StatusLbl then MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status) end
     if not MCXC.State.ComboQueue then 
         if not s_find(MCXC.State.Status, "CASTING") then
-            if MCXC.Cache.StrC then MCXC.Cache.StrC.Thickness = 1.5 end
-            if MCXC.Cache.StrC2 then MCXC.Cache.StrC2.Thickness = 1.5 end
+            if MCXC.Cache.StrC and MCXC.State.CurrentCombo ~= "C" then Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1) end
+            if MCXC.Cache.StrC2 and MCXC.State.CurrentCombo ~= "C2" then Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end
         end
     end
     local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end
