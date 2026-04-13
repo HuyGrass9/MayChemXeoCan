@@ -117,7 +117,8 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 end
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
-                local kc = Enum.KeyCode[key]; local holdTime = MCXC.Config.HoldEnabled and (MCXC.Config["Hold_"..curWepType..key] or 0) or 0
+                local kc = Enum.KeyCode[key]; local holdTime = 0
+                if MCXC.Config.HoldEnabled and s_find(s_upper(MCXC.Config.HoldSetup or ""), curWepType..key) then holdTime = MCXC.Config["Hold_"..curWepType..key] or 0 end
                 currentHeldKey = kc; local wR, fired = t_tick(), false
                 while t_tick() - wR < 0.3 * aD do
                     local stn, bsy2 = Combat.CheckStates(LP.Character); if stn then comboFailed = true; failR = "STUNNED"; break end
