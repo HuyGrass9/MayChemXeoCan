@@ -8,8 +8,8 @@ local m_floor, m_clamp, m_max, m_huge = math.floor, math.clamp, math.max, math.h
 local s_lower, s_upper, s_sub, s_find, s_match = string.lower, string.upper, string.sub, string.find, string.match
 local I_new = Instance.new
 local MCXC = {
-    Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500, ESP = false, ViewTracer = false, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}},
-    State = {SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "LOAD MACRO", MenuOpen = false, LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60, LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}},
+    Config = {ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500, ESP = false, ViewTracer = false, BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false, ShowB1 = false, ShowB2 = false, ShowB3 = false, ShowB4 = false, ShowCycle = false, BtnSize1 = 45, BtnSize2 = 45, BtnSize3 = 45, BtnSize4 = 45, BtnSizeCycle = 50, Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false, ShowStats = true, CancelOnTap = true, BtnPosC = {0.8, 0, 0.4, 0}, BtnPosC2 = {0.8, 0, 0.55, 0}, BtnPosX = {0.8, 0, 0.7, 0}, BtnPos1 = {0.8, 0, 0.1, 0}, BtnPos2 = {0.8, 0, 0.2, 0}, BtnPos3 = {0.8, 0, 0.3, 0}, BtnPos4 = {0.8, 0, 0.4, 0}, BtnPosCycle = {0.8, 0, 0.5, 0}},
+    State = {SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "LOAD MACRO", MenuOpen = false, LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60, LagFixed = false, CurrentCombo = nil, ComboQueue = nil, CycleIdx = 0, ActivePlayers = {}, PlrData = {}},
     Cache = {ESP = {}, TracerLine = nil, UIElements = {}}
 }
 local Theme = {BG = C3(15, 15, 18), Sidebar = C3(10, 10, 12), ElementBG = C3(22, 22, 26), Accent = C3(0, 170, 255), Text = C3(255, 255, 255), TextDark = C3(160, 160, 170), Danger = C3(255, 50, 70), Target = C3(255, 210, 0), Font = Enum.Font.GothamMedium, FontBold = Enum.Font.GothamBold, FontBlack = Enum.Font.GothamBlack, Ally = C3(0, 255, 120)}
@@ -216,7 +216,7 @@ function MaruUI:CreateWindow(title)
                 local tr = I_new("Frame", c); tr.Size, tr.Position, tr.BackgroundColor3 = U2(1,-20,0,6), U2(0,10,0,35), C3(40,40,45); I_new("UICorner", tr).CornerRadius = UD(1,0)
                 local fill = I_new("Frame", tr); fill.Size, fill.BackgroundColor3 = U2((MCXC.Config[key]-min)/(max-min),0,1,0), Theme.Accent; I_new("UICorner", fill).CornerRadius = UD(1,0)
                 local tB = I_new("TextButton", c); tB.Size, tB.BackgroundTransparency, tB.Text = U2(1,0,1,0), 1, ""; local drag = false
-                local function upd(i) local p = m_clamp((i.Position.X - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1); local val = min + (max-min)*p; if isInt then val = m_floor(val) else val = m_floor(val*100)/100 end; fill.Size, vL.Text, MCXC.Config[key] = U2(p,0,1,0), tostring(val), val; if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size=U2(0,val,0,val) end; if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size=U2(0,val,0,val) end; if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size=U2(0,val,0,val) end; if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end end end
+                local function upd(i) local p = m_clamp((i.Position.X - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1); local val = min + (max-min)*p; if isInt then val = m_floor(val) else val = m_floor(val*100)/100 end; fill.Size, vL.Text, MCXC.Config[key] = U2(p,0,1,0), tostring(val), val; if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size=U2(0,val,0,val) end; if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size=U2(0,val,0,val) end; if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size=U2(0,val,0,val) end; if key=="BtnSize1" and MCXC.Cache.Btn1 then MCXC.Cache.Btn1.Size=U2(0,val,0,val) end; if key=="BtnSize2" and MCXC.Cache.Btn2 then MCXC.Cache.Btn2.Size=U2(0,val,0,val) end; if key=="BtnSize3" and MCXC.Cache.Btn3 then MCXC.Cache.Btn3.Size=U2(0,val,0,val) end; if key=="BtnSize4" and MCXC.Cache.Btn4 then MCXC.Cache.Btn4.Size=U2(0,val,0,val) end; if key=="BtnSizeCycle" and MCXC.Cache.BtnSwap then MCXC.Cache.BtnSwap.Size=U2(0,val,0,val) end; if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end end end
                 tB.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; upd(i) end end); UIS.InputEnded:Connect(function() drag=false; SaveConfig() end); UIS.InputChanged:Connect(function(i) if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then upd(i) end end); return c end,
             CreateInput = function(s, text, key, cb) s.LIdx = s.LIdx + 1; local c = I_new("Frame", s.Frame); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,45), Theme.ElementBG, s.LIdx; I_new("UICorner", c).CornerRadius = UD(0,6)
                 local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(0,10,0,0), 1, text, Theme.TextDark, Theme.Font, 12; local b = I_new("TextBox", c); b.Size, b.Position, b.BackgroundColor3, b.TextColor3, b.Font, b.TextSize, b.Text, b.ClearTextOnFocus = U2(0.55,-10,0,30), U2(0.45,0,0.5,-15), C3(20,20,22), Theme.Accent, Theme.FontBold, 12, tostring(MCXC.Config[key] or ""), false; I_new("UICorner", b).CornerRadius, I_new("UIStroke", b).Color = UD(0,4), C3(50,50,55); b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text}, 0.2) end); b.FocusLost:Connect(function() Utils.Tween(l, {TextColor3=Theme.TextDark}, 0.2); MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end); return c end,
@@ -236,20 +236,77 @@ local HoldF = I_new("Frame", TabC.Frame); HoldF.Name = "HoldContainer"; HoldF.Si
 local holdObj = {}
 local function RefreshH(txt) for _, s in pairs(holdObj) do s:Destroy() end; holdObj = {}; if not txt or txt == "" then return end; local idx = 0; for w, k in string.gmatch(s_upper(txt), "([1-4])([ZXCVF])") do idx = idx + 1; local sk = w..k; local key = "Hold_"..sk; if not MCXC.Config[key] then MCXC.Config[key] = 0.5 end; local s = TabC:CreateSlider("Hold "..sk.." (s)", 0, 5, key, false, HoldF); s.LayoutOrder = idx; table.insert(holdObj, s) end end
 TabC:CreateInput("Hold Setup (e.g 3Z2C)", "HoldSetup", function(val) RefreshH(val) end); RefreshH(MCXC.Config.HoldSetup)
+
+local function AddBtnConfig(tab, label, btnKey, cacheKey, sizeKey)
+    local sl; tab:CreateToggle(label, btnKey, function(v) if MCXC.Cache[cacheKey] then MCXC.Cache[cacheKey].Visible=v end; if sl then sl.Visible=v end end)
+    sl = tab:CreateSlider("Size " .. string.gsub(label, "Show Button ", ""), 30, 80, sizeKey, true); sl.Visible = MCXC.Config[btnKey]
+end
+AddBtnConfig(TabV, "Show Button 1", "ShowB1", "Btn1", "BtnSize1")
+AddBtnConfig(TabV, "Show Button 2", "ShowB2", "Btn2", "BtnSize2")
+AddBtnConfig(TabV, "Show Button 3", "ShowB3", "Btn3", "BtnSize3")
+AddBtnConfig(TabV, "Show Button 4", "ShowB4", "Btn4", "BtnSize4")
+AddBtnConfig(TabV, "Show Button SWAP", "ShowCycle", "BtnSwap", "BtnSizeCycle")
 local sE; TabV:CreateToggle("ESP Health & Weapon", "ESP", function(v) if sE then sE.Visible=v end; if not v then for _,c in pairs(MCXC.Cache.ESP) do if c then c.Enabled = false end end end end); sE = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true); sE.Visible = MCXC.Config.ESP
 local sT; TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if sT then sT.Visible=v end; if not v then Visuals.ClearTracer() end end); sT = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true); sT.Visible = MCXC.Config.ViewTracer
-TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) MCXC.State.SetupMode=v; if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable=v end; if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable=v end; if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable=v end; if not v then pcall(function() MCXC.Config.BtnPosC, MCXC.Config.BtnPosC2, MCXC.Config.BtnPosX = {MCXC.Cache.BtnC.Position.X.Scale, MCXC.Cache.BtnC.Position.X.Offset, MCXC.Cache.BtnC.Position.Y.Scale, MCXC.Cache.BtnC.Position.Y.Offset}, {MCXC.Cache.BtnC2.Position.X.Scale, MCXC.Cache.BtnC2.Position.X.Offset, MCXC.Cache.BtnC2.Position.Y.Scale, MCXC.Cache.BtnC2.Position.Y.Offset}, {MCXC.Cache.BtnX.Position.X.Scale, MCXC.Cache.BtnX.Position.X.Offset, MCXC.Cache.BtnX.Position.Y.Scale, MCXC.Cache.BtnX.Position.Y.Offset}; SaveConfig() end) end end)
+
+local btnList = {"BtnC", "BtnC2", "BtnX", "Btn1", "Btn2", "Btn3", "Btn4", "BtnSwap"}
+TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v) 
+    MCXC.State.SetupMode=v; 
+    for _, name in ipairs(btnList) do if MCXC.Cache[name] then MCXC.Cache[name].Draggable=v end end
+    if not v then pcall(function() 
+        MCXC.Config.BtnPosC = {MCXC.Cache.BtnC.Position.X.Scale, MCXC.Cache.BtnC.Position.X.Offset, MCXC.Cache.BtnC.Position.Y.Scale, MCXC.Cache.BtnC.Position.Y.Offset}
+        MCXC.Config.BtnPosC2 = {MCXC.Cache.BtnC2.Position.X.Scale, MCXC.Cache.BtnC2.Position.X.Offset, MCXC.Cache.BtnC2.Position.Y.Scale, MCXC.Cache.BtnC2.Position.Y.Offset}
+        MCXC.Config.BtnPosX = {MCXC.Cache.BtnX.Position.X.Scale, MCXC.Cache.BtnX.Position.X.Offset, MCXC.Cache.BtnX.Position.Y.Scale, MCXC.Cache.BtnX.Position.Y.Offset}
+        MCXC.Config.BtnPos1 = {MCXC.Cache.Btn1.Position.X.Scale, MCXC.Cache.Btn1.Position.X.Offset, MCXC.Cache.Btn1.Position.Y.Scale, MCXC.Cache.Btn1.Position.Y.Offset}
+        MCXC.Config.BtnPos2 = {MCXC.Cache.Btn2.Position.X.Scale, MCXC.Cache.Btn2.Position.X.Offset, MCXC.Cache.Btn2.Position.Y.Scale, MCXC.Cache.Btn2.Position.Y.Offset}
+        MCXC.Config.BtnPos3 = {MCXC.Cache.Btn3.Position.X.Scale, MCXC.Cache.Btn3.Position.X.Offset, MCXC.Cache.Btn3.Position.Y.Scale, MCXC.Cache.Btn3.Position.Y.Offset}
+        MCXC.Config.BtnPos4 = {MCXC.Cache.Btn4.Position.X.Scale, MCXC.Cache.Btn4.Position.X.Offset, MCXC.Cache.Btn4.Position.Y.Scale, MCXC.Cache.Btn4.Position.Y.Offset}
+        MCXC.Config.BtnPosCycle = {MCXC.Cache.BtnSwap.Position.X.Scale, MCXC.Cache.BtnSwap.Position.X.Offset, MCXC.Cache.BtnSwap.Position.Y.Scale, MCXC.Cache.BtnSwap.Position.Y.Offset}
+        SaveConfig() 
+    end) end 
+end)
 TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false); TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end); TabS:CreateToggle("120 FPS", "UnlockFPS", function(v) MCXC.Config.UnlockFPS = v; Utils.Apply120FPS(v); SaveConfig() end)
 TabS:CreateDoubleButton("Fix Lag", Theme.Accent, function() MCXC.State.LagFixed = true; for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplySkeletonFix(v) end end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
 LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
 workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then Utils.ApplySkeletonFix(v) end end)
 local function CrBtn(name, pos, color, skey, zkey) local b = I_new("TextButton", Gui); b.Size, b.BackgroundColor3, b.BackgroundTransparency, b.Text, b.TextColor3, b.Font, b.TextSize, b.Visible, b.ZIndex = U2(0,MCXC.Config[zkey],0,MCXC.Config[zkey]), C3(15,15,15), MCXC.Config.UITrans, name, color, Theme.FontBold, m_floor(MCXC.Config[zkey]*0.4), MCXC.Config[skey], 5; pcall(function() b.Position = U2(unpack(pos)) end); I_new("UICorner", b).CornerRadius = UD(0.5,0); local s = I_new("UIStroke", b); s.Color, s.Thickness, s.Transparency = color, 1.5, 0.2; return b, s end
-MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC"); MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2"); MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
+
+MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC")
+MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2")
+MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
+MCXC.Cache.Btn1, _ = CrBtn("1", MCXC.Config.BtnPos1, Theme.Text, "ShowB1", "BtnSize1")
+MCXC.Cache.Btn2, _ = CrBtn("2", MCXC.Config.BtnPos2, Theme.Text, "ShowB2", "BtnSize2")
+MCXC.Cache.Btn3, _ = CrBtn("3", MCXC.Config.BtnPos3, Theme.Text, "ShowB3", "BtnSize3")
+MCXC.Cache.Btn4, _ = CrBtn("4", MCXC.Config.BtnPos4, Theme.Text, "ShowB4", "BtnSize4")
+MCXC.Cache.BtnSwap, _ = CrBtn("SWAP", MCXC.Config.BtnPosCycle, Theme.Target, "ShowCycle", "BtnSizeCycle")
+
+local function ManualEquip(kc)
+    if MCXC.State.SetupMode or s_find(MCXC.State.Status, "CASTING") then return end
+    t_spawn(function()
+        VIM:SendKeyEvent(true, kc, false, game)
+        t_wait(0.02)
+        VIM:SendKeyEvent(false, kc, false, game)
+    end)
+end
+MCXC.Cache.Btn1.MouseButton1Click:Connect(function() ManualEquip(Enum.KeyCode.One) end)
+MCXC.Cache.Btn2.MouseButton1Click:Connect(function() ManualEquip(Enum.KeyCode.Two) end)
+MCXC.Cache.Btn3.MouseButton1Click:Connect(function() ManualEquip(Enum.KeyCode.Three) end)
+MCXC.Cache.Btn4.MouseButton1Click:Connect(function() ManualEquip(Enum.KeyCode.Four) end)
+MCXC.Cache.BtnSwap.MouseButton1Click:Connect(function()
+    MCXC.State.CycleIdx = (MCXC.State.CycleIdx % 4) + 1
+    local k = Enum.KeyCode.One
+    if MCXC.State.CycleIdx == 2 then k = Enum.KeyCode.Two
+    elseif MCXC.State.CycleIdx == 3 then k = Enum.KeyCode.Three
+    elseif MCXC.State.CycleIdx == 4 then k = Enum.KeyCode.Four end
+    ManualEquip(k)
+end)
+
 local function ProcessQueue() if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then local q = MCXC.State.ComboQueue; MCXC.State.ComboQueue = nil; Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue) end end
 local function HandleCombo(id, str, strUI, col) if MCXC.State.SetupMode then return end; if s_find(MCXC.State.Status, "CASTING") then if MCXC.State.CurrentCombo == id then if MCXC.Config.CancelOnTap then MCXC.State.Status = "CANCEL: MANUAL"; MCXC.State.ComboQueue = nil; Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1); Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end else MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}; Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1) end else Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue) end end
 MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
 MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function() MCXC.State.Status = "CANCEL: X"; MCXC.State.ComboQueue = nil; Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1); Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end)
+
 local fF, lFT = 0, t_tick()
 RS.Heartbeat:Connect(function() if t_tick() - MCXC.State.LastTick > 60 then MCXC.State.LastTick = t_tick(); collectgarbage("step") end; table.clear(MCXC.State.PlrData); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local minD, targ = m_huge, nil; for _, p in pairs(MCXC.State.ActivePlayers) do if p.Character then local tR, hum = p.Character:FindFirstChild("HumanoidRootPart"), p.Character:FindFirstChild("Humanoid"); if tR and hum and hum.Health > 0 then local dSq = Utils.DistSq(tR.Position, myR.Position); local isAlly = (p.Team == LP.Team and LP.Team ~= nil); if not isAlly and dSq < minD then minD, targ = dSq, p end; MCXC.State.PlrData[p.Name] = {tR = tR, dSq = dSq, hp = m_floor(hum.Health), mhp = m_floor(hum.MaxHealth), lvl = p:FindFirstChild("Data") and p.Data:FindFirstChild("Level") and tostring(p.Data.Level.Value) or "?", isAlly = isAlly} end end end; MCXC.State.CurrentTarget = targ end)
 RS.RenderStepped:Connect(function() local n = t_tick(); fF = fF + 1; if n - lFT >= 1 then local fps = m_floor(fF / (n-lFT)); fF,lFT = 0,n; MCXC.State.Ping, MCXC.State.FPS = Utils.GetPing()/1000, fps; if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..fps, "PING: "..m_floor(MCXC.State.Ping*1000).."ms" end end; if MCXC.Cache.StatusLbl then MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status) end; if not MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then if MCXC.Cache.StrC and MCXC.State.CurrentCombo ~= "C" then Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1) end; if MCXC.Cache.StrC2 and MCXC.State.CurrentCombo ~= "C2" then Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end end; local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local targ = MCXC.State.CurrentTarget; if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then local d = MCXC.State.PlrData[targ.Name]; if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then Visuals.UpdateTracer(d.tR, myR, Theme.Target) else Visuals.ClearTracer() end else Visuals.ClearTracer() end; for _, p in pairs(MCXC.State.ActivePlayers) do local d = MCXC.State.PlrData[p.Name]; if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.isAlly, d.hp, d.mhp, d.lvl) else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end end end)
