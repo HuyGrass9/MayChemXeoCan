@@ -125,12 +125,20 @@ local function GetToolType(tool)
     local n = s_lower(tool.Name)
     if s_find(n,"art") or s_find(n,"claw") or s_find(n,"step") or s_find(n,"talon") or s_find(n,"melee")
 or s_find(n,"godhuman") or s_find(n,"sanguine") or s_find(n,"dragon talon") or s_find(n,"electric claw")
+or s_find(n,"combat") or s_find(n,"dark step") or s_find(n,"electric") or s_find(n,"water kung fu")
+or s_find(n,"dragon breath") or s_find(n,"superhuman") or s_find(n,"death step") or s_find(n,"sharkman karate")
 then return "1" end
 
 if s_find(n,"fruit") or s_find(n,"kitsune") or s_find(n,"dough") or s_find(n,"leopard") or s_find(n,"buddha")
 or s_find(n,"dragon") or s_find(n,"venom") or s_find(n,"control") or s_find(n,"shadow")
 or s_find(n,"spirit") or s_find(n,"mammoth") or s_find(n,"trex") or s_find(n,"t-rex")
-or s_find(n,"portal") or s_find(n,"pain") or s_find(n,"rumble") or s_find(n,"lightning")
+or s_find(n,"portal") or s_find(n,"pain") or s_find(n,"paw") or s_find(n,"rumble") or s_find(n,"lightning")
+or s_find(n,"blizzard") or s_find(n,"phoenix") or s_find(n,"gravity")
+or s_find(n,"light") or s_find(n,"magma") or s_find(n,"ice") or s_find(n,"dark")
+or s_find(n,"flame") or s_find(n,"sand") or s_find(n,"smoke")
+or s_find(n,"spike") or s_find(n,"chop") or s_find(n,"spring") or s_find(n,"bomb")
+or s_find(n,"falcon") or s_find(n,"rubber") or s_find(n,"barrier") or s_find(n,"diamond")
+or s_find(n,"love") or s_find(n,"revive") or s_find(n,"ghost") or s_find(n,"quake")
 then return "2" end
 
 if s_find(n,"sword") or s_find(n,"katana") or s_find(n,"blade") or s_find(n,"tushita") or s_find(n,"yama")
@@ -139,10 +147,17 @@ or s_find(n,"dark dagger") or s_find(n,"shisui") or s_find(n,"wando") or s_find(
 or s_find(n,"true triple katana") or s_find(n,"cursed dual katana")
 or s_find(n,"midnight blade") or s_find(n,"rengoku") or s_find(n,"yoru")
 or s_find(n,"buddy sword") or s_find(n,"canvander") or s_find(n,"spikey trident")
+or s_find(n,"saber") or s_find(n,"cutlass") or s_find(n,"dual katana")
+or s_find(n,"iron mace") or s_find(n,"shark saw") or s_find(n,"triple katana")
+or s_find(n,"pipe") or s_find(n,"dual-headed blade") or s_find(n,"soul cane")
+or s_find(n,"bisento") or s_find(n,"longsword")
+or s_find(n,"hallow scythe") or s_find(n,"twin hooks")
 then return "3" end
 
 if s_find(n,"gun") or s_find(n,"rifle") or s_find(n,"kabucha") or s_find(n,"serpent") or s_find(n,"guitar")
 or s_find(n,"acidum") or s_find(n,"soul guitar")
+or s_find(n,"slingshot") or s_find(n,"musket") or s_find(n,"flintlock") or s_find(n,"refined flintlock")
+or s_find(n,"cannon") or s_find(n,"bizarre")
 then return "4" end
     return "0" 
 end
