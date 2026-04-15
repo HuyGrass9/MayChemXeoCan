@@ -393,4 +393,18 @@ RS.RenderStepped:Connect(function()
     
     local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; 
     local targ = MCXC.State.CurrentTarget; 
-    if MCXC.Config.ViewTracer and targ and MCXC.State.PlrDat
+    if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then 
+        local d = MCXC.State.PlrData[targ.Name];
+        if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then Visuals.UpdateTracer(d.tR, myR, Theme.Target) else Visuals.ClearTracer() end 
+    else 
+        Visuals.ClearTracer() 
+    end;
+    
+    for _, p in pairs(MCXC.State.ActivePlayers) do 
+        local d = MCXC.State.PlrData[p.Name];
+        if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.isAlly, d.hp, d.mhp, d.lvl) else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end 
+    end;
+    if MCXC.Config.EnableFOV then workspace.CurrentCamera.FieldOfView = MCXC.Config.FOVValue end 
+end)
+
+MCXC.State.Status = "DONE"; t_delay(1.5, function() if MCXC.State.Status == "DONE" then MCXC.State.Status = "IDLE" end end)
