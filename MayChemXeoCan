@@ -643,7 +643,6 @@ end
 local function HandleCombo(id, str, strUI, col)
     if MCXC.State.SetupMode then return end
     if s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.State.CurrentC
         if MCXC.State.CurrentCombo == id then
             if MCXC.Config.CancelOnTap then
                 MCXC.State.Status = "CANCEL: MANUAL"
