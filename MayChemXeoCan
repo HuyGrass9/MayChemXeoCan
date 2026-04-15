@@ -13,10 +13,9 @@ local MCXC = {
         ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500,
         ESP = false, ViewTracer = false, EnableFOV = false, FOVValue = 90,
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false,
-        Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false,
+        Macro = true, UnlockFPS = false, UITrans = 0.3,
         ShowStats = true, CancelOnTap = true,
-        BtnPosC = {0.8,0,0.4,0}, BtnPosC2 = {0.8,0,0.55,0}, BtnPosX = {0.8,0,0.7,0},
-        LagFixLevel = "Medium"
+        BtnPosC = {0.8,0,0.4,0}, BtnPosC2 = {0.8,0,0.55,0}, BtnPosX = {0.8,0,0.7,0}
     },
     State = {
         SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "LOAD MACRO", MenuOpen = false,
@@ -90,30 +89,24 @@ function Utils.MakeDraggable(topbar, object)
         end
     end)
 end
-function Utils.Apply120FPS(v)
+function Utils.Apply240FPS(v)
     pcall(function()
-        if v then settings().Rendering.QualityLevel = Enum.QualityLevel.Level01; if setfpscap then setfpscap(144) end
+        if v then settings().Rendering.QualityLevel = Enum.QualityLevel.Level01; if setfpscap then setfpscap(240) end
         else settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic; if setfpscap then setfpscap(60) end
         end
     end)
 end
-function Utils.ApplyPvPLighting(level)
+function Utils.ApplyPvPLighting()
     pcall(function()
         Lg.GlobalShadows = false
         Lg.FogEnd = 9e9
-        if level == "Low" then
-            Lg.Brightness = 1.5; Lg.OutdoorAmbient = C3(150,150,150)
-        elseif level == "Medium" then
-            Lg.Brightness = 1.2; Lg.OutdoorAmbient = C3(120,120,120)
-        else
-            Lg.Brightness = 1.0; Lg.OutdoorAmbient = C3(100,100,100)
-        end
+        Lg.Brightness = 1.0
+        Lg.OutdoorAmbient = C3(100,100,100)
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
     end)
 end
-function Utils.ApplyPvPLagFix(v, level)
+function Utils.ApplyPvPLagFix(v)
     if not v or not v:IsDescendantOf(workspace) then return end
-    if level == "Low" then return end
     pcall(function()
         if v:IsA("BasePart") and not v:IsDescendantOf(LP.Character) then
             local isPlr = false
@@ -121,11 +114,9 @@ function Utils.ApplyPvPLagFix(v, level)
             if v.Parent and v.Parent.Parent and v.Parent.Parent:FindFirstChild("Humanoid") then isPlr = true end
             if not isPlr then
                 v.Material = Enum.Material.SmoothPlastic
-                if level == "High" then v.CastShadow = false end
+                v.CastShadow = false
                 v.Reflectance = 0
-                if level == "High" then
-                    for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
-                end
+                for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
             end
         elseif v:IsA("ParticleEmitter") then v.Rate = v.Rate * 0.2; v.LockedToPart = true
         elseif v:IsA("Terrain") then v.WaterWaveSize=0; v.WaterWaveSpeed=0; v.WaterReflectance=0; v.WaterTransparency=1
@@ -155,7 +146,7 @@ function Combat.CheckStunGrace()
         while t_tick() - sT < 0.6 do
             st, bs = Combat.CheckStates(LP.Character)
             if not st then return false, bs end
-            RS.Heartbeat:Wait()
+            task.wait()
         end
         return true, bs
     end
@@ -163,11 +154,11 @@ function Combat.CheckStunGrace()
 end
 function Combat.SmartWait(desiredTime)
     local start = t_tick()
-    local adj = m_max(0.01, desiredTime - (MCXC.State.Ping * 0.6))
+    local adj = m_max(0.005, desiredTime - (MCXC.State.Ping * 0.5))
     while t_tick() - start < adj do
         local st, _ = Combat.CheckStates(LP.Character)
         if s_find(MCXC.State.Status, "CANCEL") or st then return false end
-        RS.Heartbeat:Wait()
+        task.wait()
     end
     return true
 end
@@ -176,11 +167,11 @@ local function FastCastManual(kc)
     if not MCXC.Config.Macro or s_find(MCXC.State.Status, "CASTING") then return end
     t_spawn(function()
         local s = t_tick()
-        while t_tick() - s < 0.2 do
+        while t_tick() - s < 0.15 do
             local st, bsy = Combat.CheckStates(LP.Character)
             if st or bsy then break end
             VIM:SendKeyEvent(true, kc, false, game)
-            RS.Heartbeat:Wait()
+            task.wait()
         end
         VIM:SendKeyEvent(false, kc, false, game)
     end)
@@ -193,7 +184,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
     t_spawn(function()
         Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Text}, 0.05)
         local seq = s_upper(comboStr)
-        local currentHeldKey, comboFailed, failR = nil, false, ""
+        local comboFailed, failR = false, ""
         for i = 1, #seq do
             local st, _ = Combat.CheckStunGrace()
             if st or s_find(MCXC.State.Status, "CANCEL") then comboFailed = true; failR = "STUNNED"; break end
@@ -203,47 +194,33 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 local kc = Enum.KeyCode.One
                 if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
                 VIM:SendKeyEvent(true, kc, false, game)
-                Combat.SmartWait(0.03)
+                Combat.SmartWait(0.02)
                 VIM:SendKeyEvent(false, kc, false, game)
-                Combat.SmartWait(0.1)
+                Combat.SmartWait(0.08)
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
                 local kc = Enum.KeyCode[key]
-                local holdTime = 0
-                if MCXC.Config.HoldEnabled and s_find(s_upper(MCXC.Config.HoldSetup or ""), key) then
-                    holdTime = MCXC.Config["Hold_"..key] or 0
-                end
-                currentHeldKey = kc
                 local fired = false
                 local wR = t_tick()
-                while t_tick() - wR < 0.25 do
+                while t_tick() - wR < 0.2 do
                     local stn, bsy2 = Combat.CheckStunGrace()
                     if stn then comboFailed = true; failR = "STUNNED"; break end
                     if bsy2 then fired = true; break end
                     VIM:SendKeyEvent(true, kc, false, game)
-                    RS.Heartbeat:Wait()
+                    task.wait()
                 end
                 if comboFailed then break end
-                if fired and holdTime > 0 then
-                    local hS = t_tick()
-                    while t_tick() - hS < holdTime do
-                        if Combat.CheckStunGrace() then break end
-                        RS.Heartbeat:Wait()
-                    end
-                end
                 VIM:SendKeyEvent(false, kc, false, game)
-                currentHeldKey = nil
                 if not fired then comboFailed = true; failR = "COOLDOWN"; break end
                 local wA = t_tick()
-                while t_tick() - wA < 1.5 do
+                while t_tick() - wA < 1.2 do
                     local stn, bsy2 = Combat.CheckStunGrace()
                     if stn or not bsy2 then if stn then comboFailed=true; failR="INTERRUPTED" end; break end
-                    RS.Heartbeat:Wait()
+                    task.wait()
                 end
                 if comboFailed then break end
             end
         end
-        if currentHeldKey then pcall(function() VIM:SendKeyEvent(false, currentHeldKey, false, game) end) end
         if comboFailed then
             MCXC.State.Status = "CANCEL: " .. failR; MCXC.State.ComboQueue = nil
             Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Danger}, 0.1)
@@ -485,33 +462,6 @@ function MaruUI:CreateWindow(title)
                 end)
                 return c
             end,
-            CreateDropdown = function(s, text, options, key)
-                s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm)
-                c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,45), Theme.ElementBG, s.LIdx
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c)
-                l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(0,10,0,0), 1, text, Theme.TextDark, Theme.Font, 12
-                local dd = I_new("TextButton", c)
-                dd.Size, dd.Position, dd.BackgroundColor3, dd.TextColor3, dd.Font, dd.TextSize, dd.Text = U2(0.55,-10,0,30), U2(0.45,0,0.5,-15), C3(20,20,22), Theme.Accent, Theme.FontBold, 12, MCXC.Config[key] or options[1]
-                I_new("UICorner", dd).CornerRadius = UD(0,4)
-                I_new("UIStroke", dd).Color = C3(50,50,55)
-                local opts = I_new("Frame", c)
-                opts.Size, opts.Position, opts.BackgroundColor3, opts.Visible = U2(0.55,-10,0, #options*25), U2(0.45,0,0.5,15), C3(20,20,22), false
-                I_new("UICorner", opts).CornerRadius = UD(0,4)
-                for i,opt in ipairs(options) do
-                    local btn = I_new("TextButton", opts)
-                    btn.Size, btn.Position, btn.BackgroundColor3, btn.TextColor3, btn.Font, btn.TextSize, btn.Text = U2(1,0,0,25), U2(0,0,0,(i-1)*25), C3(20,20,22), Theme.Text, Theme.Font, 12, opt
-                    btn.MouseButton1Click:Connect(function()
-                        dd.Text = opt
-                        opts.Visible = false
-                        MCXC.Config[key] = opt
-                        SaveConfig()
-                    end)
-                end
-                dd.MouseButton1Click:Connect(function() opts.Visible = not opts.Visible end)
-                return c
-            end,
             CreateDoubleButton = function(s, t1, c1, cb1, t2, c2, cb2)
                 s.LIdx = s.LIdx + 1
                 local c = I_new("Frame", frm)
@@ -554,27 +504,6 @@ TabC:CreateSlider("Size C2", 40, 100, "BtnSizeC2", true)
 TabC:CreateToggle("Show Button X", "ShowX", function(v) if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = v end end)
 TabC:CreateSlider("Size X", 30, 80, "BtnSizeX", true)
 TabC:CreateToggle("Cancel on Tap", "CancelOnTap")
-TabC:CreateToggle("Enable Hold Skills", "HoldEnabled")
-local HoldF = I_new("Frame", TabC.Frame)
-HoldF.Size, HoldF.BackgroundTransparency, HoldF.AutomaticSize = U2(1,0,0,0), 1, Enum.AutomaticSize.Y
-I_new("UIListLayout", HoldF).Padding = UD(0,8)
-local holdObj = {}
-local function RefreshH(txt)
-    for _, s in pairs(holdObj) do s:Destroy() end
-    holdObj = {}
-    if not txt or txt == "" then return end
-    local idx = 0
-    for k in string.gmatch(s_upper(txt), "[ZXCVF]") do
-        idx = idx + 1
-        local key = "Hold_"..k
-        if not MCXC.Config[key] then MCXC.Config[key] = 0.5 end
-        local s = TabC:CreateSlider("Hold "..k.." (s)", 0, 5, key, false)
-        s.LayoutOrder = idx
-        table.insert(holdObj, s)
-    end
-end
-TabC:CreateInput("Hold Setup (e.g Z C)", "HoldSetup", RefreshH)
-RefreshH(MCXC.Config.HoldSetup)
 
 TabV:CreateToggle("Custom FOV", "EnableFOV", function(v) if not v then workspace.CurrentCamera.FieldOfView = 70 end end)
 TabV:CreateSlider("FOV Value", 70, 120, "FOVValue", true)
@@ -599,18 +528,17 @@ TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v)
 end)
 TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
 TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
-TabS:CreateToggle("120 FPS", "UnlockFPS", function(v) Utils.Apply120FPS(v); SaveConfig() end)
-TabS:CreateDropdown("Fix Lag Level", {"Low","Medium","High"}, "LagFixLevel")
+TabS:CreateToggle("240 FPS", "UnlockFPS", function(v) Utils.Apply240FPS(v); SaveConfig() end)
 TabS:CreateDoubleButton("Fix Lag PvP", Theme.Accent, function()
     MCXC.State.LagFixed = true
-    Utils.ApplyPvPLighting(MCXC.Config.LagFixLevel)
-    for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplyPvPLagFix(v, MCXC.Config.LagFixLevel) end
+    Utils.ApplyPvPLighting()
+    for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplyPvPLagFix(v) end
 end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
 
 LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
 workspace.DescendantAdded:Connect(function(v)
     if MCXC.State.LagFixed then
-        task.delay(0.02, function() Utils.ApplyPvPLagFix(v, MCXC.Config.LagFixLevel) end)
+        task.delay(0.02, function() Utils.ApplyPvPLagFix(v) end)
     end
 end)
 
@@ -641,25 +569,24 @@ local function HandleCombo(id, str, strUI, col)
             if MCXC.Config.CancelOnTap then
                 MCXC.State.Status = "CANCEL: MANUAL"
                 MCXC.State.ComboQueue = nil
-                Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1)
-                Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1)
+                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
             end
         else
-            MCXC.State.ComboQueue = {id = id, str = str, strUI = strUI, col = col}
-            Utils.Tween(strUI, {Thickness = 3, Color = Theme.Target}, 0.1)
+            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
+            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
         end
     else
         Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
     end
 end
-
 MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
 MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1)
-    Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
 
 local fF, lFT = 0, t_tick()
