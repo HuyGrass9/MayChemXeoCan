@@ -121,12 +121,23 @@ local function GetToolType(tool)
         if s_find(v, "sword") then return "3" end
         if s_find(v, "gun") or s_find(v, "sniper") then return "4" end
     end
-    -- Fallback nếu ToolTip không load kịp
     local n = s_lower(tool.Name)
-    if s_find(n,"art") or s_find(n,"claw") or s_find(n,"step") or s_find(n,"talon") or s_find(n,"melee") then return "1" end
-    if s_find(n,"fruit") or s_find(n,"kitsune") or s_find(n,"dough") or s_find(n,"leopard") or s_find(n,"buddha") then return "2" end
-    if s_find(n,"sword") or s_find(n,"katana") or s_find(n,"blade") or s_find(n,"tushita") or s_find(n,"yama") or s_find(n,"cdk") or s_find(n,"trident") or s_find(n,"lamp") or s_find(n,"heart") or s_find(n,"anchor") then return "3" end
-    if s_find(n,"gun") or s_find(n,"rifle") or s_find(n,"kabucha") or s_find(n,"serpent") or s_find(n,"guitar") then return "4" end
+
+if s_find(n,"art") or s_find(n,"claw") or s_find(n,"step") or s_find(n,"talon") or s_find(n,"god") or s_find(n,"shark") or s_find(n,"super") or s_find(n,"karate") or s_find(n,"melee") then 
+    return "1" 
+end
+
+if s_find(n,"fruit") or s_find(n,"kitsune") or s_find(n,"dough") or s_find(n,"leopard") or s_find(n,"buddha") or s_find(n,"dragon") or s_find(n,"trex") or s_find(n,"t-rex") or s_find(n,"mammoth") or s_find(n,"venom") or s_find(n,"spirit") or s_find(n,"portal") or s_find(n,"rumble") or s_find(n,"blizzard") then 
+    return "2" 
+end
+
+if s_find(n,"sword") or s_find(n,"katana") or s_find(n,"blade") or s_find(n,"tushita") or s_find(n,"yama") or s_find(n,"cdk") or s_find(n,"ttk") or s_find(n,"trident") or s_find(n,"lamp") or s_find(n,"anchor") or s_find(n,"scythe") or s_find(n,"buddy") or s_find(n,"canvander") or s_find(n,"shisui") or s_find(n,"wando") or s_find(n,"saddi") then 
+    return "3" 
+end
+
+if s_find(n,"gun") or s_find(n,"rifle") or s_find(n,"kabucha") or s_find(n,"serpent") or s_find(n,"guitar") or s_find(n,"bow") or s_find(n,"acidum") or s_find(n,"cannon") or s_find(n,"bazooka") then 
+    return "4" 
+end
     return "0" 
 end
 
