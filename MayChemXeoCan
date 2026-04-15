@@ -16,8 +16,6 @@ local MCXC = {
         Macro = true, UnlockFPS = false, UITrans = 0.3, HoldSetup = "", HoldEnabled = false,
         ShowStats = true, CancelOnTap = true,
         BtnPosC = {0.8,0,0.4,0}, BtnPosC2 = {0.8,0,0.55,0}, BtnPosX = {0.8,0,0.7,0},
-        ESPColorEnemy = {255,255,255}, ESPColorAlly = {0,255,120}, ESPColorTarget = {255,210,0},
-        TracerColor = {255,210,0},
         LagFixLevel = "Medium"
     },
     State = {
@@ -330,7 +328,6 @@ function MaruUI:CreateWindow(title)
     MCXC.Cache.ESPFolder = CGui:FindFirstChild(fName) or I_new("Folder", CGui)
     MCXC.Cache.ESPFolder.Name = fName
 
-    -- Stats Frame
     local StatF = I_new("Frame", gui)
     StatF.Name, StatF.Size, StatF.Position, StatF.BackgroundTransparency, StatF.Visible = "StatsFrame", U2(0,160,0,65), U2(0,10,0,40), 1, MCXC.Config.ShowStats
     local fL = I_new("TextLabel", StatF); fL.Size, fL.BackgroundTransparency, fL.Font, fL.TextSize, fL.TextColor3, fL.TextXAlignment, fL.Text = U2(1,0,0,20), 1, Theme.FontBlack, 13, Theme.Text, 0, ""
@@ -338,13 +335,11 @@ function MaruUI:CreateWindow(title)
     local sL = I_new("TextLabel", StatF); sL.Size, sL.Position, sL.BackgroundTransparency, sL.Font, sL.TextSize, sL.TextColor3, sL.TextXAlignment, sL.Text = U2(1,0,0,20), U2(0,0,0,40), 1, Theme.FontBold, 12, Theme.Accent, 0, ""
     MCXC.Cache.FPSLbl, MCXC.Cache.PingLbl, MCXC.Cache.StatusLbl, MCXC.Cache.StatFrame = fL, pL, sL, StatF
 
-    -- Toggle Button
     local Tgl = I_new("ImageButton", gui)
     Tgl.Size, Tgl.Position, Tgl.Image, Tgl.BackgroundColor3, Tgl.BackgroundTransparency = U2(0,45,0,45), U2(0.5,-22,0,15), "rbxthumb://type=Asset&id=8073107254&w=150&h=150", Theme.BG, MCXC.Config.UITrans
     I_new("UICorner", Tgl).CornerRadius = UD(1,0)
     I_new("UIStroke", Tgl).Color, I_new("UIStroke", Tgl).Thickness = Theme.Accent, 2
 
-    -- Main Window
     local Main = I_new("Frame", gui)
     Main.Size, Main.Position, Main.BackgroundColor3, Main.BackgroundTransparency, Main.ClipsDescendants, Main.Visible = U2(0,460,0,290), U2(0.5,-230,0.5,-145), Theme.BG, MCXC.Config.UITrans, true, false
     I_new("UICorner", Main).CornerRadius = UD(0,8)
@@ -546,7 +541,6 @@ function MaruUI:CreateWindow(title)
     return Window, gui
 end
 
--- Khởi tạo UI
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
 local TabC, TabV, TabS = Win:CreateTab("Combat"), Win:CreateTab("Visuals"), Win:CreateTab("Settings")
 
@@ -639,7 +633,7 @@ local function ProcessQueue()
         MCXC.State.ComboQueue = nil
         Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
     end
-end
+
 local function HandleCombo(id, str, strUI, col)
     if MCXC.State.SetupMode then return end
     if s_find(MCXC.State.Status, "CASTING") then
@@ -658,6 +652,7 @@ local function HandleCombo(id, str, strUI, col)
         Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
     end
 end
+
 MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
 MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
@@ -709,7 +704,7 @@ RS.RenderStepped:Connect(function()
     if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then
         local d = MCXC.State.PlrData[targ.Name]
         if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then
-            Visuals.UpdateTracer(d.tR, myR, C3(unpack(MCXC.Config.TracerColor)))
+            Visuals.UpdateTracer(d.tR, myR, Theme.Target)
         else
             Visuals.ClearTracer()
         end
