@@ -13,7 +13,7 @@ local MCXC = {
         ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500,
         ESP = false, ViewTracer = false, EnableFOV = false, FOVValue = 90,
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false,
-        Macro = true, UnlockFPS = true, UITrans = 0.3,
+        Macro = true, UnlockFPS = false, UITrans = 0.3,
         ShowStats = true, CancelOnTap = true,
         BtnPosC = {0.8,0,0.4,0}, BtnPosC2 = {0.8,0,0.55,0}, BtnPosX = {0.8,0,0.7,0},
         HoldEnabled = false,
@@ -202,13 +202,10 @@ end
 local function FastCastManual(kc)
     if not MCXC.Config.Macro or s_find(MCXC.State.Status, "CASTING") then return end
     t_spawn(function()
-        local s = t_tick()
-        while t_tick() - s < 0.15 do
-            local st, bsy = Combat.CheckStates(LP.Character)
-            if st or bsy then break end
-            VIM:SendKeyEvent(true, kc, false, game)
-            task.wait()
-        end
+        local st, bsy = Combat.CheckStates(LP.Character)
+        if st or bsy then return end
+        VIM:SendKeyEvent(true, kc, false, game)
+        task.wait(0.01)
         VIM:SendKeyEvent(false, kc, false, game)
     end)
 end
@@ -240,7 +237,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                         end)
                         pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
                         local start = t_tick()
-                        while not equipSuccess and t_tick() - start < 1.0 do task.wait() end
+                        while not equipSuccess and t_tick() - start < 1.5 do task.wait() end
                         conn:Disconnect()
                         if not equipSuccess then comboFailed = true; failR = "EQUIP TIMEOUT"; break end
                     else
@@ -730,6 +727,40 @@ MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
     Utils.Tween(MCXC.Cache.StrC,{Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+end)
+
+local function ProcessQueue()
+    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
+        local q = MCXC.State.ComboQueue
+        MCXC.State.ComboQueue = nil
+        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
+    end
+end
+local function HandleCombo(id, str, strUI, col)
+    if MCXC.State.SetupMode then return end
+    if s_find(MCXC.State.Status, "CASTING") then
+        if MCXC.State.CurrentCombo == id then
+            if MCXC.Config.CancelOnTap then
+                MCXC.State.Status = "CANCEL: MANUAL"
+                MCXC.State.ComboQueue = nil
+                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+            end
+        else
+            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
+            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
+        end
+    else
+        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
+    end
+end
+MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
+MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
+MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
+    MCXC.State.Status = "CANCEL: X"
+    MCXC.State.ComboQueue = nil
+    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
 
