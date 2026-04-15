@@ -25,7 +25,7 @@ local MCXC = {
         LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60,
         LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}
     },
-    Cache = {ESP = {}, TracerLine = nil, UIElements = {}}
+    Cache = {ESP = {}, TracerLine = nil, UIElements = {}, HoldSliders = {}}
 }
 
 local Theme = {
@@ -116,7 +116,7 @@ function Utils.ApplyPvPLighting()
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
     end)
 end
-function Utils.ApplyPvPLagFix(v, level)
+function Utils.ApplyPvPLagFix(v)
     if not v or not v:IsDescendantOf(workspace) then return end
     pcall(function()
         if v:IsA("BasePart") and not v:IsDescendantOf(LP.Character) then
@@ -129,7 +129,7 @@ function Utils.ApplyPvPLagFix(v, level)
                 v.Reflectance = 0
                 for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
             end
-        elseif v:IsA("ParticleEmitter") or v:IsA("Beam") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+        elseif v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
             v:Destroy()
         elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") then
             v.Enabled = false
@@ -243,9 +243,10 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
                 local kc = Enum.KeyCode[key]
+                local currentType = GetCurrentToolType()
                 local holdTime = 0
-                if MCXC.Config.HoldEnabled then
-                    holdTime = MCXC.Config.Hold_["Hold_"..key] or 0
+                if MCXC.Config.HoldEnabled and currentType then
+                    holdTime = MCXC.Config.Hold_["Hold_"..currentType..key] or 0
                 end
                 local fired = false
                 local wR = t_tick()
@@ -454,34 +455,38 @@ function MaruUI:CreateWindow(title)
             CreateSlider = function(s, text, min, max, key, isInt, visible)
                 s.LIdx = s.LIdx + 1
                 local c = I_new("Frame", frm)
-                c.Size, c.BackgroundColor3, c.LayoutOrder, c.Visible = U2(1,0,0,50), Theme.ElementBG, s.LIdx, visible or true
+                c.Size, c.BackgroundColor3, c.LayoutOrder, c.Visible = U2(1,0,0,50), Theme.ElementBG, s.LIdx, visible == true
                 I_new("UICorner", c).CornerRadius = UD(0,6)
                 local l = I_new("TextLabel", c)
                 l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize, l.TextXAlignment = U2(1,-20,0,25), U2(0,10,0,5), 1, text, Theme.TextDark, Theme.Font, 12, 0
                 local vL = I_new("TextLabel", c)
                 vL.Size, vL.Position, vL.BackgroundTransparency, vL.TextColor3, vL.Font, vL.TextSize, vL.TextXAlignment, vL.ZIndex = U2(0.3,0,0,25), U2(0.7,-10,0,5), 1, Theme.Accent, Theme.FontBold, 12, 1, 5
-                vL.Text = tostring(MCXC.Config[key] or min)
+                vL.Text = tostring(MCXC.Config.Hold_[key] or MCXC.Config[key] or min)
                 local tr = I_new("Frame", c)
                 tr.Size, tr.Position, tr.BackgroundColor3 = U2(1,-20,0,6), U2(0,10,0,35), C3(40,40,45)
                 I_new("UICorner", tr).CornerRadius = UD(1,0)
+                local val = MCXC.Config.Hold_[key] or MCXC.Config[key] or min
                 local fill = I_new("Frame", tr)
-                fill.Size, fill.BackgroundColor3 = U2(((MCXC.Config[key] or min)-min)/(max-min),0,1,0), Theme.Accent
+                fill.Size, fill.BackgroundColor3 = U2((val-min)/(max-min),0,1,0), Theme.Accent
                 I_new("UICorner", fill).CornerRadius = UD(1,0)
                 local tB = I_new("TextButton", c)
                 tB.Size, tB.BackgroundTransparency, tB.Text = U2(1,0,1,0), 1, ""
                 local drag = false
                 local function upd(i)
                     local p = m_clamp((i.Position.X - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1)
-                    local val = min + (max-min)*p
-                    if isInt then val = m_floor(val) else val = m_floor(val*100)/100 end
+                    local newVal = min + (max-min)*p
+                    if isInt then newVal = m_floor(newVal) else newVal = m_floor(newVal*100)/100 end
                     fill.Size = U2(p,0,1,0)
-                    vL.Text = tostring(val)
-                    MCXC.Config[key] = val
-                    if key:find("Hold_") then MCXC.Config.Hold_[key] = val end
-                    if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size = U2(0,val,0,val) end
-                    if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size = U2(0,val,0,val) end
-                    if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size = U2(0,val,0,val) end
-                    if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = val end end
+                    vL.Text = tostring(newVal)
+                    if key:find("Hold_") then
+                        MCXC.Config.Hold_[key] = newVal
+                    else
+                        MCXC.Config[key] = newVal
+                    end
+                    if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size = U2(0,newVal,0,newVal) end
+                    if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size = U2(0,newVal,0,newVal) end
+                    if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size = U2(0,newVal,0,newVal) end
+                    if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = newVal end end
                 end
                 tB.InputBegan:Connect(function(i)
                     if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
@@ -577,19 +582,19 @@ I_new("UIListLayout", HoldContainer).Padding = UD(0,8)
 local holdSliders = {}
 local function RefreshHoldSliders(txt)
     for _, s in pairs(holdSliders) do s:Destroy() end
-    holdSliders = {}
+    table.clear(holdSliders)
     if not txt or txt == "" then return end
     local idx = 0
-    for k in string.gmatch(s_upper(txt), "[ZXCVF]") do
+    for toolType, key in string.gmatch(s_upper(txt), "([1-4])([ZXCVF])") do
         idx = idx + 1
-        local key = "Hold_"..k
-        if MCXC.Config.Hold_[key] == nil then MCXC.Config.Hold_[key] = 0.5 end
-        local s = TabC:CreateSlider("Hold "..k.." (s)", 0, 3, key, false, true)
+        local configKey = "Hold_"..toolType..key
+        if MCXC.Config.Hold_[configKey] == nil then MCXC.Config.Hold_[configKey] = 0.5 end
+        local s = TabC:CreateSlider("Hold "..toolType..key.." (s)", 0, 3, configKey, false, true)
         s.LayoutOrder = idx
         table.insert(holdSliders, s)
     end
 end
-TabC:CreateInput("Hold Setup (e.g Z X C)", "HoldSetup", function(val)
+TabC:CreateInput("Hold Setup (e.g 3C2Z)", "HoldSetup", function(val)
     MCXC.Config.HoldSetup = val
     RefreshHoldSliders(val)
     SaveConfig()
@@ -672,6 +677,22 @@ local function HandleCombo(id, str, strUI, col)
                 MCXC.State.ComboQueue = nil
                 Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
                 Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+            end
+        else
+            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
+            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
+        end
+    else
+        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
+    end
+end
+MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
+MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
+MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
+    MCXC.State.Status = "CANCEL: X"
+    MCXC.State.ComboQueue = nil
+    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
             end
         else
             MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
