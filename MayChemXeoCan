@@ -13,7 +13,7 @@ local MCXC = {
         ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500,
         ESP = false, ViewTracer = false, EnableFOV = false, FOVValue = 90,
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false,
-        Macro = true, UnlockFPS = false, UITrans = 0.3,
+        Macro = true, UnlockFPS = true, UITrans = 0.3,
         ShowStats = true, CancelOnTap = true,
         BtnPosC = {0.8,0,0.4,0}, BtnPosC2 = {0.8,0,0.55,0}, BtnPosX = {0.8,0,0.7,0},
         HoldEnabled = false,
