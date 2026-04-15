@@ -116,41 +116,17 @@ local function GetToolType(tool)
     local tt = tool:FindFirstChild("ToolTip")
     if tt and typeof(tt.Value) == "string" then
         local v = s_lower(tt.Value)
-if s_find(n,"combat") or s_find(n,"step") or s_find(n,"electric") or s_find(n,"claw")
-or s_find(n,"kung") or s_find(n,"sharkman") or s_find(n,"karate")
-or s_find(n,"dragon breath") or s_find(n,"talon")
-or s_find(n,"superhuman") or s_find(n,"godhuman") or s_find(n,"sanguine")
-or s_find(n,"art") or s_find(n,"melee") then
-    return "1"
-end
-
-if s_find(n,"fruit") or s_find(n,"kitsune") or s_find(n,"leopard") or s_find(n,"dragon")
-or s_find(n,"spirit") or s_find(n,"control") or s_find(n,"venom") or s_find(n,"shadow")
-or s_find(n,"dough") or s_find(n,"trex") or s_find(n,"t-rex") or s_find(n,"mammoth")
-or s_find(n,"portal") or s_find(n,"rumble") or s_find(n,"lightning") or s_find(n,"pain")
-or s_find(n,"buddha") then
-    return "2"
-end
-
-if s_find(n,"sword") or s_find(n,"katana") or s_find(n,"blade")
-or s_find(n,"saber") or s_find(n,"buddy") or s_find(n,"canvander")
-or s_find(n,"dagger") or s_find(n,"dragonheart") or s_find(n,"koko")
-or s_find(n,"midnight") or s_find(n,"oroshi") or s_find(n,"pole")
-or s_find(n,"rengoku") or s_find(n,"anchor") or s_find(n,"trident")
-or s_find(n,"tushita") or s_find(n,"yama")
-or s_find(n,"cursed") or s_find(n,"cdk") or s_find(n,"yoru")
-or s_find(n,"ttk") or s_find(n,"hallow") or s_find(n,"scythe")
-or s_find(n,"shisui") or s_find(n,"saddi") or s_find(n,"wando")
-or s_find(n,"hook") or s_find(n,"cane") or s_find(n,"fox") or s_find(n,"lamp") then
-    return "3"
-end
-
-if s_find(n,"gun") or s_find(n,"rifle") or s_find(n,"kabucha")
-or s_find(n,"serpent") or s_find(n,"bow") or s_find(n,"guitar")
-or s_find(n,"acidum") or s_find(n,"bizarre") or s_find(n,"bazooka")
-or s_find(n,"dragonstorm") then
-    return "4"
-end
+        if s_find(v, "melee") or s_find(v, "combat") then return "1" end
+        if s_find(v, "blox fruit") or s_find(v, "bloxfruit") or s_find(v, "fruit") then return "2" end
+        if s_find(v, "sword") then return "3" end
+        if s_find(v, "gun") or s_find(v, "sniper") then return "4" end
+    end
+    -- Fallback nếu ToolTip không load kịp
+    local n = s_lower(tool.Name)
+    if s_find(n,"art") or s_find(n,"claw") or s_find(n,"step") or s_find(n,"talon") or s_find(n,"melee") then return "1" end
+    if s_find(n,"fruit") or s_find(n,"kitsune") or s_find(n,"dough") or s_find(n,"leopard") or s_find(n,"buddha") then return "2" end
+    if s_find(n,"sword") or s_find(n,"katana") or s_find(n,"blade") or s_find(n,"tushita") or s_find(n,"yama") or s_find(n,"cdk") or s_find(n,"trident") or s_find(n,"lamp") or s_find(n,"heart") or s_find(n,"anchor") then return "3" end
+    if s_find(n,"gun") or s_find(n,"rifle") or s_find(n,"kabucha") or s_find(n,"serpent") or s_find(n,"guitar") then return "4" end
     return "0" 
 end
 
