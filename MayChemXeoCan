@@ -31,7 +31,7 @@ local MCXC = {
 local Theme = {
     BG = C3(15,15,18), Sidebar = C3(10,10,12), ElementBG = C3(22,22,26),
     Accent = C3(0,170,255), Text = C3(255,255,255), TextDark = C3(160,160,170),
-    Danger = C3(255,50,70), Target = C3(255,210,0), Ally = C3(0,255,120),
+    Danger = C3(255,50,70), Target = C3(255,210,0), Ally = C3(0,255,120), Bounty = C3(180,0,255),
     Font = Enum.Font.GothamMedium, FontBold = Enum.Font.GothamBold, FontBlack = Enum.Font.GothamBlack
 }
 
@@ -101,8 +101,17 @@ function Utils.MakeDraggable(topbar, object)
 end
 function Utils.Apply240FPS(v)
     pcall(function()
-        if v then settings().Rendering.QualityLevel = Enum.QualityLevel.Level01; if setfpscap then setfpscap(240) end
-        else settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic; if setfpscap then setfpscap(60) end
+        if v then
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+            Lg.Technology = Enum.Technology.Compatibility
+            workspace.DistributedGameTime = 1
+            if setfpscap then setfpscap(240) end
+        else
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+            settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+            workspace.DistributedGameTime = 0
+            if setfpscap then setfpscap(60) end
         end
     end)
 end
@@ -312,7 +321,23 @@ function Visuals.ClearTracer()
         MCXC.Cache.TracerLine.Beam.Enabled = false
     end
 end
-function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, lvl)
+
+local function IsAlly(p)
+    if p == LP then return true end
+    local lpTeam = LP.Team and s_lower(LP.Team.Name)
+    local pTeam = p.Team and s_lower(p.Team.Name)
+    if lpTeam == "marines" then return pTeam == "marines" end
+    if lpTeam == "pirates" then
+        if pTeam ~= "pirates" then return false end
+        local lpCrew = LP:FindFirstChild("Data") and LP.Data:FindFirstChild("Crew") and LP.Data.Crew.Value
+        local pCrew = p:FindFirstChild("Data") and p.Data:FindFirstChild("Crew") and p.Data.Crew.Value
+        if lpCrew and pCrew and lpCrew == pCrew then return true end
+        return p:GetAttribute("Ally") == true or p:FindFirstChild("Ally") ~= nil
+    end
+    return false
+end
+
+function Visuals.UpdateESP(p, tR, dSq, isTarget, hp, mhp, lvl, bounty)
     if not tR or not tR:IsDescendantOf(workspace) or dSq > MCXC.Config.RenderDist*MCXC.Config.RenderDist or not MCXC.Config.ESP then
         if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end
         return
@@ -328,30 +353,38 @@ function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, lvl)
         if bg then bg:Destroy() end
         bg = I_new("BillboardGui", MCXC.Cache.ESPFolder)
         bg.Name = "ESP_"..MCXC.State.SessionID
-        bg.Size, bg.AlwaysOnTop, bg.StudsOffset = U2(0,55,0,18), true, V3(0,3,0)
+        bg.Size, bg.AlwaysOnTop, bg.StudsOffset = U2(0,65,0,22), true, V3(0,3.5,0)
         local nL = I_new("TextLabel", bg)
-        nL.Name, nL.Size, nL.BackgroundTransparency, nL.Font, nL.TextSize = "NameLbl", U2(1,0,0,8), 1, Theme.FontBold, 8
-        I_new("UIStroke", nL).Thickness, I_new("UIStroke", nL).Color = 1.5, C3(0,0,0)
+        nL.Name, nL.Size, nL.BackgroundTransparency, nL.Font, nL.TextSize = "NameLbl", U2(1,0,0,9), 1, Theme.FontBlack, 9
+        local s1 = I_new("UIStroke", nL); s1.Thickness, s1.Color = 2, C3(0,0,0)
         local hB = I_new("Frame", bg)
-        hB.Name, hB.Size, hB.Position, hB.BackgroundColor3 = "HpBg", U2(0.9,0,0,6), U2(0.05,0,0,9), C3(10,10,10)
+        hB.Name, hB.Size, hB.Position, hB.BackgroundColor3 = "HpBg", U2(0.9,0,0,7), U2(0.05,0,0,10), C3(10,10,10)
         I_new("UICorner", hB).CornerRadius = UD(0,2)
-        I_new("UIStroke", hB).Thickness, I_new("UIStroke", hB).Color = 1.5, C3(0,0,0)
+        local s2 = I_new("UIStroke", hB); s2.Thickness, s2.Color = 1.5, C3(0,0,0)
         local hF = I_new("Frame", hB)
         hF.Name, hF.Size = "Fill", U2(1,0,1,0)
         I_new("UICorner", hF).CornerRadius = UD(0,2)
         local hT = I_new("TextLabel", hB)
-        hT.Name, hT.Size, hT.BackgroundTransparency, hT.Font, hT.TextSize, hT.TextColor3 = "HpTxt", U2(1,0,1,0), 1, Theme.FontBold, 7, C3(255,255,255)
+        hT.Name, hT.Size, hT.BackgroundTransparency, hT.Font, hT.TextSize, hT.TextColor3 = "HpTxt", U2(1,0,1,0), 1, Theme.FontBold, 8, C3(255,255,255)
         local bL = I_new("TextLabel", bg)
-        bL.Name, bL.Size, bL.Position, bL.BackgroundTransparency, bL.Font, bL.TextSize = "BotLbl", U2(1,0,0,6), U2(0,0,0,16), 1, Theme.FontBold, 7
-        I_new("UIStroke", bL).Thickness, I_new("UIStroke", bL).Color = 1.5, C3(0,0,0)
+        bL.Name, bL.Size, bL.Position, bL.BackgroundTransparency, bL.Font, bL.TextSize = "BotLbl", U2(1,0,0,7), U2(0,0,0,18), 1, Theme.FontBold, 8
+        local s3 = I_new("UIStroke", bL); s3.Thickness, s3.Color = 2, C3(0,0,0)
+        local wL = I_new("TextLabel", bg)
+        wL.Name, wL.Size, wL.Position, wL.BackgroundTransparency, wL.Font, wL.TextSize = "WpnLbl", U2(1,0,0,7), U2(0,0,0,26), 1, Theme.Font, 7
+        local s4 = I_new("UIStroke", wL); s4.Thickness, s4.Color = 1.5, C3(0,0,0)
         MCXC.Cache.ESP[p.Name] = bg
     end
-    local mainColor = isTarget and Theme.Target or (isAlly and Theme.Ally or Theme.Text)
+    local ally = IsAlly(p)
+    local isBountyTop = (bounty == MCXC.State.TopBounty)
+    local mainColor = ally and Theme.Ally or (isTarget and Theme.Target or (isBountyTop and Theme.Bounty or Theme.Text))
     bg.Adornee, bg.Enabled = tR, true
     bg.NameLbl.Text, bg.NameLbl.TextColor3 = p.Name, mainColor
     bg.HpBg.Fill.Size, bg.HpBg.Fill.BackgroundColor3 = U2(m_clamp(hp/mhp,0,1),0,1,0), mainColor
     bg.HpBg.HpTxt.Text = hp.." / "..mhp
     bg.BotLbl.Text, bg.BotLbl.TextColor3 = "[Lv."..lvl.."] "..m_floor(dSq^0.5).."m", mainColor
+    local tool = p.Character and p.Character:FindFirstChildOfClass("Tool")
+    bg.WpnLbl.Text = tool and tool.Name or ""
+    bg.WpnLbl.TextColor3 = mainColor
 end
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
@@ -579,11 +612,17 @@ sX = TabC:CreateSlider("Size X", 30, 80, "BtnSizeX", true, MCXC.Config.ShowX)
 TabC:CreateToggle("Cancel on Tap", "CancelOnTap")
 
 TabC:CreateToggle("Enable Hold Skills", "HoldEnabled", function(v) end)
+TabC:CreateInput("Hold Setup (e.g 3C2Z)", "HoldSetup", function(val)
+    MCXC.Config.HoldSetup = val
+    RefreshHoldSliders(val)
+    SaveConfig()
+end)
 local HoldContainer = I_new("Frame", TabC.Frame)
 HoldContainer.Size, HoldContainer.BackgroundTransparency, HoldContainer.AutomaticSize = U2(1,0,0,0), 1, Enum.AutomaticSize.Y
+HoldContainer.LayoutOrder = 9999
 I_new("UIListLayout", HoldContainer).Padding = UD(0,8)
 local holdSliders = {}
-local function RefreshHoldSliders(txt)
+function RefreshHoldSliders(txt)
     for _, s in pairs(holdSliders) do s:Destroy() end
     table.clear(holdSliders)
     if not txt or txt == "" then return end
@@ -594,14 +633,10 @@ local function RefreshHoldSliders(txt)
         if MCXC.Config.Hold_[configKey] == nil then MCXC.Config.Hold_[configKey] = 0.5 end
         local s = TabC:CreateSlider("Hold "..toolType..key.." (s)", 0, 3, configKey, false, true)
         s.LayoutOrder = idx
+        s.Parent = HoldContainer
         table.insert(holdSliders, s)
     end
 end
-TabC:CreateInput("Hold Setup (e.g 3C2Z)", "HoldSetup", function(val)
-    MCXC.Config.HoldSetup = val
-    RefreshHoldSliders(val)
-    SaveConfig()
-end)
 RefreshHoldSliders(MCXC.Config.HoldSetup)
 
 local sFOV, sE, sT
@@ -694,8 +729,8 @@ MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Con
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-    Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC,{Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
 
 local fF, lFT = 0, t_tick()
@@ -708,29 +743,37 @@ RS.Heartbeat:Connect(function()
     local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if not myR then return end
     local minD, targ = m_huge, nil
+    local maxBounty = 0
     for _, p in pairs(MCXC.State.ActivePlayers) do
         if p.Character then
             local tR = p.Character:FindFirstChild("HumanoidRootPart")
             local hum = p.Character:FindFirstChild("Humanoid")
             if tR and hum and hum.Health > 0 then
                 local dSq = Utils.DistSq(tR.Position, myR.Position)
-                local isAlly = (p.Team == LP.Team and LP.Team ~= nil)
-                if not isAlly and dSq < minD then
+                local bounty = 0
+                local data = p:FindFirstChild("Data")
+                if data then
+                    local b = data:FindFirstChild("Bounty") or data:FindFirstChild("Beli")
+                    if b then bounty = tonumber(b.Value) or 0 end
+                end
+                if bounty > maxBounty then maxBounty = bounty end
+                if not IsAlly(p) and dSq < minD then
                     minD = dSq
                     targ = p
                 end
-                local lvl = p:FindFirstChild("Data") and p.Data:FindFirstChild("Level") and tostring(p.Data.Level.Value) or "?"
+                local lvl = data and data:FindFirstChild("Level") and tostring(data.Level.Value) or "?"
                 MCXC.State.PlrData[p.Name] = {
                     tR = tR,
                     dSq = dSq,
                     hp = m_floor(hum.Health),
                     mhp = m_floor(hum.MaxHealth),
                     lvl = lvl,
-                    isAlly = isAlly
+                    bounty = bounty
                 }
             end
         end
     end
+    MCXC.State.TopBounty = maxBounty
     MCXC.State.CurrentTarget = targ
 end)
 
@@ -776,7 +819,7 @@ RS.RenderStepped:Connect(function()
     for _, p in pairs(MCXC.State.ActivePlayers) do
         local d = MCXC.State.PlrData[p.Name]
         if d then
-            Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.isAlly, d.hp, d.mhp, d.lvl)
+            Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.hp, d.mhp, d.lvl, d.bounty)
         elseif MCXC.Cache.ESP[p.Name] then
             MCXC.Cache.ESP[p.Name].Enabled = false
         end
