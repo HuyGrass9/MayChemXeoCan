@@ -66,7 +66,6 @@ function Utils.ApplyPvPLagFix(v)
         elseif v:IsA("Beam") or v:IsA("Trail") then v.Transparency = NS(0.8) end
     end)
 end
-
 local Combat = {}
 function Combat.CheckStates(char)
     if typeof(char) ~= "Instance" or not char:IsA("Model") then return false, false end
@@ -210,7 +209,6 @@ function Visuals.UpdateESP(p, tR, dSq, isTarget, isAlly, hp, mhp, lvl)
     bg.HpBg.HpTxt.Text = hp.." / "..mhp
     bg.BotLbl.Text, bg.BotLbl.TextColor3 = "[Lv."..lvl.."] "..m_floor(dSq^0.5).."m", mainColor
 end
-
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
     local p = CGui; pcall(function() if gethui then p = gethui() end end); 
@@ -293,58 +291,4 @@ MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Con
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function() MCXC.State.Status = "CANCEL: X"; MCXC.State.ComboQueue = nil; Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1); Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end)
 local fF, lFT = 0, t_tick()
 RS.Heartbeat:Connect(function() if t_tick() - MCXC.State.LastTick > 60 then MCXC.State.LastTick = t_tick(); collectgarbage("step") end; table.clear(MCXC.State.PlrData); local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local minD, targ = m_huge, nil; for _, p in pairs(MCXC.State.ActivePlayers) do if p.Character then local tR, hum = p.Character:FindFirstChild("HumanoidRootPart"), p.Character:FindFirstChild("Humanoid"); if tR and hum and hum.Health > 0 then local dSq = Utils.DistSq(tR.Position, myR.Position); local isAlly = (p.Team == LP.Team and LP.Team ~= nil); if not isAlly and dSq < minD then minD, targ = dSq, p end; MCXC.State.PlrData[p.Name] = {tR = tR, dSq = dSq, hp = m_floor(hum.Health), mhp = m_floor(hum.MaxHealth), lvl = p:FindFirstChild("Data") and p.Data:FindFirstChild("Level") and tostring(p.Data.Level.Value) or "?", isAlly = isAlly} end end end; MCXC.State.CurrentTarget = targ end)
-RS.RenderStepped:Connect(function() local n = t_tick(); fF = fF + 1; if n - lFT >= 1 then local fps = m_floor(fF / (n-lFT)); fF,lFT = 0,n; MCXC.State.Ping, MCXC.State.FPS = Utils.GetPing()/1000, fps; if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..fps, "PING: "..m_floor(MCXC.State.Ping*1000).."ms" end end; if MCXC.Cache.StatusLbl then MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status) end; if not MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then if MCXC.Cache.StrC and MCXC.State.CurrentCombo ~= "C" then Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1) end; if MCXC.Cache.StrC2 and MCXC.State.CurrentCombo ~= "C2" then Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end end; local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local targ = MCXC.State.CurrentTarget; if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then local d = MCXC.State.PlrData[targ.Name]; if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then Visuals.UpdateTracer(d.tR, myR, Theme.Target) else Visuals.ClearTracer() end else Visuals.ClearTracer() end; for _, p in pairs(MCXC.State.ActivePlayers) do local d = MCXC.State.PlrData[p.Name]; if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.isAlly, d.hp, d.mhp, d.lvl) else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end end; if MCXC.Config.EnableFOV then workspace.CurrentCamera.FieldOfView = MCXC.RS.RenderStepped:Connect(function()
-    local n = t_tick()
-    fF = fF + 1
-    if n - lFT >= 1 then
-        local fps = m_floor(fF / (n - lFT))
-        fF, lFT = 0, n
-        MCXC.State.Ping, MCXC.State.FPS = Utils.GetPing() / 1000, fps
-        if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then
-            MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: " .. fps, "PING: " .. m_floor(MCXC.State.Ping * 1000) .. "ms"
-        end
-    end
-    if MCXC.Cache.StatusLbl then
-        MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status)
-    end
-    if not MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.Cache.StrC and MCXC.State.CurrentCombo ~= "C" then
-            Utils.Tween(MCXC.Cache.StrC, { Thickness = 1.5, Color = Theme.Danger }, 0.1)
-        end
-        if MCXC.Cache.StrC2 and MCXC.State.CurrentCombo ~= "C2" then
-            Utils.Tween(MCXC.Cache.StrC2, { Thickness = 1.5, Color = Theme.Accent }, 0.1)
-        end
-    end
-    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not myR then return end
-    local targ = MCXC.State.CurrentTarget
-    if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then
-        local d = MCXC.State.PlrData[targ.Name]
-        if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then
-            Visuals.UpdateTracer(d.tR, myR, Theme.Target)
-        else
-            Visuals.ClearTracer()
-        end
-    else
-        Visuals.ClearTracer()
-    end
-    for _, p in pairs(MCXC.State.ActivePlayers) do
-        local d = MCXC.State.PlrData[p.Name]
-        if d then
-            Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.isAlly, d.hp, d.mhp, d.lvl)
-        else
-            if MCXC.Cache.ESP[p.Name] then
-                MCXC.Cache.ESP[p.Name].Enabled = false
-            end
-        end
-    end
-    if MCXC.Config.EnableFOV then
-        workspace.CurrentCamera.FieldOfView = MCXC.Config.FOVValue
-    end
-end)
-MCXC.State.Status = "DONE"
-t_delay(1.5, function()
-    if MCXC.State.Status == "DONE" then
-        MCXC.State.Status = "IDLE"
-    end
-end)
+RS.RenderStepped:Connect(function() local n = t_tick(); fF = fF + 1; if n - lFT >= 1 then local fps = m_floor(fF / (n-lFT)); fF,lFT = 0,n; MCXC.State.Ping, MCXC.State.FPS = Utils.GetPing()/1000, fps; if MCXC.Cache.FPSLbl and MCXC.Cache.PingLbl then MCXC.Cache.FPSLbl.Text, MCXC.Cache.PingLbl.Text = "FPS: "..fps, "PING: "..m_floor(MCXC.State.Ping*1000).."ms" end end; if MCXC.Cache.StatusLbl then MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status) end; if not MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then if MCXC.Cache.StrC and MCXC.State.CurrentCombo ~= "C" then Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1) end; if MCXC.Cache.StrC2 and MCXC.State.CurrentCombo ~= "C2" then Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1) end end; local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart"); if not myR then return end; local targ = MCXC.State.CurrentTarget; if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then local d = MCXC.State.PlrData[targ.Name]; if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then Visuals.UpdateTracer(d.tR, myR, Theme.Target) else Visuals.ClearTracer() end else Visuals.ClearTracer() end; for _, p in pairs(MCXC.State.ActivePlayers) do local d = MCXC.State.PlrData[p.Name]; if d then Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.isAlly, d.hp, d.mhp, d.lvl) else if MCXC.Cache.ESP[p.Name] then MCXC.Cache.ESP[p.Name].Enabled = false end end end; if MCXC.Config.EnableFOV then workspace.CurrentCamera.FieldOfView = MCXC.Config.FOVValue end end)
