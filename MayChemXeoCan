@@ -633,7 +633,7 @@ local function ProcessQueue()
         MCXC.State.ComboQueue = nil
         Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
     end
-
+end
 local function HandleCombo(id, str, strUI, col)
     if MCXC.State.SetupMode then return end
     if s_find(MCXC.State.Status, "CASTING") then
