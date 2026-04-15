@@ -15,7 +15,10 @@ local MCXC = {
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false,
         Macro = true, UnlockFPS = false, UITrans = 0.3,
         ShowStats = true, CancelOnTap = true,
-        BtnPosC = {0.8,0,0.4,0}, BtnPosC2 = {0.8,0,0.55,0}, BtnPosX = {0.8,0,0.7,0}
+        BtnPosC = {0.8,0,0.4,0}, BtnPosC2 = {0.8,0,0.55,0}, BtnPosX = {0.8,0,0.7,0},
+        HoldEnabled = false,
+        HoldSetup = "",
+        Hold_ = {}
     },
     State = {
         SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "LOAD MACRO", MenuOpen = false,
@@ -36,12 +39,19 @@ local ConfigName = "MCXC_V47_Final.json"
 pcall(function()
     if isfile and isfile(ConfigName) then
         local s = HS:JSONDecode(readfile(ConfigName))
-        for k,v in pairs(s) do MCXC.Config[k]=v end
+        for k,v in pairs(s) do
+            if k == "HoldSetup" then MCXC.Config.HoldSetup = v
+            elseif k:find("Hold_") then MCXC.Config.Hold_[k] = v
+            else MCXC.Config[k] = v end
+        end
     end
 end)
 
 local function SaveConfig()
-    pcall(function() writefile(ConfigName, HS:JSONEncode(MCXC.Config)) end)
+    local saveData = {}
+    for k,v in pairs(MCXC.Config) do if k ~= "Hold_" then saveData[k] = v end end
+    for k,v in pairs(MCXC.Config.Hold_) do saveData[k] = v end
+    pcall(function() writefile(ConfigName, HS:JSONEncode(saveData)) end)
 end
 
 local function ManagePlayer(p, remove)
@@ -100,12 +110,13 @@ function Utils.ApplyPvPLighting()
     pcall(function()
         Lg.GlobalShadows = false
         Lg.FogEnd = 9e9
-        Lg.Brightness = 1.0
-        Lg.OutdoorAmbient = C3(100,100,100)
+        Lg.Brightness = 1.2
+        Lg.OutdoorAmbient = C3(120,120,120)
+        Lg.ClockTime = 14
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
     end)
 end
-function Utils.ApplyPvPLagFix(v)
+function Utils.ApplyPvPLagFix(v, level)
     if not v or not v:IsDescendantOf(workspace) then return end
     pcall(function()
         if v:IsA("BasePart") and not v:IsDescendantOf(LP.Character) then
@@ -118,10 +129,12 @@ function Utils.ApplyPvPLagFix(v)
                 v.Reflectance = 0
                 for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
             end
-        elseif v:IsA("ParticleEmitter") then v.Rate = v.Rate * 0.2; v.LockedToPart = true
-        elseif v:IsA("Terrain") then v.WaterWaveSize=0; v.WaterWaveSpeed=0; v.WaterReflectance=0; v.WaterTransparency=1
-        elseif v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("BloomEffect") then v.Enabled = false
-        elseif v:IsA("Beam") or v:IsA("Trail") then v.Transparency = NS(0.8)
+        elseif v:IsA("ParticleEmitter") or v:IsA("Beam") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+            v:Destroy()
+        elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") then
+            v.Enabled = false
+        elseif v:IsA("Terrain") then
+            v.WaterWaveSize=0; v.WaterWaveSpeed=0; v.WaterReflectance=0; v.WaterTransparency=1
         end
     end)
 end
@@ -204,19 +217,39 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 local currentType = GetCurrentToolType()
                 if currentType ~= key then
                     MCXC.State.Status = "CASTING " .. comboId .. ": EQUIP " .. key
-                    local kc = Enum.KeyCode.One
-                    if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
-                    VIM:SendKeyEvent(true, kc, false, game)
-                    Combat.SmartWait(0.02)
-                    VIM:SendKeyEvent(false, kc, false, game)
-                    Combat.SmartWait(0.08)
+                    local targetTool = nil
+                    for _, v in ipairs(LP.Backpack:GetChildren()) do
+                        if v:IsA("Tool") and GetCurrentToolType(v) == key then targetTool = v break end
+                    end
+                    if targetTool then
+                        local equipSuccess = false
+                        local conn; conn = LP.Character.ChildAdded:Connect(function(child)
+                            if child == targetTool then equipSuccess = true end
+                        end)
+                        pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
+                        local start = t_tick()
+                        while not equipSuccess and t_tick() - start < 1.0 do task.wait() end
+                        conn:Disconnect()
+                        if not equipSuccess then comboFailed = true; failR = "EQUIP TIMEOUT"; break end
+                    else
+                        local kc = Enum.KeyCode.One
+                        if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
+                        VIM:SendKeyEvent(true, kc, false, game)
+                        Combat.SmartWait(0.03)
+                        VIM:SendKeyEvent(false, kc, false, game)
+                        Combat.SmartWait(0.1)
+                    end
                 end
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
                 local kc = Enum.KeyCode[key]
+                local holdTime = 0
+                if MCXC.Config.HoldEnabled then
+                    holdTime = MCXC.Config.Hold_["Hold_"..key] or 0
+                end
                 local fired = false
                 local wR = t_tick()
-                while t_tick() - wR < 0.2 do
+                while t_tick() - wR < 0.25 do
                     local stn, bsy2 = Combat.CheckStunGrace()
                     if stn then comboFailed = true; failR = "STUNNED"; break end
                     if bsy2 then fired = true; break end
@@ -224,6 +257,13 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                     task.wait()
                 end
                 if comboFailed then break end
+                if fired and holdTime > 0 then
+                    local hS = t_tick()
+                    while t_tick() - hS < holdTime do
+                        if Combat.CheckStunGrace() then break end
+                        task.wait()
+                    end
+                end
                 VIM:SendKeyEvent(false, kc, false, game)
                 if not fired then comboFailed = true; failR = "COOLDOWN"; break end
                 local wA = t_tick()
@@ -411,21 +451,21 @@ function MaruUI:CreateWindow(title)
                 end)
                 return c
             end,
-            CreateSlider = function(s, text, min, max, key, isInt)
+            CreateSlider = function(s, text, min, max, key, isInt, visible)
                 s.LIdx = s.LIdx + 1
                 local c = I_new("Frame", frm)
-                c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,50), Theme.ElementBG, s.LIdx
+                c.Size, c.BackgroundColor3, c.LayoutOrder, c.Visible = U2(1,0,0,50), Theme.ElementBG, s.LIdx, visible or true
                 I_new("UICorner", c).CornerRadius = UD(0,6)
                 local l = I_new("TextLabel", c)
                 l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize, l.TextXAlignment = U2(1,-20,0,25), U2(0,10,0,5), 1, text, Theme.TextDark, Theme.Font, 12, 0
                 local vL = I_new("TextLabel", c)
                 vL.Size, vL.Position, vL.BackgroundTransparency, vL.TextColor3, vL.Font, vL.TextSize, vL.TextXAlignment, vL.ZIndex = U2(0.3,0,0,25), U2(0.7,-10,0,5), 1, Theme.Accent, Theme.FontBold, 12, 1, 5
-                vL.Text = tostring(MCXC.Config[key])
+                vL.Text = tostring(MCXC.Config[key] or min)
                 local tr = I_new("Frame", c)
                 tr.Size, tr.Position, tr.BackgroundColor3 = U2(1,-20,0,6), U2(0,10,0,35), C3(40,40,45)
                 I_new("UICorner", tr).CornerRadius = UD(1,0)
                 local fill = I_new("Frame", tr)
-                fill.Size, fill.BackgroundColor3 = U2((MCXC.Config[key]-min)/(max-min),0,1,0), Theme.Accent
+                fill.Size, fill.BackgroundColor3 = U2(((MCXC.Config[key] or min)-min)/(max-min),0,1,0), Theme.Accent
                 I_new("UICorner", fill).CornerRadius = UD(1,0)
                 local tB = I_new("TextButton", c)
                 tB.Size, tB.BackgroundTransparency, tB.Text = U2(1,0,1,0), 1, ""
@@ -437,6 +477,7 @@ function MaruUI:CreateWindow(title)
                     fill.Size = U2(p,0,1,0)
                     vL.Text = tostring(val)
                     MCXC.Config[key] = val
+                    if key:find("Hold_") then MCXC.Config.Hold_[key] = val end
                     if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size = U2(0,val,0,val) end
                     if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size = U2(0,val,0,val) end
                     if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size = U2(0,val,0,val) end
@@ -515,47 +556,62 @@ TabC:CreateToggle("Show Button C", "ShowC", function(v)
     if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = v end
     if sC then sC.Visible = v end
 end)
-sC = TabC:CreateSlider("Size C", 40, 100, "BtnSizeC", true)
-sC.Visible = MCXC.Config.ShowC
-
+sC = TabC:CreateSlider("Size C", 40, 100, "BtnSizeC", true, MCXC.Config.ShowC)
 TabC:CreateInput("Combo C2", "ComboC2")
 TabC:CreateToggle("Show Button C2", "ShowC2", function(v)
     if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible = v end
     if sC2 then sC2.Visible = v end
 end)
-sC2 = TabC:CreateSlider("Size C2", 40, 100, "BtnSizeC2", true)
-sC2.Visible = MCXC.Config.ShowC2
-
+sC2 = TabC:CreateSlider("Size C2", 40, 100, "BtnSizeC2", true, MCXC.Config.ShowC2)
 TabC:CreateToggle("Show Button X", "ShowX", function(v)
     if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = v end
     if sX then sX.Visible = v end
 end)
-sX = TabC:CreateSlider("Size X", 30, 80, "BtnSizeX", true)
-sX.Visible = MCXC.Config.ShowX
-
+sX = TabC:CreateSlider("Size X", 30, 80, "BtnSizeX", true, MCXC.Config.ShowX)
 TabC:CreateToggle("Cancel on Tap", "CancelOnTap")
+
+TabC:CreateToggle("Enable Hold Skills", "HoldEnabled", function(v) end)
+local HoldContainer = I_new("Frame", TabC.Frame)
+HoldContainer.Size, HoldContainer.BackgroundTransparency, HoldContainer.AutomaticSize = U2(1,0,0,0), 1, Enum.AutomaticSize.Y
+I_new("UIListLayout", HoldContainer).Padding = UD(0,8)
+local holdSliders = {}
+local function RefreshHoldSliders(txt)
+    for _, s in pairs(holdSliders) do s:Destroy() end
+    holdSliders = {}
+    if not txt or txt == "" then return end
+    local idx = 0
+    for k in string.gmatch(s_upper(txt), "[ZXCVF]") do
+        idx = idx + 1
+        local key = "Hold_"..k
+        if MCXC.Config.Hold_[key] == nil then MCXC.Config.Hold_[key] = 0.5 end
+        local s = TabC:CreateSlider("Hold "..k.." (s)", 0, 3, key, false, true)
+        s.LayoutOrder = idx
+        table.insert(holdSliders, s)
+    end
+end
+TabC:CreateInput("Hold Setup (e.g Z X C)", "HoldSetup", function(val)
+    MCXC.Config.HoldSetup = val
+    RefreshHoldSliders(val)
+    SaveConfig()
+end)
+RefreshHoldSliders(MCXC.Config.HoldSetup)
 
 local sFOV, sE, sT
 TabV:CreateToggle("Custom FOV", "EnableFOV", function(v)
     if not v then workspace.CurrentCamera.FieldOfView = 70 end
     if sFOV then sFOV.Visible = v end
 end)
-sFOV = TabV:CreateSlider("FOV Value", 70, 120, "FOVValue", true)
-sFOV.Visible = MCXC.Config.EnableFOV
-
+sFOV = TabV:CreateSlider("FOV Value", 70, 120, "FOVValue", true, MCXC.Config.EnableFOV)
 TabV:CreateToggle("ESP", "ESP", function(v)
     if not v then Visuals.ClearTracer() end
     if sE then sE.Visible = v end
 end)
-sE = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true)
-sE.Visible = MCXC.Config.ESP
-
+sE = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true, MCXC.Config.ESP)
 TabV:CreateToggle("View Tracer", "ViewTracer", function(v)
     if not v then Visuals.ClearTracer() end
     if sT then sT.Visible = v end
 end)
-sT = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true)
-sT.Visible = MCXC.Config.ViewTracer
+sT = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true, MCXC.Config.ViewTracer)
 
 TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v)
     MCXC.State.SetupMode = v
@@ -695,4 +751,3 @@ RS.RenderStepped:Connect(function()
 end)
 
 MCXC.State.Status = "IDLE"
-      
