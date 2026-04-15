@@ -176,15 +176,18 @@ function Combat.SmartWait(desiredTime)
     return true
 end
 
-local function GetCurrentToolType()
-    local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
-    if not tool then return nil end
+local function GetToolType(tool)
     local n = s_lower(tool.Name)
     if s_find(n, "art") or s_find(n, "claw") or s_find(n, "step") or s_find(n, "talon") or s_find(n, "melee") then return "1" end
     if s_find(n, "fruit") or s_find(n, "kitsune") or s_find(n, "dough") or s_find(n, "leopard") or s_find(n, "buddha") then return "2" end
     if s_find(n, "sword") or s_find(n, "katana") or s_find(n, "blade") or s_find(n, "tushita") or s_find(n, "yama") or s_find(n, "cdk") or s_find(n, "trident") or s_find(n, "lamp") or s_find(n, "heart") or s_find(n, "anchor") then return "3" end
     if s_find(n, "gun") or s_find(n, "rifle") or s_find(n, "kabucha") or s_find(n, "serpent") or s_find(n, "guitar") then return "4" end
     return nil
+end
+
+local function GetCurrentToolType()
+    local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
+    return tool and GetToolType(tool)
 end
 
 local function FastCastManual(kc)
@@ -219,7 +222,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                     MCXC.State.Status = "CASTING " .. comboId .. ": EQUIP " .. key
                     local targetTool = nil
                     for _, v in ipairs(LP.Backpack:GetChildren()) do
-                        if v:IsA("Tool") and GetCurrentToolType(v) == key then targetTool = v break end
+                        if v:IsA("Tool") and GetToolType(v) == key then targetTool = v break end
                     end
                     if targetTool then
                         local equipSuccess = false
@@ -692,48 +695,8 @@ MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
     Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-end
-
-MCXC.Cache.BtnC.MouseButton1Click:Connect(function()
-    HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger)
-end)
-MCXC.Cache.BtnC2.MouseButton1Click:Connect(function()
-    HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent)
-end)
-MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
-    MCXC.State.Status = "CANCEL: X"
-    MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1)
 end)
-
-local function ProcessQueue()
-    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        local q = MCXC.State.ComboQueue
-        MCXC.State.ComboQueue = nil
-        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
-    end
-end
-
-local function HandleCombo(id, str, strUI, col)
-    if MCXC.State.SetupMode then return end
-    if s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.State.CurrentCombo == id then
-            if MCXC.Config.CancelOnTap then
-                MCXC.State.Status = "CANCEL: MANUAL"
-                MCXC.State.ComboQueue = nil
-                Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1)
-                Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1)
-            end
-        else
-            MCXC.State.ComboQueue = {id = id, str = str, strUI = strUI, col = col}
-            Utils.Tween(strUI, {Thickness = 3, Color = Theme.Target}, 0.1)
-        end
-    else
-        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
-    end
-end
 
 local fF, lFT = 0, t_tick()
 RS.Heartbeat:Connect(function()
