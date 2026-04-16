@@ -313,13 +313,20 @@ function Combat.SwitchToTool(key)
         if v:IsA("Tool") and GetToolType(v) == key then targetTool = v break end
     end
     if targetTool then
+        local equipped = false
+        local conn; conn = LP.Character.ChildAdded:Connect(function(child)
+            if child == targetTool then equipped = true end
+        end)
         pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
         local start = t_tick()
         repeat
-            local cur = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
-            if cur == targetTool then return true end
+            if equipped and LP.Character:FindFirstChildOfClass("Tool") == targetTool then
+                conn:Disconnect()
+                return true
+            end
             task.wait()
-        until t_tick() - start > 2.0
+        until t_tick() - start > 2.5
+        conn:Disconnect()
     end
     local kc = key == "2" and Enum.KeyCode.Two or key == "3" and Enum.KeyCode.Three or key == "4" and Enum.KeyCode.Four or Enum.KeyCode.One
     VIM:SendKeyEvent(true, kc, false, game)
@@ -329,11 +336,11 @@ function Combat.SwitchToTool(key)
     repeat
         if GetCurrentToolType() == key then return true end
         task.wait()
-    until t_tick() - start > 1.5
+    until t_tick() - start > 1.8
     return false
 end
 
-function Combat.WaitForSkillActivation(tool, key, timeout)
+function Combat.WaitForSkillActivation(tool, timeout)
     local activated = false
     local conn
     timeout = timeout or 3.0
@@ -389,7 +396,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
                 if not tool then failed = true; failReason = "NO TOOL"; break end
                 VIM:SendKeyEvent(true, kc, false, game)
-                if not Combat.WaitForSkillActivation(tool, key, 1.5) then
+                if not Combat.WaitForSkillActivation(tool, 1.5) then
                     VIM:SendKeyEvent(false, kc, false, game)
                     failed = true; failReason = "SKILL NOT ACTIVATED"; break
                 end
@@ -495,8 +502,8 @@ function Visuals.UpdateESP(p, tR, dSq, isTarget, hp, mhp, lvl, bounty)
     bg.WpnLbl.Text = tool and tool.Name or ""
     bg.WpnLbl.TextColor3 = mainColor
 end
-
 local SilentAim = {}
+SilentAim.LockedTarget = nil
 SilentAim.Hook = nil
 
 function SilentAim.GetNearestEnemy()
@@ -520,6 +527,14 @@ function SilentAim.GetNearestEnemy()
     return nearest
 end
 
+function SilentAim.GetValidTarget()
+    if SilentAim.LockedTarget and SilentAim.LockedTarget.Character and SilentAim.LockedTarget.Character:FindFirstChild("Humanoid") and SilentAim.LockedTarget.Character.Humanoid.Health > 0 then
+        return SilentAim.LockedTarget
+    end
+    SilentAim.LockedTarget = SilentAim.GetNearestEnemy()
+    return SilentAim.LockedTarget
+end
+
 function SilentAim.Enable()
     if SilentAim.Hook then return end
     MCXC.State.SilentAimEnabled = true
@@ -527,16 +542,25 @@ function SilentAim.Enable()
         local method = getnamecallmethod()
         local args = {...}
         if method == "FireServer" and MCXC.State.SilentAimEnabled then
-            local target = SilentAim.GetNearestEnemy()
-            if target and target.Character then
-                local targetPart = target.Character:FindFirstChild("Head") or target.Character:FindFirstChild("HumanoidRootPart")
-                if targetPart then
-                    local targetPos = targetPart.Position
-                    for i, arg in ipairs(args) do
-                        if typeof(arg) == "Vector3" then
-                            args[i] = targetPos
-                        elseif typeof(arg) == "CFrame" then
-                            args[i] = CFrame.new(targetPos)
+            local remoteName = self.Name or ""
+            if s_find(s_lower(remoteName), "shoot") or s_find(s_lower(remoteName), "fire") or s_find(s_lower(remoteName), "cast") or s_find(s_lower(remoteName), "skill") then
+                local target = SilentAim.GetValidTarget()
+                if target and target.Character then
+                    local targetPart = target.Character:FindFirstChild("Head") or target.Character:FindFirstChild("HumanoidRootPart")
+                    if targetPart then
+                        local targetPos = targetPart.Position
+                        local myPos = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character.HumanoidRootPart.Position
+                        local direction = myPos and (targetPos - myPos).Unit or V3(0,0,0)
+                        for i, arg in ipairs(args) do
+                            if typeof(arg) == "Vector3" then
+                                if s_find(s_lower(remoteName), "dir") or s_find(s_lower(remoteName), "hold") then
+                                    args[i] = direction
+                                else
+                                    args[i] = targetPos
+                                end
+                            elseif typeof(arg) == "CFrame" then
+                                args[i] = CFrame.new(targetPos)
+                            end
                         end
                     end
                 end
@@ -548,6 +572,7 @@ end
 
 function SilentAim.Disable()
     MCXC.State.SilentAimEnabled = false
+    SilentAim.LockedTarget = nil
 end
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
@@ -858,6 +883,7 @@ end, "Hide UI", Theme.Danger, function()
     MCXC.State.LagFixed = false
     Gui.Enabled = false
 end)
+
 LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
 workspace.DescendantAdded:Connect(function(v)
     if MCXC.State.LagFixed then
@@ -903,6 +929,7 @@ local function HandleCombo(id, str, strUI, col)
         Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
     end
 end
+
 MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
 MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
@@ -911,6 +938,14 @@ MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
+
+local function ProcessQueue()
+    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
+        local q = MCXC.State.ComboQueue
+        MCXC.State.ComboQueue = nil
+        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
+    end
+end
 
 local fF, lFT = 0, t_tick()
 RS.Heartbeat:Connect(function()
