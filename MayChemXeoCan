@@ -277,12 +277,52 @@ local function GetCurrentToolType()
     return GetToolType(tool)
 end
 
+function Combat.SwitchToTool(key)
+    local current = GetCurrentToolType()
+    if current == key then return true end
+    MCXC.State.Status = "SWITCHING TO " .. key
+    local targetTool = nil
+    for _, v in ipairs(LP.Backpack:GetChildren()) do
+        if v:IsA("Tool") and GetToolType(v) == key then targetTool = v break end
+    end
+    if targetTool then
+        pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
+        local start = t_tick()
+        repeat
+            local cur = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
+            if cur == targetTool then return true end
+            task.wait()
+        until t_tick() - start > 1.5
+    end
+    local kc = key == "2" and Enum.KeyCode.Two or key == "3" and Enum.KeyCode.Three or key == "4" and Enum.KeyCode.Four or Enum.KeyCode.One
+    VIM:SendKeyEvent(true, kc, false, game)
+    task.wait(0.05)
+    VIM:SendKeyEvent(false, kc, false, game)
+    local start = t_tick()
+    repeat
+        if GetCurrentToolType() == key then return true end
+        task.wait()
+    until t_tick() - start > 1.5
+    return false
+end
+
+function Combat.WaitForBusy(timeout)
+    local start = t_tick()
+    repeat
+        if Combat.CheckBusy(LP.Character) then return true end
+        if s_find(MCXC.State.Status, "CANCEL") then return false end
+        if Combat.IsStunned(LP.Character) then return false end
+        task.wait()
+    until t_tick() - start > (timeout or 0.5)
+    return false
+end
+
 local function FastCastManual(kc)
     if not MCXC.Config.Macro or s_find(MCXC.State.Status, "CASTING") then return end
     t_spawn(function()
         if Combat.IsStunned(LP.Character) or Combat.CheckBusy(LP.Character) then return end
         VIM:SendKeyEvent(true, kc, false, game)
-        task.wait(0.01)
+        task.wait()
         VIM:SendKeyEvent(false, kc, false, game)
     end)
 end
@@ -304,34 +344,10 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
             if s_find(MCXC.State.Status, "CANCEL") then failed = true; failReason = "CANCELLED"; break end
             local key = s_sub(seq, step, step)
             if s_match(key, "[1-4]") then
-                local current = GetCurrentToolType()
-                if current ~= key then
-                    MCXC.State.Status = "CASTING " .. comboId .. ": EQUIP " .. key
-                    local targetTool = nil
-                    for _, v in ipairs(LP.Backpack:GetChildren()) do
-                        if v:IsA("Tool") and GetToolType(v) == key then targetTool = v break end
-                    end
-                    local success = false
-                    if targetTool then
-                        local conn; conn = LP.Character.ChildAdded:Connect(function(child)
-                            if child == targetTool then success = true end
-                        end)
-                        pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
-                        local start = t_tick()
-                        while not success and t_tick() - start < 2.0 do task.wait() end
-                        conn:Disconnect()
-                    else
-                        local kc = key == "2" and Enum.KeyCode.Two or key == "3" and Enum.KeyCode.Three or key == "4" and Enum.KeyCode.Four or Enum.KeyCode.One
-                        VIM:SendKeyEvent(true, kc, false, game)
-                        task.wait(0.05)
-                        VIM:SendKeyEvent(false, kc, false, game)
-                        local start = t_tick()
-                        while GetCurrentToolType() ~= key and t_tick() - start < 1.5 do task.wait() end
-                        success = GetCurrentToolType() == key
-                    end
-                    if not success then failed = true; failReason = "TOOL SWITCH FAIL"; break end
-                    task.wait(0.1)
+                if not Combat.SwitchToTool(key) then
+                    failed = true; failReason = "TOOL SWITCH FAIL"; break
                 end
+                task.wait(0.1)
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
                 local kc = Enum.KeyCode[key]
@@ -341,13 +357,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                     holdTime = MCXC.Config.Hold_["Hold_"..currentType..key] or 0
                 end
                 VIM:SendKeyEvent(true, kc, false, game)
-                local busyObserved = false
-                local start = t_tick()
-                repeat
-                    if Combat.CheckBusy(LP.Character) then busyObserved = true; break end
-                    task.wait()
-                until t_tick() - start > 0.25
-                if not busyObserved then
+                if not Combat.WaitForBusy(0.3) then
                     VIM:SendKeyEvent(false, kc, false, game)
                     failed = true; failReason = "COOLDOWN"; break
                 end
