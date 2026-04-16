@@ -119,15 +119,23 @@ function Utils.ApplyPvPLighting()
     pcall(function()
         Lg.GlobalShadows = false
         Lg.FogEnd = 9e9
-        Lg.Brightness = 1.1
-        Lg.OutdoorAmbient = C3(110,110,110)
-        Lg.ClockTime = 14
-        Lg.Ambient = C3(100,100,100)
-        Lg.ExposureCompensation = 0.2
+        Lg.Brightness = 1.0
+        Lg.OutdoorAmbient = C3(100,100,100)
+        Lg.ClockTime = 10
+        Lg.Ambient = C3(90,90,90)
+        Lg.ExposureCompensation = -0.3
+        Lg:ClearAllChildren()
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
+        local terrain = workspace.Terrain
+        if terrain then
+            terrain.Decoration = false
+            terrain.WaterWaveSize = 0
+            terrain.WaterWaveSpeed = 0
+            terrain.WaterReflectance = 0
+            terrain.WaterTransparency = 1
+        end
     end)
 end
-
 local LagFixer = {}
 function LagFixer.ProcessObject(v)
     if not v or not v:IsDescendantOf(workspace) then return end
@@ -141,52 +149,54 @@ function LagFixer.ProcessObject(v)
                 v.CastShadow = false
                 v.Reflectance = 0
                 for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
+                if v:IsA("MeshPart") or v:IsA("UnionOperation") then
+                    if v.Size.Magnitude < 5 then v:Destroy() end
+                end
             end
         elseif v:IsA("ParticleEmitter") then
-            v.Rate = v.Rate * 0.5
-            if v.Size then v.Size = NS(v.Size.Keypoints[1].Value * 0.7) end
-            v.LightEmission = (v.LightEmission or 1) * 0.5
+            v.Rate = v.Rate * 0.4
+            if v.Size then v.Size = NS(v.Size.Keypoints[1].Value * 0.6) end
+            v.LightEmission = (v.LightEmission or 1) * 0.3
         elseif v:IsA("Beam") or v:IsA("Trail") then
-            v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.3)
-            v.Width0 = v.Width0 * 0.7
-            v.Width1 = v.Width1 * 0.7
-        elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") then
-            v.Enabled = false
-        elseif v:IsA("Terrain") then
-            v.WaterWaveSize=0; v.WaterWaveSpeed=0; v.WaterReflectance=0; v.WaterTransparency=1
+            v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.4)
+            v.Width0 = v.Width0 * 0.6
+            v.Width1 = v.Width1 * 0.6
+        elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then
+            v:Destroy()
         end
     end)
 end
-
 function Utils.ApplyPvPLagFix(v)
     LagFixer.ProcessObject(v)
 end
 local Combat = {}
-function Combat.CheckStates(char)
-    if typeof(char) ~= "Instance" or not char:IsA("Model") then return false, false end
-    local stun, busy = false, false
+local STUN_NAMES = {Stun=true, Stunned=true, CantMove=true, Freeze=true, Paralyze=true}
+function Combat.IsStunned(char)
+    if typeof(char) ~= "Instance" or not char:IsA("Model") then return false end
+    for _, v in ipairs(char:GetChildren()) do
+        if v.ClassName == "BoolValue" and v.Value == true and STUN_NAMES[v.Name] then
+            return true
+        end
+    end
+    return false
+end
+function Combat.WaitForStunEnd(char)
+    while Combat.IsStunned(char) do
+        task.wait(0.05)
+    end
+end
+
+function Combat.CheckBusy(char)
+    if typeof(char) ~= "Instance" or not char:IsA("Model") then return false end
     for _, v in ipairs(char:GetChildren()) do
         if v.ClassName == "BoolValue" and v.Value == true then
             local n = s_lower(v.Name)
-            if s_find(n, "stun") or s_find(n, "cant") then stun = true end
-            if s_find(n, "busy") or s_find(n, "using") or s_find(n, "cast") then busy = true end
-            if stun and busy then break end
+            if s_find(n, "busy") or s_find(n, "using") or s_find(n, "cast") then
+                return true
+            end
         end
     end
-    return stun, busy
-end
-function Combat.CheckStunGrace()
-    local st, bs = Combat.CheckStates(LP.Character)
-    if st then
-        local sT = t_tick()
-        while t_tick() - sT < 0.6 do
-            st, bs = Combat.CheckStates(LP.Character)
-            if not st then return false, bs end
-            task.wait()
-        end
-        return true, bs
-    end
-    return false, bs
+    return false
 end
 
 local function GetToolType(tool)
@@ -203,18 +213,22 @@ local function GetToolType(tool)
     return t
 end
 
+local function CacheTool(tool)
+    if tool:IsA("Tool") then GetToolType(tool) end
+end
+LP.Backpack.ChildAdded:Connect(CacheTool)
+LP.Character.ChildAdded:Connect(CacheTool)
+for _, tool in ipairs(LP.Backpack:GetChildren()) do CacheTool(tool) end
+
 local function GetCurrentToolType()
     local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
     return GetToolType(tool)
 end
 
-for _, tool in ipairs(LP.Backpack:GetChildren()) do if tool:IsA("Tool") then GetToolType(tool) end end
-
 local function FastCastManual(kc)
     if not MCXC.Config.Macro or s_find(MCXC.State.Status, "CASTING") then return end
     t_spawn(function()
-        local st, bsy = Combat.CheckStates(LP.Character)
-        if st or bsy then return end
+        if Combat.IsStunned(LP.Character) or Combat.CheckBusy(LP.Character) then return end
         VIM:SendKeyEvent(true, kc, false, game)
         task.wait(0.01)
         VIM:SendKeyEvent(false, kc, false, game)
@@ -223,54 +237,48 @@ end
 UIS.InputBegan:Connect(function(i, p) if not p and s_match(i.KeyCode.Name, "[ZXCVF]") then FastCastManual(i.KeyCode) end end)
 
 function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
-    if s_find(MCXC.State.Status, "CASTING") and MCXC.State.CurrentCombo ~= comboId then return end
+    if s_find(MCXC.State.Status, "CASTING") then return end
+    MCXC.State.Status = "CASTING: " .. comboId
     MCXC.State.CurrentCombo = comboId
     t_spawn(function()
-        Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Text}, 0.05)
         local seq = s_upper(comboStr)
-        local comboFailed, failR = false, ""
-        local isFirstToolSwitch = true
-        for i = 1, #seq do
-            local st, _ = Combat.CheckStunGrace()
-            if st or s_find(MCXC.State.Status, "CANCEL") then comboFailed = true; failR = "STUNNED"; break end
-            local key = s_sub(seq, i, i)
+        local step, failed, failReason = 1, false, ""
+        Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Text}, 0.05)
+        while step <= #seq and not failed do
+            if Combat.IsStunned(LP.Character) then
+                MCXC.State.Status = "STUNNED - WAIT"
+                Combat.WaitForStunEnd(LP.Character)
+            end
+            if s_find(MCXC.State.Status, "CANCEL") then failed = true; failReason = "CANCELLED"; break end
+            local key = s_sub(seq, step, step)
             if s_match(key, "[1-4]") then
-                local currentType = GetCurrentToolType()
-                if currentType ~= key then
+                local current = GetCurrentToolType()
+                if current ~= key then
                     MCXC.State.Status = "CASTING " .. comboId .. ": EQUIP " .. key
                     local targetTool = nil
                     for _, v in ipairs(LP.Backpack:GetChildren()) do
                         if v:IsA("Tool") and GetToolType(v) == key then targetTool = v break end
                     end
+                    local success = false
                     if targetTool then
-                        local equipSuccess = false
                         local conn; conn = LP.Character.ChildAdded:Connect(function(child)
-                            if child == targetTool then equipSuccess = true end
+                            if child == targetTool then success = true end
                         end)
                         pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
-                        local timeout = isFirstToolSwitch and 2.5 or 1.5
                         local start = t_tick()
-                        while not equipSuccess and t_tick() - start < timeout do task.wait() end
+                        while not success and t_tick() - start < 2.0 do task.wait() end
                         conn:Disconnect()
-                        if equipSuccess then
-                            task.wait(0.1)
-                        else
-                            local kc = Enum.KeyCode.One
-                            if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
-                            VIM:SendKeyEvent(true, kc, false, game)
-                            task.wait(0.05)
-                            VIM:SendKeyEvent(false, kc, false, game)
-                            task.wait(0.1)
-                        end
-                        isFirstToolSwitch = false
                     else
-                        local kc = Enum.KeyCode.One
-                        if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
+                        local kc = key == "2" and Enum.KeyCode.Two or key == "3" and Enum.KeyCode.Three or key == "4" and Enum.KeyCode.Four or Enum.KeyCode.One
                         VIM:SendKeyEvent(true, kc, false, game)
-                        task.wait(0.03)
+                        task.wait(0.05)
                         VIM:SendKeyEvent(false, kc, false, game)
-                        task.wait(0.1)
+                        local start = t_tick()
+                        while GetCurrentToolType() ~= key and t_tick() - start < 1.5 do task.wait() end
+                        success = GetCurrentToolType() == key
                     end
+                    if not success then failed = true; failReason = "TOOL SWITCH FAIL"; break end
+                    task.wait(0.1)
                 end
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
@@ -280,47 +288,39 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 if MCXC.Config.HoldEnabled and currentType then
                     holdTime = MCXC.Config.Hold_["Hold_"..currentType..key] or 0
                 end
-                local fired = false
-                local wR = t_tick()
-                while t_tick() - wR < 0.25 do
-                    local stn, bsy2 = Combat.CheckStunGrace()
-                    if stn then comboFailed = true; failR = "STUNNED"; break end
-                    if bsy2 then fired = true; break end
-                    VIM:SendKeyEvent(true, kc, false, game)
+                local busy = false
+                local start = t_tick()
+                VIM:SendKeyEvent(true, kc, false, game)
+                while t_tick() - start < 0.25 do
+                    if Combat.CheckBusy(LP.Character) then busy = true; break end
                     task.wait()
                 end
-                if comboFailed then break end
-                if fired and holdTime > 0 then
-                    local hS = t_tick()
-                    while t_tick() - hS < holdTime do
-                        if Combat.CheckStunGrace() then break end
+                if not busy then failed = true; failReason = "COOLDOWN"; VIM:SendKeyEvent(false, kc, false, game); break end
+                if holdTime > 0 then
+                    local holdStart = t_tick()
+                    while t_tick() - holdStart < holdTime do
+                        if Combat.IsStunned(LP.Character) then break end
                         task.wait()
                     end
                 end
                 VIM:SendKeyEvent(false, kc, false, game)
-                if not fired then comboFailed = true; failR = "COOLDOWN"; break end
-                local wA = t_tick()
-                while t_tick() - wA < 1.2 do
-                    local stn, bsy2 = Combat.CheckStunGrace()
-                    if stn or not bsy2 then if stn then comboFailed=true; failR="INTERRUPTED" end; break end
-                    task.wait()
-                end
-                if comboFailed then break end
+                while Combat.CheckBusy(LP.Character) do task.wait() end
+                task.wait(0.05)
             end
+            step = step + 1
         end
-        if comboFailed then
-            MCXC.State.Status = "CANCEL: " .. failR; MCXC.State.ComboQueue = nil
+        if failed then
+            MCXC.State.Status = "FAIL: " .. failReason
             Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Danger}, 0.1)
             t_delay(0.5, function() Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2) end)
         else
-            MCXC.State.Status = "DONE: " .. comboId; Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2)
+            MCXC.State.Status = "DONE: " .. comboId
+            Utils.Tween(strUI, {Thickness=1.5, Color=col}, 0.2)
         end
-        t_delay(0.2, function()
-            if not s_find(MCXC.State.Status, "CASTING") and not MCXC.State.ComboQueue then
-                MCXC.State.Status = "IDLE"
-            end
-            if onEnd then onEnd() end
-        end)
+        MCXC.State.CurrentCombo = nil
+        MCXC.State.Status = "IDLE"
+        if onEnd then onEnd() end
+        if MCXC.State.ComboQueue then ProcessQueue() end
     end)
 end
 
@@ -750,40 +750,6 @@ MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
     Utils.Tween(MCXC.Cache.StrC,{Thickness=1.5, Color=Theme.Danger}, 0.1)
-    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-end)
-
-local function ProcessQueue()
-    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        local q = MCXC.State.ComboQueue
-        MCXC.State.ComboQueue = nil
-        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
-    end
-end
-local function HandleCombo(id, str, strUI, col)
-    if MCXC.State.SetupMode then return end
-    if s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.State.CurrentCombo == id then
-            if MCXC.Config.CancelOnTap then
-                MCXC.State.Status = "CANCEL: MANUAL"
-                MCXC.State.ComboQueue = nil
-                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-            end
-        else
-            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
-            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
-        end
-    else
-        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
-    end
-end
-MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
-MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
-MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
-    MCXC.State.Status = "CANCEL: X"
-    MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
 
