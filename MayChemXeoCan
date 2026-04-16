@@ -129,10 +129,10 @@ function Utils.ApplyPvPLighting()
         Lg.GlobalShadows = false
         Lg.FogEnd = 9e9
         Lg.Brightness = 1.0
-        Lg.OutdoorAmbient = C3(110,110,110)
+        Lg.OutdoorAmbient = C3(120,120,120)
         Lg.ClockTime = 14
-        Lg.Ambient = C3(100,100,100)
-        Lg.ExposureCompensation = 0.1
+        Lg.Ambient = C3(110,110,110)
+        Lg.ExposureCompensation = 0.0
         Lg:ClearAllChildren()
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
         local terrain = workspace.Terrain
@@ -196,52 +196,25 @@ function LagFixer.ProcessObject(v)
                 v.Reflectance = 0
                 for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
                 if v:IsA("MeshPart") or v:IsA("UnionOperation") then
-                    if v.Size.Magnitude < 5 then v:Destroy() end
+                    if v.Size.Magnitude < 4 then v:Destroy() end
                 end
             end
-        elseif v:IsA("ParticleEmitter") or v:IsA("Beam") or v:IsA("Trail") then
-            local owner = LagFixer.GetEffectOwner(v)
-            if owner and not LagFixer.IsAlly(owner) then
-                if v:IsA("ParticleEmitter") then
-                    v.Rate = v.Rate * 0.3
-                    if v.Size then v.Size = NS(v.Size.Keypoints[1].Value * 0.5) end
-                    v.LightEmission = 0.1
-                    v.Color = CS(C3(80,80,80))
-                elseif v:IsA("Beam") or v:IsA("Trail") then
-                    v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.6)
-                    v.Width0 = v.Width0 * 0.5
-                    v.Width1 = v.Width1 * 0.5
-                    v.Color = CS(C3(100,100,100))
-                end
+        elseif v:IsA("ParticleEmitter") then
+            if v.Texture and (s_find(v.Texture, "smoke") or s_find(v.Texture, "fog")) then
+                v:Destroy()
+            else
+                v.Rate = v.Rate * 0.4
+                if v.Size then v.Size = NS(v.Size.Keypoints[1].Value * 0.6) end
+                v.LightEmission = (v.LightEmission or 1) * 0.3
             end
+        elseif v:IsA("Beam") or v:IsA("Trail") then
+            v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.3)
+            v.Width0 = v.Width0 * 0.7
+            v.Width1 = v.Width1 * 0.7
         elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then
             v:Destroy()
         end
     end)
-end
-
-function LagFixer.GetEffectOwner(effect)
-    local obj = effect
-    while obj and obj ~= workspace do
-        if obj:IsA("Model") then
-            local hum = obj:FindFirstChild("Humanoid")
-            if hum then return Plyrs:GetPlayerFromCharacter(obj) end
-        end
-        obj = obj.Parent
-    end
-    if effect:IsA("Beam") then
-        local att0 = effect.Attachment0
-        if att0 then
-            local part = att0.Parent
-            if part then
-                local model = part.Parent
-                if model and model:IsA("Model") then
-                    return Plyrs:GetPlayerFromCharacter(model)
-                end
-            end
-        end
-    end
-    return nil
 end
 
 function Utils.ApplyPvPLagFix(v)
@@ -321,9 +294,9 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
     MCXC.State.CurrentCombo = comboId
     t_spawn(function()
         local seq = s_upper(comboStr)
-        local step, failed, failReason = 1, false, ""
+        local failed, failReason = false, ""
         Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Text}, 0.05)
-        while step <= #seq and not failed do
+        for step = 1, #seq do
             if Combat.IsStunned(LP.Character) then
                 MCXC.State.Status = "STUNNED - WAIT"
                 Combat.WaitForStunEnd(LP.Character)
@@ -386,7 +359,6 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 while Combat.CheckBusy(LP.Character) do task.wait() end
                 task.wait(0.05)
             end
-            step = step + 1
         end
         if failed then
             MCXC.State.Status = "FAIL: " .. failReason
@@ -805,40 +777,6 @@ end
 MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC")
 MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2")
 MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
-
-local function ProcessQueue()
-    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        local q = MCXC.State.ComboQueue
-        MCXC.State.ComboQueue = nil
-        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
-    end
-end
-local function HandleCombo(id, str, strUI, col)
-    if MCXC.State.SetupMode then return end
-    if s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.State.CurrentCombo == id then
-            if MCXC.Config.CancelOnTap then
-                MCXC.State.Status = "CANCEL: MANUAL"
-                MCXC.State.ComboQueue = nil
-                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-            end
-        else
-            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
-            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
-        end
-    else
-        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
-    end
-end
-MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
-MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
-MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
-    MCXC.State.Status = "CANCEL: X"
-    MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-end)
 
 local function ProcessQueue()
     if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
