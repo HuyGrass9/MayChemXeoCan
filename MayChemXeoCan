@@ -21,7 +21,7 @@ local MCXC = {
         Hold_ = {}
     },
     State = {
-        SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "LOAD MACRO", MenuOpen = false,
+        SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "IDLE", MenuOpen = false,
         LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60,
         LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}
     },
@@ -123,31 +123,13 @@ function Utils.ApplyPvPLighting()
         Lg.OutdoorAmbient = C3(110,110,110)
         Lg.ClockTime = 14
         Lg.Ambient = C3(100,100,100)
-        Lg.ExposureCompensation = 0.25
+        Lg.ExposureCompensation = 0.2
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
     end)
 end
 
-local function ShouldKeepParticle(pe)
-    local success, result = pcall(function()
-        local tex = pe.Texture
-        if tex and (s_find(tex, "smoke") or s_find(tex, "fog")) then return false end
-        if pe.Rate > 80 and pe.Lifetime > 1.5 then return false end
-        if pe.Parent and pe.Parent:IsA("Attachment") then
-            local parentObj = pe.Parent.Parent
-            if parentObj and (parentObj:IsA("Beam") or parentObj:IsA("Trail")) then return true end
-        end
-        if pe.Size and pe.Size.Keypoints and #pe.Size.Keypoints > 0 then
-            local maxSize = 0
-            for _, kp in pairs(pe.Size.Keypoints) do if kp.Value > maxSize then maxSize = kp.Value end end
-            if maxSize < 0.15 and pe.Rate < 25 then return true end
-        end
-        return true
-    end)
-    return success and result
-end
-
-function Utils.ApplyPvPLagFix(v)
+local LagFixer = {}
+function LagFixer.ProcessObject(v)
     if not v or not v:IsDescendantOf(workspace) then return end
     pcall(function()
         if v:IsA("BasePart") and not v:IsDescendantOf(LP.Character) then
@@ -161,15 +143,23 @@ function Utils.ApplyPvPLagFix(v)
                 for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
             end
         elseif v:IsA("ParticleEmitter") then
-            if not ShouldKeepParticle(v) then v:Destroy() end
-        elseif v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
-            v:Destroy()
+            v.Rate = v.Rate * 0.5
+            if v.Size then v.Size = NS(v.Size.Keypoints[1].Value * 0.7) end
+            v.LightEmission = (v.LightEmission or 1) * 0.5
+        elseif v:IsA("Beam") or v:IsA("Trail") then
+            v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.3)
+            v.Width0 = v.Width0 * 0.7
+            v.Width1 = v.Width1 * 0.7
         elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") then
             v.Enabled = false
         elseif v:IsA("Terrain") then
             v.WaterWaveSize=0; v.WaterWaveSpeed=0; v.WaterReflectance=0; v.WaterTransparency=1
         end
     end)
+end
+
+function Utils.ApplyPvPLagFix(v)
+    LagFixer.ProcessObject(v)
 end
 local Combat = {}
 function Combat.CheckStates(char)
@@ -197,16 +187,6 @@ function Combat.CheckStunGrace()
         return true, bs
     end
     return false, bs
-end
-function Combat.SmartWait(desiredTime)
-    local start = t_tick()
-    local adj = m_max(0.005, desiredTime - (MCXC.State.Ping * 0.5))
-    while t_tick() - start < adj do
-        local st, _ = Combat.CheckStates(LP.Character)
-        if s_find(MCXC.State.Status, "CANCEL") or st then return false end
-        task.wait()
-    end
-    return true
 end
 
 local function GetToolType(tool)
@@ -278,18 +258,18 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                             local kc = Enum.KeyCode.One
                             if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
                             VIM:SendKeyEvent(true, kc, false, game)
-                            Combat.SmartWait(0.05)
+                            task.wait(0.05)
                             VIM:SendKeyEvent(false, kc, false, game)
-                            Combat.SmartWait(0.15)
+                            task.wait(0.1)
                         end
                         isFirstToolSwitch = false
                     else
                         local kc = Enum.KeyCode.One
                         if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
                         VIM:SendKeyEvent(true, kc, false, game)
-                        Combat.SmartWait(0.03)
+                        task.wait(0.03)
                         VIM:SendKeyEvent(false, kc, false, game)
-                        Combat.SmartWait(0.1)
+                        task.wait(0.1)
                     end
                 end
             elseif s_match(key, "[ZXCVF]") then
@@ -770,6 +750,40 @@ MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
     Utils.Tween(MCXC.Cache.StrC,{Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+end)
+
+local function ProcessQueue()
+    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
+        local q = MCXC.State.ComboQueue
+        MCXC.State.ComboQueue = nil
+        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
+    end
+end
+local function HandleCombo(id, str, strUI, col)
+    if MCXC.State.SetupMode then return end
+    if s_find(MCXC.State.Status, "CASTING") then
+        if MCXC.State.CurrentCombo == id then
+            if MCXC.Config.CancelOnTap then
+                MCXC.State.Status = "CANCEL: MANUAL"
+                MCXC.State.ComboQueue = nil
+                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+            end
+        else
+            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
+            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
+        end
+    else
+        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
+    end
+end
+MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
+MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
+MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
+    MCXC.State.Status = "CANCEL: X"
+    MCXC.State.ComboQueue = nil
+    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
 
