@@ -11,7 +11,7 @@ local I_new = Instance.new
 local MCXC = {
     Config = {
         ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500,
-        ESP = false, ViewTracer = false, EnableFOV = false, FOVValue = 90, FakeLag = false,
+        ESP = false, ViewTracer = false, EnableFOV = false, FOVValue = 90, FakeLag = false, SilentAim = false,
         BtnSizeC = 60, BtnSizeC2 = 60, BtnSizeX = 45, ShowC = false, ShowC2 = false, ShowX = false,
         Macro = true, UnlockFPS = false, UITrans = 0.3,
         ShowStats = true, CancelOnTap = true,
@@ -23,7 +23,7 @@ local MCXC = {
     State = {
         SessionID = HS:GenerateGUID(false):gsub("-", ""), Status = "IDLE", MenuOpen = false,
         LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60,
-        LagFixed = false, FakeLagEnabled = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}
+        LagFixed = false, FakeLagEnabled = false, SilentAimEnabled = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}
     },
     Cache = {ESP = {}, TracerLine = nil, UIElements = {}, HoldSliders = {}, ToolTypes = {}, EnemyHighlights = {}}
 }
@@ -509,469 +509,57 @@ function Visuals.UpdateESP(p, tR, dSq, isTarget, hp, mhp, lvl, bounty)
     bg.WpnLbl.Text = tool and tool.Name or ""
     bg.WpnLbl.TextColor3 = mainColor
 end
-local MaruUI = {}
-function MaruUI:CreateWindow(title)
-    local p = CGui; pcall(function() if gethui then p = gethui() end end)
-    local gName = "MCXC_"..MCXC.State.SessionID
-    if p:FindFirstChild(gName) then p[gName]:Destroy() end
-    local gui = I_new("ScreenGui", p); gui.Name, gui.ResetOnSpawn = gName, false
-    local fName = "F_ESP_"..MCXC.State.SessionID
-    MCXC.Cache.ESPFolder = CGui:FindFirstChild(fName) or I_new("Folder", CGui)
-    MCXC.Cache.ESPFolder.Name = fName
 
-    local StatF = I_new("Frame", gui)
-    StatF.Name, StatF.Size, StatF.Position, StatF.BackgroundTransparency, StatF.Visible = "StatsFrame", U2(0,160,0,65), U2(0,10,0,40), 1, MCXC.Config.ShowStats
-    local fL = I_new("TextLabel", StatF); fL.Size, fL.BackgroundTransparency, fL.Font, fL.TextSize, fL.TextColor3, fL.TextXAlignment, fL.Text = U2(1,0,0,20), 1, Theme.FontBlack, 13, Theme.Text, 0, ""
-    local pL = I_new("TextLabel", StatF); pL.Size, pL.Position, pL.BackgroundTransparency, pL.Font, pL.TextSize, pL.TextColor3, pL.TextXAlignment, pL.Text = U2(1,0,0,20), U2(0,0,0,20), 1, Theme.FontBlack, 13, Theme.Text, 0, ""
-    local sL = I_new("TextLabel", StatF); sL.Size, sL.Position, sL.BackgroundTransparency, sL.Font, sL.TextSize, sL.TextColor3, sL.TextXAlignment, sL.Text = U2(1,0,0,20), U2(0,0,0,40), 1, Theme.FontBold, 12, Theme.Accent, 0, ""
-    MCXC.Cache.FPSLbl, MCXC.Cache.PingLbl, MCXC.Cache.StatusLbl, MCXC.Cache.StatFrame = fL, pL, sL, StatF
+local SilentAim = {}
+SilentAim.Target = nil
+SilentAim.Hook = nil
 
-    local Tgl = I_new("ImageButton", gui)
-    Tgl.Size, Tgl.Position, Tgl.Image, Tgl.BackgroundColor3, Tgl.BackgroundTransparency = U2(0,45,0,45), U2(0.5,-22,0,15), "rbxthumb://type=Asset&id=8073107254&w=150&h=150", Theme.BG, MCXC.Config.UITrans
-    I_new("UICorner", Tgl).CornerRadius = UD(1,0)
-    I_new("UIStroke", Tgl).Color, I_new("UIStroke", Tgl).Thickness = Theme.Accent, 2
-
-    local Main = I_new("Frame", gui)
-    Main.Size, Main.Position, Main.BackgroundColor3, Main.BackgroundTransparency, Main.ClipsDescendants, Main.Visible = U2(0,460,0,290), U2(0.5,-230,0.5,-145), Theme.BG, MCXC.Config.UITrans, true, false
-    I_new("UICorner", Main).CornerRadius = UD(0,8)
-    I_new("UIStroke", Main).Color = C3(40,40,45)
-
-    local Sidebar = I_new("Frame", Main)
-    Sidebar.Size, Sidebar.BackgroundColor3, Sidebar.BackgroundTransparency = U2(0,130,1,0), Theme.Sidebar, MCXC.Config.UITrans
-
-    local Title = I_new("TextLabel", Sidebar)
-    Title.Size, Title.BackgroundTransparency, Title.Text, Title.TextColor3, Title.Font, Title.TextSize = U2(1,0,0,50), 1, title, Theme.Accent, Theme.FontBold, 13
-
-    local Content = I_new("Frame", Main)
-    Content.Size, Content.Position, Content.BackgroundTransparency = U2(1,-130,1,0), U2(0,130,0,0), 1
-
-    table.insert(MCXC.Cache.UIElements, Main)
-    table.insert(MCXC.Cache.UIElements, Sidebar)
-
-    Tgl.MouseButton1Click:Connect(function()
-        MCXC.State.MenuOpen = not MCXC.State.MenuOpen
-        if MCXC.State.MenuOpen then
-            Main.Visible = true
-            Utils.Tween(Main, {Size = U2(0,460,0,290)}, 0.3)
-        else
-            local tw = Utils.Tween(Main, {Size = U2(0,460,0,0)}, 0.2)
-            tw.Completed:Wait()
-            Main.Visible = false
-        end
-    end)
-
-    Utils.MakeDraggable(Tgl, Tgl)
-    Utils.MakeDraggable(Sidebar, Main)
-
-    local Window = {Tabs = {}, Container = Content, Sidebar = Sidebar}
-    function Window:CreateTab(name)
-        local btn = I_new("TextButton", Sidebar)
-        btn.Size, btn.Position, btn.BackgroundTransparency, btn.Text, btn.TextColor3, btn.Font, btn.TextSize = U2(1,0,0,38), U2(0,0,0,60 + (#self.Tabs * 38)), 1, "  "..name, Theme.TextDark, Theme.FontBold, 12
-        local ind = I_new("Frame", btn)
-        ind.Size, ind.Position, ind.BackgroundColor3, ind.BorderSizePixel, ind.AnchorPoint = U2(0,3,0,0), U2(0,0,0.5,0), Theme.Accent, 0, V2(0,0.5)
-        local frm = I_new("ScrollingFrame", Content)
-        frm.Size, frm.Position, frm.BackgroundTransparency, frm.Visible, frm.ScrollBarThickness, frm.AutomaticCanvasSize, frm.CanvasSize = U2(1,-16,1,-16), U2(0,8,0,8), 1, false, 2, Enum.AutomaticSize.Y, U2(0,0,0,0)
-        local layout = I_new("UIListLayout", frm)
-        layout.Padding = UD(0,8)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        local tab = {Btn = btn, Ind = ind, Frm = frm}
-        table.insert(self.Tabs, tab)
-        btn.MouseButton1Click:Connect(function()
-            for _, t in ipairs(self.Tabs) do
-                t.Frm.Visible = (t == tab)
-                Utils.Tween(t.Btn, {TextColor3 = (t == tab) and Theme.Text or Theme.TextDark}, 0.2)
-                Utils.Tween(t.Ind, {Size = (t == tab) and U2(0,3,0,20) or U2(0,3,0,0)}, 0.2)
-            end
-        end)
-        if #self.Tabs == 1 then frm.Visible, btn.TextColor3, ind.Size = true, Theme.Text, U2(0,3,0,20) end
-        return {
-            Frame = frm, LIdx = 0,
-            CreateToggle = function(s, text, key, cb)
-                s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm)
-                c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,40), Theme.ElementBG, s.LIdx
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c)
-                l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize, l.TextXAlignment = U2(1,-60,1,0), U2(0,10,0,0), 1, text, MCXC.Config[key] and Theme.Text or Theme.TextDark, Theme.Font, 12, 0
-                local swBG = I_new("Frame", c)
-                swBG.Size, swBG.Position, swBG.BackgroundColor3 = U2(0,34,0,18), U2(1,-44,0.5,-9), MCXC.Config[key] and Theme.Accent or C3(50,50,55)
-                I_new("UICorner", swBG).CornerRadius = UD(1,0)
-                local swDot = I_new("Frame", swBG)
-                swDot.Size, swDot.Position, swDot.BackgroundColor3 = U2(0,14,0,14), MCXC.Config[key] and U2(1,-17,0.5,-7) or U2(0,3,0.5,-7), Theme.Text
-                I_new("UICorner", swDot).CornerRadius = UD(1,0)
-                local b = I_new("TextButton", c)
-                b.Size, b.BackgroundTransparency, b.Text = U2(1,0,1,0), 1, ""
-                b.MouseButton1Click:Connect(function()
-                    MCXC.Config[key] = not MCXC.Config[key]
-                    Utils.Tween(l, {TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark}, 0.2)
-                    Utils.Tween(swBG, {BackgroundColor3 = MCXC.Config[key] and Theme.Accent or C3(50,50,55)}, 0.2)
-                    Utils.Tween(swDot, {Position = MCXC.Config[key] and U2(1,-17,0.5,-7) or U2(0,3,0.5,-7)}, 0.2)
-                    SaveConfig()
-                    if cb then cb(MCXC.Config[key]) end
-                end)
-                return c
-            end,
-            CreateSlider = function(s, text, min, max, key, isInt, visible)
-                s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm)
-                c.Size, c.BackgroundColor3, c.LayoutOrder, c.Visible = U2(1,0,0,50), Theme.ElementBG, s.LIdx, visible == true
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c)
-                l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize, l.TextXAlignment = U2(1,-20,0,25), U2(0,10,0,5), 1, text, Theme.TextDark, Theme.Font, 12, 0
-                local vL = I_new("TextLabel", c)
-                vL.Size, vL.Position, vL.BackgroundTransparency, vL.TextColor3, vL.Font, vL.TextSize, vL.TextXAlignment, vL.ZIndex = U2(0.3,0,0,25), U2(0.7,-10,0,5), 1, Theme.Accent, Theme.FontBold, 12, 1, 5
-                vL.Text = tostring(MCXC.Config.Hold_[key] or MCXC.Config[key] or min)
-                local tr = I_new("Frame", c)
-                tr.Size, tr.Position, tr.BackgroundColor3 = U2(1,-20,0,6), U2(0,10,0,35), C3(40,40,45)
-                I_new("UICorner", tr).CornerRadius = UD(1,0)
-                local val = MCXC.Config.Hold_[key] or MCXC.Config[key] or min
-                local fill = I_new("Frame", tr)
-                fill.Size, fill.BackgroundColor3 = U2((val-min)/(max-min),0,1,0), Theme.Accent
-                I_new("UICorner", fill).CornerRadius = UD(1,0)
-                local tB = I_new("TextButton", c)
-                tB.Size, tB.BackgroundTransparency, tB.Text = U2(1,0,1,0), 1, ""
-                local drag = false
-                local function upd(i)
-                    local p = m_clamp((i.Position.X - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1)
-                    local newVal = min + (max-min)*p
-                    if isInt then newVal = m_floor(newVal) else newVal = m_floor(newVal*100)/100 end
-                    fill.Size = U2(p,0,1,0)
-                    vL.Text = tostring(newVal)
-                    if key:find("Hold_") then
-                        MCXC.Config.Hold_[key] = newVal
-                    else
-                        MCXC.Config[key] = newVal
-                    end
-                    if key=="BtnSizeC" and MCXC.Cache.BtnC then MCXC.Cache.BtnC.Size = U2(0,newVal,0,newVal) end
-                    if key=="BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size = U2(0,newVal,0,newVal) end
-                    if key=="BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size = U2(0,newVal,0,newVal) end
-                    if key=="UITrans" then for _,el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = newVal end end
-                end
-                tB.InputBegan:Connect(function(i)
-                    if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
-                        drag = true
-                        upd(i)
-                    end
-                end)
-                UIS.InputEnded:Connect(function() drag = false; SaveConfig() end)
-                UIS.InputChanged:Connect(function(i)
-                    if drag and (i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement) then
-                        upd(i)
-                    end
-                end)
-                return c
-            end,
-            CreateInput = function(s, text, key, cb)
-                s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm)
-                c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,45), Theme.ElementBG, s.LIdx
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c)
-                l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(0,10,0,0), 1, text, Theme.TextDark, Theme.Font, 12
-                local b = I_new("TextBox", c)
-                b.Size, b.Position, b.BackgroundColor3, b.TextColor3, b.Font, b.TextSize, b.Text, b.ClearTextOnFocus = U2(0.55,-10,0,30), U2(0.45,0,0.5,-15), C3(20,20,22), Theme.Accent, Theme.FontBold, 12, tostring(MCXC.Config[key] or ""), false
-                I_new("UICorner", b).CornerRadius = UD(0,4)
-                I_new("UIStroke", b).Color = C3(50,50,55)
-                b.Focused:Connect(function() Utils.Tween(l, {TextColor3=Theme.Text},0.2) end)
-                b.FocusLost:Connect(function()
-                    Utils.Tween(l, {TextColor3=Theme.TextDark},0.2)
-                    MCXC.Config[key] = b.Text
-                    SaveConfig()
-                    if cb then cb(b.Text) end
-                end)
-                return c
-            end,
-            CreateDoubleButton = function(s, t1, c1, cb1, t2, c2, cb2)
-                s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm)
-                c.Size, c.BackgroundTransparency, c.LayoutOrder = U2(1,0,0,40), 1, s.LIdx
-                local b1 = I_new("TextButton", c)
-                b1.Size, b1.BackgroundColor3, b1.Text, b1.TextColor3, b1.Font, b1.TextSize = U2(0.48,0,1,0), Theme.ElementBG, t1, c1, Theme.FontBold, 12
-                I_new("UICorner", b1).CornerRadius = UD(0,6)
-                I_new("UIStroke", b1).Color, I_new("UIStroke", b1).Transparency = c1, 0.5
-                local b2 = I_new("TextButton", c)
-                b2.Size, b2.Position, b2.BackgroundColor3, b2.Text, b2.TextColor3, b2.Font, b2.TextSize = U2(0.48,0,1,0), U2(0.52,0,0,0), Theme.ElementBG, t2, c2, Theme.FontBold, 12
-                I_new("UICorner", b2).CornerRadius = UD(0,6)
-                I_new("UIStroke", b2).Color, I_new("UIStroke", b2).Transparency = c2, 0.5
-                b1.MouseButton1Click:Connect(function()
-                    Utils.Tween(b1, {BackgroundColor3=C3(40,40,45)}, 0.1)
-                    t_delay(0.1, function() Utils.Tween(b1, {BackgroundColor3=Theme.ElementBG}, 0.2) end)
-                    if cb1 then cb1() end
-                end)
-                b2.MouseButton1Click:Connect(function()
-                    Utils.Tween(b2, {BackgroundColor3=C3(40,40,45)}, 0.1)
-                    t_delay(0.1, function() Utils.Tween(b2, {BackgroundColor3=Theme.ElementBG}, 0.2) end)
-                    if cb2 then cb2() end
-                end)
-                return c
-            end
-        }
-    end
-    return Window, gui
-end
-
-local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
-local TabC, TabV, TabS = Win:CreateTab("Combat"), Win:CreateTab("Visuals"), Win:CreateTab("Settings")
-
-TabC:CreateToggle("Fast Skill (Manual)", "Macro")
-TabC:CreateInput("Combo C", "ComboC")
-local sC, sC2, sX
-TabC:CreateToggle("Show Button C", "ShowC", function(v)
-    if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = v end
-    if sC then sC.Visible = v end
-end)
-sC = TabC:CreateSlider("Size C", 40, 100, "BtnSizeC", true, MCXC.Config.ShowC)
-TabC:CreateInput("Combo C2", "ComboC2")
-TabC:CreateToggle("Show Button C2", "ShowC2", function(v)
-    if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible = v end
-    if sC2 then sC2.Visible = v end
-end)
-sC2 = TabC:CreateSlider("Size C2", 40, 100, "BtnSizeC2", true, MCXC.Config.ShowC2)
-TabC:CreateToggle("Show Button X", "ShowX", function(v)
-    if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = v end
-    if sX then sX.Visible = v end
-end)
-sX = TabC:CreateSlider("Size X", 30, 80, "BtnSizeX", true, MCXC.Config.ShowX)
-TabC:CreateToggle("Cancel on Tap", "CancelOnTap")
-
-TabC:CreateToggle("Enable Hold Skills", "HoldEnabled", function(v) end)
-TabC:CreateInput("Hold Setup (e.g 3C2Z)", "HoldSetup", function(val)
-    MCXC.Config.HoldSetup = val
-    RefreshHoldSliders(val)
-    SaveConfig()
-end)
-local HoldContainer = I_new("Frame", TabC.Frame)
-HoldContainer.Size, HoldContainer.BackgroundTransparency, HoldContainer.AutomaticSize = U2(1,0,0,0), 1, Enum.AutomaticSize.Y
-HoldContainer.LayoutOrder = 9999
-I_new("UIListLayout", HoldContainer).Padding = UD(0,8)
-local holdSliders = {}
-function RefreshHoldSliders(txt)
-    for _, s in pairs(holdSliders) do s:Destroy() end
-    table.clear(holdSliders)
-    if not txt or txt == "" then return end
-    local idx = 0
-    for toolType, key in string.gmatch(s_upper(txt), "([1-4])([ZXCVF])") do
-        idx = idx + 1
-        local configKey = "Hold_"..toolType..key
-        if MCXC.Config.Hold_[configKey] == nil then MCXC.Config.Hold_[configKey] = 0.5 end
-        local s = TabC:CreateSlider("Hold "..toolType..key.." (s)", 0, 3, configKey, false, true)
-        s.LayoutOrder = idx
-        s.Parent = HoldContainer
-        table.insert(holdSliders, s)
-    end
-end
-RefreshHoldSliders(MCXC.Config.HoldSetup)
-
-local sFOV, sE, sT
-TabV:CreateToggle("Custom FOV", "EnableFOV", function(v)
-    if not v then workspace.CurrentCamera.FieldOfView = 70 end
-    if sFOV then sFOV.Visible = v end
-end)
-sFOV = TabV:CreateSlider("FOV Value", 70, 120, "FOVValue", true, MCXC.Config.EnableFOV)
-TabV:CreateToggle("ESP", "ESP", function(v)
-    if not v then Visuals.ClearTracer() end
-    if sE then sE.Visible = v end
-end)
-sE = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true, MCXC.Config.ESP)
-TabV:CreateToggle("View Tracer", "ViewTracer", function(v)
-    if not v then Visuals.ClearTracer() end
-    if sT then sT.Visible = v end
-end)
-sT = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true, MCXC.Config.ViewTracer)
-TabV:CreateToggle("Fake Lag", "FakeLag", function(v)
-    MCXC.Config.FakeLag = v
-    if v then FakeLag.Enable() else FakeLag.Disable() end
-    SaveConfig()
-end)
-
-TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v)
-    MCXC.State.SetupMode = v
-    if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable = v end
-    if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable = v end
-    if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable = v end
-    if not v then
-        pcall(function()
-            MCXC.Config.BtnPosC = {MCXC.Cache.BtnC.Position.X.Scale, MCXC.Cache.BtnC.Position.X.Offset, MCXC.Cache.BtnC.Position.Y.Scale, MCXC.Cache.BtnC.Position.Y.Offset}
-            MCXC.Config.BtnPosC2 = {MCXC.Cache.BtnC2.Position.X.Scale, MCXC.Cache.BtnC2.Position.X.Offset, MCXC.Cache.BtnC2.Position.Y.Scale, MCXC.Cache.BtnC2.Position.Y.Offset}
-            MCXC.Config.BtnPosX = {MCXC.Cache.BtnX.Position.X.Scale, MCXC.Cache.BtnX.Position.X.Offset, MCXC.Cache.BtnX.Position.Y.Scale, MCXC.Cache.BtnX.Position.Y.Offset}
-            SaveConfig()
-        end)
-    end
-end)
-TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
-TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
-TabS:CreateToggle("Ultra FPS", "UnlockFPS", function(v) Utils.ApplyUltraFPS(v); SaveConfig() end)
-TabS:CreateDoubleButton("Fix Lag PvP", Theme.Accent, function()
-    MCXC.State.LagFixed = true
-    Utils.ApplyPvPLighting()
-    for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplyPvPLagFix(v) end
+function SilentAim.GetNearestEnemy()
+    local nearest = nil
+    local minDist = 9e9
+    local myPos = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character.HumanoidRootPart.Position
+    if not myPos then return nil end
     for _, p in ipairs(Plyrs:GetPlayers()) do
-        if p ~= LP and not LagFixer.IsAlly(p) then
-            LagFixer.HighlightEnemy(p)
-        end
-    end
-end, "Hide UI", Theme.Danger, function()
-    MCXC.State.LagFixed = false
-    Gui.Enabled = false
-end)
-
-LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
-workspace.DescendantAdded:Connect(function(v)
-    if MCXC.State.LagFixed then
-        task.delay(0.02, function() Utils.ApplyPvPLagFix(v) end)
-    end
-end)
-
-local function CrBtn(name, pos, color, skey, zkey)
-    local b = I_new("TextButton", Gui)
-    b.Size, b.BackgroundColor3, b.BackgroundTransparency, b.Text, b.TextColor3, b.Font, b.TextSize, b.Visible, b.ZIndex = U2(0,MCXC.Config[zkey],0,MCXC.Config[zkey]), C3(15,15,15), MCXC.Config.UITrans, name, color, Theme.FontBold, m_floor(MCXC.Config[zkey]*0.4), MCXC.Config[skey], 5
-    pcall(function() b.Position = U2(unpack(pos)) end)
-    I_new("UICorner", b).CornerRadius = UD(0.5,0)
-    local s = I_new("UIStroke", b)
-    s.Color, s.Thickness, s.Transparency = color, 1.5, 0.2
-    return b, s
-end
-MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC")
-MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2")
-MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
-
-local function ProcessQueue()
-    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        local q = MCXC.State.ComboQueue
-        MCXC.State.ComboQueue = nil
-        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
-    end
-end
-local function HandleCombo(id, str, strUI, col)
-    if MCXC.State.SetupMode then return end
-    if s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.State.CurrentCombo == id then
-            if MCXC.Config.CancelOnTap then
-                MCXC.State.Status = "CANCEL: MANUAL"
-                MCXC.State.ComboQueue = nil
-                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-            end
-        else
-            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
-            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
-        end
-    else
-        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
-    end
-end
-MCXC.Cache.BtnC.MouseButton1Click:Connect(function()HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
-MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
-MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
-    MCXC.State.Status = "CANCEL: X"
-    MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-end)
-
-local function ProcessQueue()
-    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        local q = MCXC.State.ComboQueue
-        MCXC.State.ComboQueue = nil
-        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
-    end
-end
-
-local fF, lFT = 0, t_tick()
-RS.Heartbeat:Connect(function()
-    if t_tick() - MCXC.State.LastTick > 60 then
-        MCXC.State.LastTick = t_tick()
-        collectgarbage("step")
-    end
-    FakeLag.Process()
-    table.clear(MCXC.State.PlrData)
-    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not myR then return end
-    local minD, targ = m_huge, nil
-    local maxBounty = 0
-    for _, p in pairs(MCXC.State.ActivePlayers) do
-        if p.Character then
-            local tR = p.Character:FindFirstChild("HumanoidRootPart")
+        if p ~= LP and not IsAlly(p) and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
             local hum = p.Character:FindFirstChild("Humanoid")
-            if tR and hum and hum.Health > 0 then
-                local dSq = Utils.DistSq(tR.Position, myR.Position)
-                local bounty = 0
-                local data = p:FindFirstChild("Data")
-                if data then
-                    local b = data:FindFirstChild("Bounty") or data:FindFirstChild("Beli")
-                    if b then bounty = tonumber(b.Value) or 0 end
+            if hrp and hum and hum.Health > 0 then
+                local dist = (hrp.Position - myPos).Magnitude
+                if dist < minDist then
+                    minDist = dist
+                    nearest = p
                 end
-                if bounty > maxBounty then maxBounty = bounty end
-                if not IsAlly(p) and dSq < minD then
-                    minD = dSq
-                    targ = p
-                end
-                local lvl = data and data:FindFirstChild("Level") and tostring(data.Level.Value) or "?"
-                MCXC.State.PlrData[p.Name] = {
-                    tR = tR,
-                    dSq = dSq,
-                    hp = m_floor(hum.Health),
-                    mhp = m_floor(hum.MaxHealth),
-                    lvl = lvl,
-                    bounty = bounty
-                }
             end
         end
     end
-    MCXC.State.TopBounty = maxBounty
-    MCXC.State.CurrentTarget = targ
-end)
+    return nearest
+end
 
-RS.RenderStepped:Connect(function()
-    local n = t_tick()
-    fF = fF + 1
-    if n - lFT >= 1 then
-        local fps = m_floor(fF / (n - lFT))
-        fF, lFT = 0, n
-        MCXC.State.Ping = Utils.GetPing() / 1000
-        MCXC.State.FPS = fps
-        if MCXC.Cache.FPSLbl then
-            MCXC.Cache.FPSLbl.Text = "FPS: " .. fps
+function SilentAim.Enable()
+    if SilentAim.Hook then return end
+    MCXC.State.SilentAimEnabled = true
+    SilentAim.Hook = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        if method == "FireServer" and MCXC.State.SilentAimEnabled then
+            local target = SilentAim.GetNearestEnemy()
+            if target and target.Character then
+                local targetPart = target.Character:FindFirstChild("Head") or target.Character:FindFirstChild("HumanoidRootPart")
+                if targetPart then
+                    for i, arg in ipairs(args) do
+                        if typeof(arg) == "Vector3" then
+                            args[i] = targetPart.Position
+                        elseif typeof(arg) == "CFrame" then
+                            args[i] = CFrame.new(targetPart.Position)
+                        end
+                    end
+                end
+            end
         end
-        if MCXC.Cache.PingLbl then
-            MCXC.Cache.PingLbl.Text = "PING: " .. m_floor(MCXC.State.Ping * 1000) .. "ms"
-        end
-    end
-    if MCXC.Cache.StatusLbl then
-        MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status)
-    end
-    if not MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.Cache.StrC and MCXC.State.CurrentCombo ~= "C" then
-            Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1)
-        end
-        if MCXC.Cache.StrC2 and MCXC.State.CurrentCombo ~= "C2" then
-            Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1)
-        end
-    end
-    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not myR then return end
-    local targ = MCXC.State.CurrentTarget
-    if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then
-        local d = MCXC.State.PlrData[targ.Name]
-        if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then
-            Visuals.UpdateTracer(d.tR, myR, Theme.Target)
-        else
-            Visuals.ClearTracer()
-        end
-    else
-        Visuals.ClearTracer()
-    end
-    for _, p in pairs(MCXC.State.ActivePlayers) do
-        local d = MCXC.State.PlrData[p.Name]
-        if d then
-            Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.hp, d.mhp, d.lvl, d.bounty)
-        elseif MCXC.Cache.ESP[p.Name] then
-            MCXC.Cache.ESP[p.Name].Enabled = false
-        end
-    end
-    if MCXC.Config.EnableFOV then
-        workspace.CurrentCamera.FieldOfView = MCXC.Config.FOVValue
-    end
-end)
+        return SilentAim.Hook(self, unpack(args))
+    end)
+end
 
-MCXC.State.Status = "IDLE"
+function SilentAim.Disable()
+    MCXC.State.SilentAimEnabled = false
+end
