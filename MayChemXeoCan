@@ -304,7 +304,7 @@ local function GetCurrentToolType()
     return GetToolType(tool)
 end
 
-function Combat.SwitchToTool(key, isFirst)
+function Combat.SwitchToTool(key)
     local current = GetCurrentToolType()
     if current == key then return true end
     MCXC.State.Status = "SWITCHING TO " .. key
@@ -315,12 +315,11 @@ function Combat.SwitchToTool(key, isFirst)
     if targetTool then
         pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
         local start = t_tick()
-        local timeout = isFirst and 2.5 or 1.5
         repeat
             local cur = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
             if cur == targetTool then return true end
             task.wait()
-        until t_tick() - start > timeout
+        until t_tick() - start > 2.0
     end
     local kc = key == "2" and Enum.KeyCode.Two or key == "3" and Enum.KeyCode.Three or key == "4" and Enum.KeyCode.Four or Enum.KeyCode.One
     VIM:SendKeyEvent(true, kc, false, game)
@@ -334,7 +333,7 @@ function Combat.SwitchToTool(key, isFirst)
     return false
 end
 
-function Combat.WaitForSkillActivation(tool, timeout)
+function Combat.WaitForSkillActivation(tool, key, timeout)
     local activated = false
     local conn
     timeout = timeout or 3.0
@@ -344,6 +343,7 @@ function Combat.WaitForSkillActivation(tool, timeout)
     local start = t_tick()
     repeat
         if activated then break end
+        if Combat.CheckBusy(LP.Character) then activated = true; break end
         if s_find(MCXC.State.Status, "CANCEL") then break end
         if Combat.IsStunned(LP.Character) then break end
         task.wait()
@@ -370,7 +370,6 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
     t_spawn(function()
         local seq = s_upper(comboStr)
         local failed, failReason = false, ""
-        local isFirstToolSwitch = true
         Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Text}, 0.05)
         for step = 1, #seq do
             if Combat.IsStunned(LP.Character) then
@@ -380,32 +379,19 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
             if s_find(MCXC.State.Status, "CANCEL") then failed = true; failReason = "CANCELLED"; break end
             local key = s_sub(seq, step, step)
             if s_match(key, "[1-4]") then
-                if not Combat.SwitchToTool(key, isFirstToolSwitch) then
+                if not Combat.SwitchToTool(key) then
                     failed = true; failReason = "TOOL SWITCH FAIL"; break
                 end
-                isFirstToolSwitch = false
-                task.wait(0.1)
+                task.wait(0.05)
             elseif s_match(key, "[ZXCVF]") then
                 MCXC.State.Status = "CASTING " .. comboId .. ": [" .. key .. "]"
                 local kc = Enum.KeyCode[key]
-                local currentType = GetCurrentToolType()
-                local holdTime = 0
-                if MCXC.Config.HoldEnabled and currentType then
-                    holdTime = MCXC.Config.Hold_["Hold_"..currentType..key] or 0
-                end
                 local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
                 if not tool then failed = true; failReason = "NO TOOL"; break end
                 VIM:SendKeyEvent(true, kc, false, game)
-                if not Combat.WaitForSkillActivation(tool, 2.5) then
+                if not Combat.WaitForSkillActivation(tool, key, 1.5) then
                     VIM:SendKeyEvent(false, kc, false, game)
                     failed = true; failReason = "SKILL NOT ACTIVATED"; break
-                end
-                if holdTime > 0 then
-                    local holdStart = t_tick()
-                    while t_tick() - holdStart < holdTime do
-                        if Combat.IsStunned(LP.Character) then break end
-                        task.wait()
-                    end
                 end
                 VIM:SendKeyEvent(false, kc, false, game)
                 while Combat.CheckBusy(LP.Character) do task.wait() end
@@ -511,7 +497,6 @@ function Visuals.UpdateESP(p, tR, dSq, isTarget, hp, mhp, lvl, bounty)
 end
 
 local SilentAim = {}
-SilentAim.Target = nil
 SilentAim.Hook = nil
 
 function SilentAim.GetNearestEnemy()
@@ -546,11 +531,12 @@ function SilentAim.Enable()
             if target and target.Character then
                 local targetPart = target.Character:FindFirstChild("Head") or target.Character:FindFirstChild("HumanoidRootPart")
                 if targetPart then
+                    local targetPos = targetPart.Position
                     for i, arg in ipairs(args) do
                         if typeof(arg) == "Vector3" then
-                            args[i] = targetPart.Position
+                            args[i] = targetPos
                         elseif typeof(arg) == "CFrame" then
-                            args[i] = CFrame.new(targetPart.Position)
+                            args[i] = CFrame.new(targetPos)
                         end
                     end
                 end
