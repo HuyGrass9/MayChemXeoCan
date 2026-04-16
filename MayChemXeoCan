@@ -574,6 +574,7 @@ function SilentAim.Disable()
     MCXC.State.SilentAimEnabled = false
     SilentAim.LockedTarget = nil
 end
+
 local MaruUI = {}
 function MaruUI:CreateWindow(title)
     local p = CGui; pcall(function() if gethui then p = gethui() end end)
@@ -929,7 +930,6 @@ local function HandleCombo(id, str, strUI, col)
         Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
     end
 end
-
 MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
 MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
@@ -938,14 +938,6 @@ MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
-
-local function ProcessQueue()
-    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        local q = MCXC.State.ComboQueue
-        MCXC.State.ComboQueue = nil
-        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
-    end
-end
 
 local fF, lFT = 0, t_tick()
 RS.Heartbeat:Connect(function()
