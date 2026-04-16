@@ -108,14 +108,14 @@ function Utils.MakeDraggable(topbar, object)
         end
     end)
 end
-function Utils.Apply240FPS(v)
+function Utils.ApplyUltraFPS(v)
     pcall(function()
         if v then
             settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
             settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
             Lg.Technology = Enum.Technology.Compatibility
-            workspace.DistributedGameTime = 1
-            if setfpscap then setfpscap(240) end
+            workspace.DistributedGameTime = 0
+            if setfpscap then setfpscap(0) end
         else
             settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
             settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
@@ -129,9 +129,9 @@ function Utils.ApplyPvPLighting()
         Lg.GlobalShadows = false
         Lg.FogEnd = 9e9
         Lg.Brightness = 1.0
-        Lg.OutdoorAmbient = C3(120,120,120)
-        Lg.ClockTime = 14
-        Lg.Ambient = C3(110,110,110)
+        Lg.OutdoorAmbient = C3(140,140,150)
+        Lg.ClockTime = 12
+        Lg.Ambient = C3(120,120,130)
         Lg.ExposureCompensation = 0.0
         Lg:ClearAllChildren()
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
@@ -208,9 +208,9 @@ function LagFixer.ProcessObject(v)
                 v.LightEmission = (v.LightEmission or 1) * 0.3
             end
         elseif v:IsA("Beam") or v:IsA("Trail") then
-            v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.3)
-            v.Width0 = v.Width0 * 0.7
-            v.Width1 = v.Width1 * 0.7
+            v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.2)
+            v.Width0 = v.Width0 * 0.8
+            v.Width1 = v.Width1 * 0.8
         elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then
             v:Destroy()
         end
@@ -340,14 +340,17 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 if MCXC.Config.HoldEnabled and currentType then
                     holdTime = MCXC.Config.Hold_["Hold_"..currentType..key] or 0
                 end
-                local busy = false
-                local start = t_tick()
                 VIM:SendKeyEvent(true, kc, false, game)
-                while t_tick() - start < 0.25 do
-                    if Combat.CheckBusy(LP.Character) then busy = true; break end
+                local busyObserved = false
+                local start = t_tick()
+                repeat
+                    if Combat.CheckBusy(LP.Character) then busyObserved = true; break end
                     task.wait()
+                until t_tick() - start > 0.25
+                if not busyObserved then
+                    VIM:SendKeyEvent(false, kc, false, game)
+                    failed = true; failReason = "COOLDOWN"; break
                 end
-                if not busy then failed = true; failReason = "COOLDOWN"; VIM:SendKeyEvent(false, kc, false, game); break end
                 if holdTime > 0 then
                     local holdStart = t_tick()
                     while t_tick() - holdStart < holdTime do
@@ -356,7 +359,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                     end
                 end
                 VIM:SendKeyEvent(false, kc, false, game)
-                while Combat.CheckBusy(LP.Character) do task.wait() end
+                repeat task.wait() until not Combat.CheckBusy(LP.Character)
                 task.wait(0.05)
             end
         end
@@ -743,7 +746,7 @@ TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v)
 end)
 TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
 TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
-TabS:CreateToggle("240 FPS", "UnlockFPS", function(v) Utils.Apply240FPS(v); SaveConfig() end)
+TabS:CreateToggle("Ultra FPS", "UnlockFPS", function(v) Utils.ApplyUltraFPS(v); SaveConfig() end)
 TabS:CreateDoubleButton("Fix Lag PvP", Theme.Accent, function()
     MCXC.State.LagFixed = true
     Utils.ApplyPvPLighting()
@@ -777,6 +780,40 @@ end
 MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC")
 MCXC.Cache.BtnC2, MCXC.Cache.StrC2 = CrBtn("C2", MCXC.Config.BtnPosC2, Theme.Accent, "ShowC2", "BtnSizeC2")
 MCXC.Cache.BtnX, MCXC.Cache.StrX = CrBtn("X", MCXC.Config.BtnPosX, C3(255,200,50), "ShowX", "BtnSizeX")
+
+local function ProcessQueue()
+    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
+        local q = MCXC.State.ComboQueue
+        MCXC.State.ComboQueue = nil
+        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
+    end
+end
+local function HandleCombo(id, str, strUI, col)
+    if MCXC.State.SetupMode then return end
+    if s_find(MCXC.State.Status, "CASTING") then
+        if MCXC.State.CurrentCombo == id then
+            if MCXC.Config.CancelOnTap then
+                MCXC.State.Status = "CANCEL: MANUAL"
+                MCXC.State.ComboQueue = nil
+                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+            end
+        else
+            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
+            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
+        end
+    else
+        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
+    end
+end
+MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
+MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.Combo2, MCXC.Cache.StrC2, Theme.Accent) end)
+MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
+    MCXC.State.Status = "CANCEL: X"
+    MCXC.State.ComboQueue = nil
+    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+end)
 
 local function ProcessQueue()
     if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
