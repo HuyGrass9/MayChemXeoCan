@@ -25,7 +25,7 @@ local MCXC = {
         LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60,
         LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}
     },
-    Cache = {ESP = {}, TracerLine = nil, UIElements = {}, HoldSliders = {}, ToolTypes = {}}
+    Cache = {ESP = {}, TracerLine = nil, UIElements = {}, HoldSliders = {}, ToolTypes = {}, EnemyHighlights = {}}
 }
 
 local Theme = {
@@ -61,8 +61,17 @@ local function ManagePlayer(p, remove)
             MCXC.Cache.ESP[p.Name]:Destroy()
             MCXC.Cache.ESP[p.Name] = nil
         end
+        if MCXC.Cache.EnemyHighlights[p] then
+            MCXC.Cache.EnemyHighlights[p]:Destroy()
+            MCXC.Cache.EnemyHighlights[p] = nil
+        end
     else
-        if p ~= LP then MCXC.State.ActivePlayers[p.Name] = p end
+        if p ~= LP then
+            MCXC.State.ActivePlayers[p.Name] = p
+            if MCXC.State.LagFixed then
+                LagFixer.HighlightEnemy(p)
+            end
+        end
     end
 end
 
@@ -120,10 +129,10 @@ function Utils.ApplyPvPLighting()
         Lg.GlobalShadows = false
         Lg.FogEnd = 9e9
         Lg.Brightness = 1.0
-        Lg.OutdoorAmbient = C3(100,100,100)
-        Lg.ClockTime = 10
-        Lg.Ambient = C3(90,90,90)
-        Lg.ExposureCompensation = -0.3
+        Lg.OutdoorAmbient = C3(110,110,110)
+        Lg.ClockTime = 14
+        Lg.Ambient = C3(100,100,100)
+        Lg.ExposureCompensation = 0.1
         Lg:ClearAllChildren()
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
         local terrain = workspace.Terrain
@@ -136,7 +145,44 @@ function Utils.ApplyPvPLighting()
         end
     end)
 end
+
 local LagFixer = {}
+function LagFixer.IsAlly(p)
+    if p == LP then return true end
+    local lpTeam = LP.Team and s_lower(LP.Team.Name)
+    local pTeam = p.Team and s_lower(p.Team.Name)
+    if lpTeam == "marines" then return pTeam == "marines" end
+    if lpTeam == "pirates" then
+        if pTeam ~= "pirates" then return false end
+        local lpCrew = LP:FindFirstChild("Data") and LP.Data:FindFirstChild("Crew") and LP.Data.Crew.Value
+        local pCrew = p:FindFirstChild("Data") and p.Data:FindFirstChild("Crew") and p.Data.Crew.Value
+        if lpCrew and pCrew and lpCrew == pCrew then return true end
+        return p:GetAttribute("Ally") == true or p:FindFirstChild("Ally") ~= nil
+    end
+    return false
+end
+
+function LagFixer.HighlightEnemy(p)
+    if MCXC.Cache.EnemyHighlights[p] then return end
+    local char = p.Character
+    if not char then return end
+    local highlight = I_new("Highlight")
+    highlight.Name = "MCXC_EnemyHighlight"
+    highlight.FillTransparency = 1
+    highlight.OutlineColor = Theme.Target
+    highlight.OutlineTransparency = 0
+    highlight.Adornee = char
+    highlight.Parent = char
+    MCXC.Cache.EnemyHighlights[p] = highlight
+end
+
+function LagFixer.RemoveHighlight(p)
+    if MCXC.Cache.EnemyHighlights[p] then
+        MCXC.Cache.EnemyHighlights[p]:Destroy()
+        MCXC.Cache.EnemyHighlights[p] = nil
+    end
+end
+
 function LagFixer.ProcessObject(v)
     if not v or not v:IsDescendantOf(workspace) then return end
     pcall(function()
@@ -153,20 +199,53 @@ function LagFixer.ProcessObject(v)
                     if v.Size.Magnitude < 5 then v:Destroy() end
                 end
             end
-        elseif v:IsA("ParticleEmitter") then
-            v.Rate = v.Rate * 0.4
-            if v.Size then v.Size = NS(v.Size.Keypoints[1].Value * 0.6) end
-            v.LightEmission = (v.LightEmission or 1) * 0.3
-        elseif v:IsA("Beam") or v:IsA("Trail") then
-            v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.4)
-            v.Width0 = v.Width0 * 0.6
-            v.Width1 = v.Width1 * 0.6
+        elseif v:IsA("ParticleEmitter") or v:IsA("Beam") or v:IsA("Trail") then
+            local owner = LagFixer.GetEffectOwner(v)
+            if owner and not LagFixer.IsAlly(owner) then
+                if v:IsA("ParticleEmitter") then
+                    v.Rate = v.Rate * 0.3
+                    if v.Size then v.Size = NS(v.Size.Keypoints[1].Value * 0.5) end
+                    v.LightEmission = 0.1
+                    v.Color = CS(C3(80,80,80))
+                elseif v:IsA("Beam") or v:IsA("Trail") then
+                    v.Transparency = NS((v.Transparency.Keypoints[1].Value or 0) + 0.6)
+                    v.Width0 = v.Width0 * 0.5
+                    v.Width1 = v.Width1 * 0.5
+                    v.Color = CS(C3(100,100,100))
+                end
+            end
         elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then
             v:Destroy()
         end
     end)
 end
+
+function LagFixer.GetEffectOwner(effect)
+    local obj = effect
+    while obj and obj ~= workspace do
+        if obj:IsA("Model") then
+            local hum = obj:FindFirstChild("Humanoid")
+            if hum then return Plyrs:GetPlayerFromCharacter(obj) end
+        end
+        obj = obj.Parent
+    end
+    if effect:IsA("Beam") then
+        local att0 = effect.Attachment0
+        if att0 then
+            local part = att0.Parent
+            if part then
+                local model = part.Parent
+                if model and model:IsA("Model") then
+                    return Plyrs:GetPlayerFromCharacter(model)
+                end
+            end
+        end
+    end
+    return nil
+end
+
 function Utils.ApplyPvPLagFix(v)
+    if not MCXC.State.LagFixed then return end
     LagFixer.ProcessObject(v)
 end
 local Combat = {}
@@ -697,7 +776,15 @@ TabS:CreateDoubleButton("Fix Lag PvP", Theme.Accent, function()
     MCXC.State.LagFixed = true
     Utils.ApplyPvPLighting()
     for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplyPvPLagFix(v) end
-end, "Hide UI", Theme.Danger, function() Gui.Enabled = false end)
+    for _, p in ipairs(Plyrs:GetPlayers()) do
+        if p ~= LP and not LagFixer.IsAlly(p) then
+            LagFixer.HighlightEnemy(p)
+        end
+    end
+end, "Hide UI", Theme.Danger, function()
+    MCXC.State.LagFixed = false
+    Gui.Enabled = false
+end)
 
 LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
 workspace.DescendantAdded:Connect(function(v)
@@ -749,7 +836,41 @@ MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Con
 MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC,{Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+end)
+
+local function ProcessQueue()
+    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
+        local q = MCXC.State.ComboQueue
+        MCXC.State.ComboQueue = nil
+        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
+    end
+end
+local function HandleCombo(id, str, strUI, col)
+    if MCXC.State.SetupMode then return end
+    if s_find(MCXC.State.Status, "CASTING") then
+        if MCXC.State.CurrentCombo == id then
+            if MCXC.Config.CancelOnTap then
+                MCXC.State.Status = "CANCEL: MANUAL"
+                MCXC.State.ComboQueue = nil
+                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
+                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
+            end
+        else
+            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
+            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
+        end
+    else
+        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
+    end
+end
+MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
+MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
+MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
+    MCXC.State.Status = "CANCEL: X"
+    MCXC.State.ComboQueue = nil
+    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
 
