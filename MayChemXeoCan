@@ -25,7 +25,7 @@ local MCXC = {
         LastTick = t_tick(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60,
         LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {}
     },
-    Cache = {ESP = {}, TracerLine = nil, UIElements = {}, HoldSliders = {}}
+    Cache = {ESP = {}, TracerLine = nil, UIElements = {}, HoldSliders = {}, ToolTypes = {}}
 }
 
 local Theme = {
@@ -119,12 +119,34 @@ function Utils.ApplyPvPLighting()
     pcall(function()
         Lg.GlobalShadows = false
         Lg.FogEnd = 9e9
-        Lg.Brightness = 1.2
-        Lg.OutdoorAmbient = C3(120,120,120)
+        Lg.Brightness = 1.1
+        Lg.OutdoorAmbient = C3(110,110,110)
         Lg.ClockTime = 14
+        Lg.Ambient = C3(100,100,100)
+        Lg.ExposureCompensation = 0.25
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
     end)
 end
+
+local function ShouldKeepParticle(pe)
+    local success, result = pcall(function()
+        local tex = pe.Texture
+        if tex and (s_find(tex, "smoke") or s_find(tex, "fog")) then return false end
+        if pe.Rate > 80 and pe.Lifetime > 1.5 then return false end
+        if pe.Parent and pe.Parent:IsA("Attachment") then
+            local parentObj = pe.Parent.Parent
+            if parentObj and (parentObj:IsA("Beam") or parentObj:IsA("Trail")) then return true end
+        end
+        if pe.Size and pe.Size.Keypoints and #pe.Size.Keypoints > 0 then
+            local maxSize = 0
+            for _, kp in pairs(pe.Size.Keypoints) do if kp.Value > maxSize then maxSize = kp.Value end end
+            if maxSize < 0.15 and pe.Rate < 25 then return true end
+        end
+        return true
+    end)
+    return success and result
+end
+
 function Utils.ApplyPvPLagFix(v)
     if not v or not v:IsDescendantOf(workspace) then return end
     pcall(function()
@@ -138,7 +160,9 @@ function Utils.ApplyPvPLagFix(v)
                 v.Reflectance = 0
                 for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
             end
-        elseif v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+        elseif v:IsA("ParticleEmitter") then
+            if not ShouldKeepParticle(v) then v:Destroy() end
+        elseif v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
             v:Destroy()
         elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") then
             v.Enabled = false
@@ -186,18 +210,25 @@ function Combat.SmartWait(desiredTime)
 end
 
 local function GetToolType(tool)
+    if not tool then return nil end
+    if MCXC.Cache.ToolTypes[tool] then return MCXC.Cache.ToolTypes[tool] end
     local n = s_lower(tool.Name)
-    if s_find(n, "art") or s_find(n, "claw") or s_find(n, "step") or s_find(n, "talon") or s_find(n, "melee") then return "1" end
-    if s_find(n, "fruit") or s_find(n, "kitsune") or s_find(n, "dough") or s_find(n, "leopard") or s_find(n, "buddha") then return "2" end
-    if s_find(n, "sword") or s_find(n, "katana") or s_find(n, "blade") or s_find(n, "tushita") or s_find(n, "yama") or s_find(n, "cdk") or s_find(n, "trident") or s_find(n, "lamp") or s_find(n, "heart") or s_find(n, "anchor") then return "3" end
-    if s_find(n, "gun") or s_find(n, "rifle") or s_find(n, "kabucha") or s_find(n, "serpent") or s_find(n, "guitar") then return "4" end
-    return nil
+    local t = nil
+    if s_find(n, "art") or s_find(n, "claw") or s_find(n, "step") or s_find(n, "talon") or s_find(n, "melee") then t = "1"
+    elseif s_find(n, "fruit") or s_find(n, "kitsune") or s_find(n, "dough") or s_find(n, "leopard") or s_find(n, "buddha") then t = "2"
+    elseif s_find(n, "sword") or s_find(n, "katana") or s_find(n, "blade") or s_find(n, "tushita") or s_find(n, "yama") or s_find(n, "cdk") or s_find(n, "trident") or s_find(n, "lamp") or s_find(n, "heart") or s_find(n, "anchor") then t = "3"
+    elseif s_find(n, "gun") or s_find(n, "rifle") or s_find(n, "kabucha") or s_find(n, "serpent") or s_find(n, "guitar") then t = "4"
+    end
+    if t then MCXC.Cache.ToolTypes[tool] = t end
+    return t
 end
 
 local function GetCurrentToolType()
     local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
-    return tool and GetToolType(tool)
+    return GetToolType(tool)
 end
+
+for _, tool in ipairs(LP.Backpack:GetChildren()) do if tool:IsA("Tool") then GetToolType(tool) end end
 
 local function FastCastManual(kc)
     if not MCXC.Config.Macro or s_find(MCXC.State.Status, "CASTING") then return end
@@ -218,6 +249,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
         Utils.Tween(strUI, {Thickness=2.5, Color=Theme.Text}, 0.05)
         local seq = s_upper(comboStr)
         local comboFailed, failR = false, ""
+        local isFirstToolSwitch = true
         for i = 1, #seq do
             local st, _ = Combat.CheckStunGrace()
             if st or s_find(MCXC.State.Status, "CANCEL") then comboFailed = true; failR = "STUNNED"; break end
@@ -236,10 +268,21 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                             if child == targetTool then equipSuccess = true end
                         end)
                         pcall(function() LP.Character.Humanoid:EquipTool(targetTool) end)
+                        local timeout = isFirstToolSwitch and 2.5 or 1.5
                         local start = t_tick()
-                        while not equipSuccess and t_tick() - start < 1.5 do task.wait() end
+                        while not equipSuccess and t_tick() - start < timeout do task.wait() end
                         conn:Disconnect()
-                        if not equipSuccess then comboFailed = true; failR = "EQUIP TIMEOUT"; break end
+                        if equipSuccess then
+                            task.wait(0.1)
+                        else
+                            local kc = Enum.KeyCode.One
+                            if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
+                            VIM:SendKeyEvent(true, kc, false, game)
+                            Combat.SmartWait(0.05)
+                            VIM:SendKeyEvent(false, kc, false, game)
+                            Combat.SmartWait(0.15)
+                        end
+                        isFirstToolSwitch = false
                     else
                         local kc = Enum.KeyCode.One
                         if key=="2" then kc=Enum.KeyCode.Two elseif key=="3" then kc=Enum.KeyCode.Three elseif key=="4" then kc=Enum.KeyCode.Four end
@@ -727,40 +770,6 @@ MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
     MCXC.State.Status = "CANCEL: X"
     MCXC.State.ComboQueue = nil
     Utils.Tween(MCXC.Cache.StrC,{Thickness=1.5, Color=Theme.Danger}, 0.1)
-    Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-end)
-
-local function ProcessQueue()
-    if MCXC.State.ComboQueue and not s_find(MCXC.State.Status, "CASTING") then
-        local q = MCXC.State.ComboQueue
-        MCXC.State.ComboQueue = nil
-        Combat.ExecuteCombo(q.id, q.str, q.strUI, q.col, ProcessQueue)
-    end
-end
-local function HandleCombo(id, str, strUI, col)
-    if MCXC.State.SetupMode then return end
-    if s_find(MCXC.State.Status, "CASTING") then
-        if MCXC.State.CurrentCombo == id then
-            if MCXC.Config.CancelOnTap then
-                MCXC.State.Status = "CANCEL: MANUAL"
-                MCXC.State.ComboQueue = nil
-                Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
-                Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
-            end
-        else
-            MCXC.State.ComboQueue = {id=id, str=str, strUI=strUI, col=col}
-            Utils.Tween(strUI, {Thickness=3, Color=Theme.Target}, 0.1)
-        end
-    else
-        Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
-    end
-end
-MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
-MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
-MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
-    MCXC.State.Status = "CANCEL: X"
-    MCXC.State.ComboQueue = nil
-    Utils.Tween(MCXC.Cache.StrC, {Thickness=1.5, Color=Theme.Danger}, 0.1)
     Utils.Tween(MCXC.Cache.StrC2, {Thickness=1.5, Color=Theme.Accent}, 0.1)
 end)
 
