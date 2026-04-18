@@ -884,4 +884,215 @@ if HasCombatAccess() then
                     if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
                 end
             else
-    
+                MCXC.State.ComboQueue = {id = id, str = str, strUI = strUI, col = col}
+                Utils.Tween(strUI, {Thickness = 3, Color = Theme.Target}, 0.1)
+            end
+        else
+            Combat.ExecuteCombo(id, str, strUI, col, ProcessQueue)
+        end
+    end
+    MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
+    MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
+    MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
+        MCXC.State.Status = "CANCEL: X"
+        MCXC.State.ComboQueue = nil
+        if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
+        if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
+    end)
+end
+
+local function RefreshPlayerDropdown()
+    local players = {}
+    for _, p in ipairs(Plyrs:GetPlayers()) do
+        if p ~= LP and not table_find(MCXC.Config.AllyList, p.Name) then
+            table.insert(players, p.Name)
+        end
+    end
+    return players
+end
+
+local allyDropdown, removeAllyDropdown
+TabV:CreateToggle("Ally Marines", "AllyMarines", function(v) MCXC.Config.AllyMarines = v; SaveConfig() end)
+TabV:CreateToggle("ESP", "ESP", function(v) if not v then Visuals.ClearTracer() end end)
+TabV:CreateToggle("View Tracer", "ViewTracer", function(v) if not v then Visuals.ClearTracer() end end)
+
+allyDropdown = TabV:CreateDropdown("Add Ally", RefreshPlayerDropdown(), nil, function(selected)
+    if selected and not table_find(MCXC.Config.AllyList, selected) then
+        table.insert(MCXC.Config.AllyList, selected)
+        SaveConfig()
+        allyDropdown.UpdateOptions(RefreshPlayerDropdown())
+        if removeAllyDropdown then removeAllyDropdown.UpdateOptions(MCXC.Config.AllyList) end
+    end
+end)
+
+removeAllyDropdown = TabV:CreateDropdown("Remove Ally", MCXC.Config.AllyList, nil, function(selected)
+    if selected then
+        local idx = table_find(MCXC.Config.AllyList, selected)
+        if idx then table.remove(MCXC.Config.AllyList, idx) end
+        SaveConfig()
+        allyDropdown.UpdateOptions(RefreshPlayerDropdown())
+        removeAllyDropdown.UpdateOptions(MCXC.Config.AllyList)
+    end
+end)
+
+TabV:CreateDoubleButton("Refresh", Theme.Accent, function()
+    allyDropdown.UpdateOptions(RefreshPlayerDropdown())
+    removeAllyDropdown.UpdateOptions(MCXC.Config.AllyList)
+end, "Clear All", Theme.Danger, function()
+    MCXC.Config.AllyList = {}
+    SaveConfig()
+    allyDropdown.UpdateOptions(RefreshPlayerDropdown())
+    removeAllyDropdown.UpdateOptions({})
+end)
+
+local sFOV, sE, sT
+TabV:CreateToggle("Custom FOV", "EnableFOV", function(v)
+    if not v then workspace.CurrentCamera.FieldOfView = 70 end
+    if sFOV then sFOV.Visible = v end
+end)
+sFOV = TabV:CreateSlider("FOV Value", 70, 120, "FOVValue", true, MCXC.Config.EnableFOV)
+sE = TabV:CreateSlider("ESP Range", 100, 5000, "RenderDist", true, MCXC.Config.ESP)
+sT = TabV:CreateSlider("Tracer Range", 50, 1500, "TracerRange", true, MCXC.Config.ViewTracer)
+
+TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v)
+    MCXC.State.SetupMode = v
+    if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Draggable = v end
+    if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Draggable = v end
+    if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Draggable = v end
+    if not v then
+        pcall(function()
+            if MCXC.Cache.BtnC then
+                MCXC.Config.BtnPosC = {MCXC.Cache.BtnC.Position.X.Scale, MCXC.Cache.BtnC.Position.X.Offset, MCXC.Cache.BtnC.Position.Y.Scale, MCXC.Cache.BtnC.Position.Y.Offset}
+            end
+            if MCXC.Cache.BtnC2 then
+                MCXC.Config.BtnPosC2 = {MCXC.Cache.BtnC2.Position.X.Scale, MCXC.Cache.BtnC2.Position.X.Offset, MCXC.Cache.BtnC2.Position.Y.Scale, MCXC.Cache.BtnC2.Position.Y.Offset}
+            end
+            if MCXC.Cache.BtnX then
+                MCXC.Config.BtnPosX = {MCXC.Cache.BtnX.Position.X.Scale, MCXC.Cache.BtnX.Position.X.Offset, MCXC.Cache.BtnX.Position.Y.Scale, MCXC.Cache.BtnX.Position.Y.Offset}
+            end
+            SaveConfig()
+        end)
+    end
+end)
+TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
+TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
+TabS:CreateToggle("Ultra FPS", "UnlockFPS", function(v) Utils.ApplyUltraFPS(v); SaveConfig() end)
+TabS:CreateDoubleButton("Fix Lag PvP", Theme.Accent, function()
+    MCXC.State.LagFixed = true
+    Utils.ApplyPvPLighting()
+    for _, v in ipairs(workspace:GetDescendants()) do Utils.ApplyPvPLagFix(v) end
+    for _, p in ipairs(Plyrs:GetPlayers()) do
+        if p ~= LP and not IsAlly(p) then
+            LagFixer.HighlightEnemy(p)
+        end
+    end
+end, "Hide UI", Theme.Danger, function()
+    MCXC.State.LagFixed = false
+    Gui.Enabled = false
+end)
+
+LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
+workspace.DescendantAdded:Connect(function(v)
+    if MCXC.State.LagFixed then
+        task.delay(0.02, function() Utils.ApplyPvPLagFix(v) end)
+    end
+end)
+
+local fF, lFT = 0, t_tick()
+RS.Heartbeat:Connect(function()
+    if t_tick() - MCXC.State.LastTick > 60 then
+        MCXC.State.LastTick = t_tick()
+        collectgarbage("step")
+    end
+    table.clear(MCXC.State.PlrData)
+    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not myR then return end
+    local minD, targ = m_huge, nil
+    local maxBounty = 0
+    for _, p in pairs(MCXC.State.ActivePlayers) do
+        if p.Character then
+            local tR = p.Character:FindFirstChild("HumanoidRootPart")
+            local hum = p.Character:FindFirstChild("Humanoid")
+            if tR and hum and hum.Health > 0 then
+                local dSq = Utils.DistSq(tR.Position, myR.Position)
+                local bounty = 0
+                local data = p:FindFirstChild("Data")
+                if data then
+                    local b = data:FindFirstChild("Bounty") or data:FindFirstChild("Beli")
+                    if b then bounty = tonumber(b.Value) or 0 end
+                end
+                if bounty > maxBounty then maxBounty = bounty end
+                if not IsAlly(p) and dSq < minD then
+                    minD = dSq
+                    targ = p
+                end
+                local lvl = data and data:FindFirstChild("Level") and tostring(data.Level.Value) or "?"
+                MCXC.State.PlrData[p.Name] = {
+                    tR = tR,
+                    dSq = dSq,
+                    hp = m_floor(hum.Health),
+                    mhp = m_floor(hum.MaxHealth),
+                    lvl = lvl,
+                    bounty = bounty
+                }
+            end
+        end
+    end
+    MCXC.State.TopBounty = maxBounty
+    MCXC.State.CurrentTarget = targ
+end)
+
+RS.RenderStepped:Connect(function()
+    local n = t_tick()
+    fF = fF + 1
+    if n - lFT >= 1 then
+        local fps = m_floor(fF / (n - lFT))
+        fF, lFT = 0, n
+        MCXC.State.Ping = Utils.GetPing() / 1000
+        MCXC.State.FPS = fps
+        if MCXC.Cache.FPSLbl then
+            MCXC.Cache.FPSLbl.Text = "FPS: " .. fps
+        end
+        if MCXC.Cache.PingLbl then
+            MCXC.Cache.PingLbl.Text = "PING: " .. m_floor(MCXC.State.Ping * 1000) .. "ms"
+        end
+    end
+    if MCXC.Cache.StatusLbl then
+        MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status)
+    end
+    if not MCXC.State.ComboQueue and not MCXC.State.CurrentCombo then
+        if MCXC.Cache.StrC then
+            Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1)
+        end
+        if MCXC.Cache.StrC2 then
+            Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1)
+        end
+    end
+    local myR = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not myR then return end
+    local targ = MCXC.State.CurrentTarget
+    if MCXC.Config.ViewTracer and targ and MCXC.State.PlrData[targ.Name] then
+        local d = MCXC.State.PlrData[targ.Name]
+        if d.dSq <= (MCXC.Config.TracerRange * MCXC.Config.TracerRange) then
+            Visuals.UpdateTracer(d.tR, myR, Theme.Target)
+        else
+            Visuals.ClearTracer()
+        end
+    else
+        Visuals.ClearTracer()
+    end
+    for _, p in pairs(MCXC.State.ActivePlayers) do
+        local d = MCXC.State.PlrData[p.Name]
+        if d then
+            Visuals.UpdateESP(p, d.tR, d.dSq, (p == targ), d.hp, d.mhp, d.lvl, d.bounty)
+        elseif MCXC.Cache.ESP[p.Name] then
+            MCXC.Cache.ESP[p.Name].Enabled = false
+        end
+    end
+    if MCXC.Config.EnableFOV then
+        workspace.CurrentCamera.FieldOfView = MCXC.Config.FOVValue
+    end
+    CameraLock.Update()
+end)
+
+MCXC.State.Status = "IDLE"
