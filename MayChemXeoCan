@@ -169,56 +169,80 @@ function Utils.ApplyUltraFPS(v)
 end
 function Utils.ApplyPvPLighting()
     pcall(function()
-        Lg.GlobalShadows = false; Lg.FogEnd = 9e9; Lg.Brightness = 1.0; Lg.OutdoorAmbient = C3(140, 140, 150)
-        Lg.ClockTime = 12; Lg.Ambient = C3(120, 120, 130); Lg.ExposureCompensation = 0.0
+        Lg.GlobalShadows = false
+        Lg.FogEnd = 9e9
+        Lg.Brightness = 1.0
+        Lg.OutdoorAmbient = C3(140, 140, 150)
+        Lg.ClockTime = 12
+        Lg.Ambient = C3(120, 120, 130)
+        Lg.ExposureCompensation = 0.0
         for _, v in ipairs(Lg:GetChildren()) do
-            if v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then v.Enabled = false end
+            if v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then
+                v:Destroy()
+            end
         end
         sethiddenproperty(Lg, "Technology", Enum.Technology.Compatibility)
         local terrain = workspace:FindFirstChild("Terrain")
         if terrain then
-            terrain.Decoration = false; terrain.WaterWaveSize = 0; terrain.WaterWaveSpeed = 0; terrain.WaterReflectance = 0; terrain.WaterTransparency = 1
+            terrain.Decoration = false
+            terrain.WaterWaveSize = 0
+            terrain.WaterWaveSpeed = 0
+            terrain.WaterReflectance = 0
+            terrain.WaterTransparency = 1
         end
     end)
 end
+
 local LagFixer = {}
 function LagFixer.HighlightEnemy(p)
     if not p or not p.Character then return end
     if MCXC.Cache.EnemyHighlights[p] then return end
     local char = p.Character
     local highlight = I_new("Highlight")
-    highlight.Name = "MCXC_EnemyHighlight"; highlight.FillTransparency = 1; highlight.OutlineColor = Theme.Target; highlight.OutlineTransparency = 0
-    highlight.Adornee = char; highlight.Parent = char
+    highlight.Name = "MCXC_EnemyHighlight"
+    highlight.FillTransparency = 1
+    highlight.OutlineColor = Theme.Target
+    highlight.OutlineTransparency = 0
+    highlight.Adornee = char
+    highlight.Parent = char
     MCXC.Cache.EnemyHighlights[p] = highlight
 end
 function LagFixer.RemoveHighlight(p)
-    if MCXC.Cache.EnemyHighlights[p] then pcall(function() MCXC.Cache.EnemyHighlights[p]:Destroy() end); MCXC.Cache.EnemyHighlights[p] = nil end
+    if MCXC.Cache.EnemyHighlights[p] then
+        pcall(function() MCXC.Cache.EnemyHighlights[p]:Destroy() end)
+        MCXC.Cache.EnemyHighlights[p] = nil
+    end
 end
 function LagFixer.ProcessObject(v)
     if not v or not v:IsDescendantOf(workspace) then return end
     if LP.Character and v:IsDescendantOf(LP.Character) then return end
+    for _, plr in pairs(MCXC.State.ActivePlayers) do
+        if plr.Character and v:IsDescendantOf(plr.Character) then return end
+    end
     pcall(function()
         if v:IsA("BasePart") then
-            local parent = v.Parent
-            local isPlr = false
-            if parent and parent:FindFirstChild("Humanoid") then isPlr = true
-            elseif parent and parent.Parent and parent.Parent:FindFirstChild("Humanoid") then isPlr = true end
-            if not isPlr then
-                v.Material = Enum.Material.SmoothPlastic; v.CastShadow = false; v.Reflectance = 0
-                for _, item in pairs(v:GetChildren()) do if item:IsA("Decal") or item:IsA("Texture") then item:Destroy() end end
-                if (v:IsA("MeshPart") or v:IsA("UnionOperation")) and v.Size.Magnitude < 4 then v:Destroy() end
+            v.Material = Enum.Material.SmoothPlastic
+            v.CastShadow = false
+            v.Reflectance = 0
+            for _, child in ipairs(v:GetChildren()) do
+                if child:IsA("Decal") or child:IsA("Texture") then child:Destroy() end
+                if child:IsA("SpecialMesh") then child.TextureId = "" end
             end
         elseif v:IsA("ParticleEmitter") then
-            if v.Texture and (s_find(v.Texture, "smoke") or s_find(v.Texture, "fog")) then v:Destroy()
+            if v.Texture and (s_find(v.Texture, "smoke") or s_find(v.Texture, "fog") or s_find(v.Texture, "fire") or s_find(v.Texture, "spark")) then
+                v:Destroy()
             else
-                v.Rate = v.Rate * 0.4
-                if v.Size then local kp = v.Size.Keypoints; if #kp > 0 then v.Size = NS(kp[1].Value * 0.6) end end
+                v.Rate = v.Rate * 0.15
+                if v.Size then
+                    local kp = v.Size.Keypoints
+                    if #kp > 0 then v.Size = NS(kp[1].Value * 0.6) end
+                end
                 v.LightEmission = (v.LightEmission or 1) * 0.3
             end
-        elseif v:IsA("Beam") or v:IsA("Trail") then
-            local trans = v.Transparency.Keypoints; if #trans > 0 then v.Transparency = NS((trans[1].Value or 0) + 0.2) end
-            v.Width0 = v.Width0 * 0.8; v.Width1 = v.Width1 * 0.8
-        elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then v.Enabled = false
+        elseif v:IsA("Trail") or v:IsA("Beam") then
+            v:Destroy()
+        elseif v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") then
+            v:Destroy()
         end
     end)
 end
@@ -226,7 +250,6 @@ function Utils.ApplyPvPLagFix(v)
     if not MCXC.State.LagFixed then return end
     LagFixer.ProcessObject(v)
 end
-
 local CameraLock = {}
 function CameraLock.GetNearestEnemy()
     local myChar = LP.Character; if not myChar then return nil end
@@ -247,6 +270,17 @@ function CameraLock.GetNearestEnemy()
 end
 function CameraLock.Enable() if MCXC.Config.CameraLockEnabled then MCXC.State.CameraLockActive = true; MCXC.State.RestoreCamera = false end end
 function CameraLock.Disable() MCXC.State.CameraLockActive = false; MCXC.State.RestoreCamera = true end
+function CameraLock.ForceRestore()
+    local cam = workspace.CurrentCamera
+    if cam then
+        cam.CameraType = Enum.CameraType.Custom
+        if LP.Character then
+            local hum = LP.Character:FindFirstChild("Humanoid")
+            if hum then cam.CameraSubject = hum end
+        end
+    end
+    MCXC.State.RestoreCamera = false
+end
 function CameraLock.SmoothRestore()
     local cam = workspace.CurrentCamera; local myChar = LP.Character
     if not myChar or not cam then return end
@@ -271,8 +305,12 @@ function CameraLock.Update()
     elseif MCXC.State.RestoreCamera then
         if MCXC.State.TargetCameraCFrame then
             cam.CFrame = cam.CFrame:Lerp(MCXC.State.TargetCameraCFrame, 0.15)
-            if (cam.CFrame.Position - MCXC.State.TargetCameraCFrame.Position).Magnitude < 0.1 then MCXC.State.RestoreCamera = false end
-        else CameraLock.SmoothRestore() end
+            if (cam.CFrame.Position - MCXC.State.TargetCameraCFrame.Position).Magnitude < 0.1 then
+                CameraLock.ForceRestore()
+            end
+        else
+            CameraLock.SmoothRestore()
+        end
     end
 end
 
@@ -330,12 +368,12 @@ function Combat.SwitchToTool(key)
         local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
         if hum then pcall(function() hum:EquipTool(targetTool) end) end
         local start = t_tick()
-        repeat if GetCurrentToolType() == key then return true end; t_wait() until t_tick() - start > 2.0
+        repeat if GetCurrentToolType() == key then t_wait(0.03); return true end; t_wait() until t_tick() - start > 1.5
     end
     local kc = key == "2" and Enum.KeyCode.Two or key == "3" and Enum.KeyCode.Three or key == "4" and Enum.KeyCode.Four or Enum.KeyCode.One
     VIM:SendKeyEvent(true, kc, false, game); VIM:SendKeyEvent(false, kc, false, game)
     local start = t_tick()
-    repeat if GetCurrentToolType() == key then return true end; t_wait() until t_tick() - start > 2.0
+    repeat if GetCurrentToolType() == key then t_wait(0.03); return true end; t_wait() until t_tick() - start > 1.5
     return false
 end
 
@@ -349,7 +387,7 @@ function Combat.WaitForSkillActivation(tool, key)
         if LP.Character and Combat.IsStunned(LP.Character) then break end
         if MCXC.State.ComboCancelRequested then break end
         t_wait()
-    until t_tick() - start > 2.5
+    until t_tick() - start > 1.2
     conn:Disconnect()
     return activated or (LP.Character and Combat.CheckBusy(LP.Character))
 end
@@ -377,6 +415,7 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
             local key = s_sub(seq, step, step)
             if s_match(key, "[1-4]") then
                 if not Combat.SwitchToTool(key) then failed = true; failReason = "TOOL SWITCH FAIL"; break end
+                t_wait(0.02)
             elseif s_match(key, "[ZXCVF]") then
                 local kc = Enum.KeyCode[key]
                 local currentType = GetCurrentToolType()
@@ -397,9 +436,10 @@ function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
                 end
                 VIM:SendKeyEvent(false, kc, false, game)
                 while LP.Character and Combat.CheckBusy(LP.Character) do if MCXC.State.ComboCancelRequested then break end; t_wait() end
+                t_wait(0.01)
             end
         end
-        CameraLock.Disable(); CameraLock.SmoothRestore()
+        CameraLock.Disable()
         if failed then MCXC.State.Status = "FAIL: " .. failReason; Utils.Tween(strUI, {Thickness = 2.5, Color = Theme.Danger}, 0.1); t_delay(0.3, function() Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end)
         else MCXC.State.Status = "DONE: " .. comboId; Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end
         MCXC.State.CurrentCombo = nil
@@ -670,6 +710,7 @@ if HasCombatAccess() then
             if MCXC.State.CurrentCombo == id then
                 if MCXC.Config.CancelOnTap then
                     MCXC.State.Status = "CANCEL: MANUAL"; MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
+                    CameraLock.ForceRestore()
                     if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
                     if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
                 end
@@ -685,6 +726,7 @@ if HasCombatAccess() then
     MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
     MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
         MCXC.State.Status = "CANCEL: X"; MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
+        CameraLock.ForceRestore()
         if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
         if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
     end)
@@ -741,7 +783,7 @@ TabS:CreateDoubleButton("Fix Lag PvP", Theme.Accent, function()
 end, "Hide UI", Theme.Danger, function() MCXC.State.LagFixed = false; Gui.Enabled = false end)
 
 LP.Chatted:Connect(function(m) if s_lower(m) == "mcxc" then Gui.Enabled = true end end)
-workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then task.delay(0.02, function() Utils.ApplyPvPLagFix(v) end) end end)
+workspace.DescendantAdded:Connect(function(v) if MCXC.State.LagFixed then t_delay(0.02, function() Utils.ApplyPvPLagFix(v) end) end end)
 
 local fF, lFT = 0, t_tick()
 RS.Heartbeat:Connect(function()
