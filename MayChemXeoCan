@@ -30,6 +30,20 @@ local function table_find(tbl, val)
     return nil
 end
 
+local Logger = { entries = {}, maxEntries = 200 }
+function Logger:Add(msg)
+    local timestamp = os.date("%H:%M:%S")
+    local entry = string.format("[%s] %s", timestamp, msg)
+    table.insert(self.entries, entry)
+    if #self.entries > self.maxEntries then table.remove(self.entries, 1) end
+    if MCXC.Cache.StatusLog then
+        MCXC.Cache.StatusLog.Text = table.concat(self.entries, "\n")
+        MCXC.Cache.StatusLog:ClearAllChildren()
+    end
+end
+function Logger:Clear() self.entries = {}; if MCXC.Cache.StatusLog then MCXC.Cache.StatusLog.Text = "" end end
+function Logger:GetText() return table.concat(self.entries, "\n") end
+
 local MCXC = {
     Config = {
         ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500,
@@ -45,13 +59,13 @@ local MCXC = {
         CameraLockEnabled = false
     },
     State = {
-        SessionID = Services.HttpService:GenerateGUID(false):gsub("-", ""), Status = "IDLE", MenuOpen = false,
+        SessionID = Services.HttpService:GenerateGUID(false):gsub("-", ""), MenuOpen = false,
         LastTick = t_now(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60,
         LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {},
         CameraLockActive = false, RestoreCamera = false, TargetCameraCFrame = nil,
         ComboCancelRequested = false
     },
-    Cache = {ESP = {}, TracerLine = nil, UIElements = {}, ToolTypes = {}, EnemyHighlights = {}, Connections = {}}
+    Cache = {ESP = {}, TracerLine = nil, UIElements = {}, ToolTypes = {}, EnemyHighlights = {}, Connections = {}, StatusLog = nil}
 }
 
 local Theme = {
@@ -153,8 +167,22 @@ end
 function Utils.ApplyUltraFPS(v)
     pcall(function()
         local s = settings()
-        if v then s.Rendering.QualityLevel = Enum.QualityLevel.Level01; s.Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01; Services.Lighting.Technology = Enum.Technology.Compatibility; if setfpscap then setfpscap(0) end
-        else s.Rendering.QualityLevel = Enum.QualityLevel.Automatic; s.Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04; Services.Lighting.Technology = Enum.Technology.Legacy; if setfpscap then setfpscap(60) end end
+        if v then
+            s.Rendering.QualityLevel = Enum.QualityLevel.Level01
+            s.Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+            Services.Lighting.Technology = Enum.Technology.Compatibility
+            Services.Lighting.GlobalShadows = false
+            Services.Lighting.FogEnd = 9e9
+            if setfpscap then setfpscap(0) end
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") then obj.Reflectance = 0; obj.CastShadow = false end
+            end
+        else
+            s.Rendering.QualityLevel = Enum.QualityLevel.Automatic
+            s.Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+            Services.Lighting.Technology = Enum.Technology.Legacy
+            if setfpscap then setfpscap(60) end
+        end
     end)
 end
 function Utils.ApplyPvPLighting()
@@ -206,6 +234,9 @@ function LagFixer.ProcessObject(v)
 end
 function Utils.ApplyPvPLagFix(v) if MCXC.State.LagFixed then LagFixer.ProcessObject(v) end end
 
+Logger:Add("Macro initialized. Session: " .. MCXC.State.SessionID)
+Logger:Add("Fragment: " .. GetFragment() .. " / " .. MCXC.Config.FragmentRequired)
+
 local InputAdapter = {}
 function InputAdapter.ActivateTool(tool) pcall(function() tool:Activate() end) end
 function InputAdapter.EquipToolBySlot(slot)
@@ -214,7 +245,7 @@ function InputAdapter.EquipToolBySlot(slot)
 end
 
 local ToolManager = {}
-local FRUIT_KEYWORDS = {"fruit","kitsune","dough","leopard","buddha","rubber","quake","dark","light","magma","ice","sand","flame","string","barrier","revive","door","love","gravity","paw","phoenix","portal","rumble","shadow","spirit","venom","control","dragon","soul","chop","spin","bomb","smoke","spike","spring","kilo","sound"}
+local FRUIT_KEYWORDS = {"fruit","kitsune","dough","leopard","buddha","rubber","quake","dark","light","magma","ice","sand","flame","string","barrier","revive","door","love","gravity","paw","phoenix","portal","rumble","shadow","spirit","venom","control","dragon","soul","chop","spin","bomb","smoke","spike","spring","kilo","sound","blade","diamond","barrier","quake","ruby","paw","love","quake","bomb","spike","door","revive","rubber","dark","light","magma","ice","sand","flame","string","barrier","gravity","phoenix","portal","rumble","shadow","spirit","venom","control","dragon","soul","kitsune","dough","leopard","buddha"}
 function ToolManager.GetToolType(tool)
     if not tool then return nil end
     if MCXC.Cache.ToolTypes[tool] then return MCXC.Cache.ToolTypes[tool] end
@@ -235,25 +266,36 @@ function ToolManager.GetCurrentToolType()
     return ToolManager.GetToolType(tool)
 end
 function ToolManager.SwitchToTool(key)
-    if ToolManager.GetCurrentToolType() == key then return true end
+    local startTime = t_now()
+    if ToolManager.GetCurrentToolType() == key then Logger:Add("Tool already " .. key .. " (0.00s)"); return true end
     local targetTool = nil
     for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") and ToolManager.GetToolType(v) == key then targetTool = v; break end end
-    if not targetTool then return false end
+    if not targetTool then Logger:Add("Tool " .. key .. " not found in backpack"); return false end
     local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
-    if hum then pcall(function() hum:EquipTool(targetTool) end) end
-    local start = t_now()
-    repeat
-        if ToolManager.GetCurrentToolType() == key then t_wait(0.05); return true end
-        t_wait()
-    until t_now() - start > 1.0
-    for retry = 1, 3 do
+    if not hum then Logger:Add("Humanoid missing"); return false end
+    for retry = 1, 5 do
+        pcall(function() hum:EquipTool(targetTool) end)
+        local start = t_now()
+        repeat
+            if ToolManager.GetCurrentToolType() == key then
+                local elapsed = m_floor((t_now() - startTime) * 1000) .. "ms"
+                Logger:Add("Switched to tool " .. key .. " (" .. elapsed .. ")")
+                t_wait(0.1); return true
+            end
+            t_wait()
+        until t_now() - start > 0.8
         InputAdapter.EquipToolBySlot(tonumber(key))
         start = t_now()
         repeat
-            if ToolManager.GetCurrentToolType() == key then t_wait(0.05); return true end
+            if ToolManager.GetCurrentToolType() == key then
+                local elapsed = m_floor((t_now() - startTime) * 1000) .. "ms"
+                Logger:Add("Switched to tool " .. key .. " via key (" .. elapsed .. ")")
+                t_wait(0.1); return true
+            end
             t_wait()
-        until t_now() - start > 1.0
+        until t_now() - start > 0.8
     end
+    Logger:Add("FAILED to switch to tool " .. key)
     return false
 end
 
@@ -275,12 +317,23 @@ function CameraLock.GetNearestEnemy()
     end
     return nearest
 end
-function CameraLock.Enable() if MCXC.Config.CameraLockEnabled and CameraLock.GetNearestEnemy() then MCXC.State.CameraLockActive = true end end
+function CameraLock.Enable()
+    if MCXC.Config.CameraLockEnabled then
+        local target = CameraLock.GetNearestEnemy()
+        if target then
+            MCXC.State.CameraLockActive = true
+            Logger:Add("Camera locked to " .. target.Name)
+        else
+            Logger:Add("Camera lock skipped: no target")
+        end
+    end
+end
 function CameraLock.Disable() MCXC.State.CameraLockActive = false; MCXC.State.RestoreCamera = true end
 function CameraLock.ForceRestore()
     local cam = workspace.CurrentCamera
     if cam then cam.CameraType = Enum.CameraType.Custom; cam.CameraSubject = LP.Character and LP.Character:FindFirstChild("Humanoid") end
     MCXC.State.CameraLockActive = false; MCXC.State.RestoreCamera = false
+    Logger:Add("Camera restored")
 end
 function CameraLock.Update()
     local cam = workspace.CurrentCamera; if not cam then return end
@@ -319,20 +372,25 @@ local function ExecuteStep(comboId, sequence, uiElement, onFinish)
     local function nextStep()
         if index > #steps then CameraLock.Disable(); onFinish(true); return end
         if MCXC.State.ComboCancelRequested then CameraLock.ForceRestore(); onFinish(false, "CANCELLED"); return end
-        if LP.Character and Combat.IsStunned(LP.Character) then t_wait(0.1); nextStep(); return end
+        if LP.Character and Combat.IsStunned(LP.Character) then t_wait(0.15); nextStep(); return end
         local key = s_sub(steps, index, index); index = index + 1
         if s_match(key, "[1-4]") then
             if not ToolManager.SwitchToTool(key) then onFinish(false, "TOOL SWITCH FAIL"); return end
-            t_wait(0.05)
+            t_wait(0.08 + MCXC.State.Ping * 0.5)
             nextStep()
         elseif s_match(key, "[ZXCVF]") then
             local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
             if not tool then onFinish(false, "NO TOOL"); return end
+            Logger:Add("Activating skill " .. key .. " on " .. tool.Name)
             InputAdapter.ActivateTool(tool)
             local start = t_now()
-            repeat t_wait() until tool.Activated or (LP.Character and Combat.CheckBusy(LP.Character)) or t_now() - start > 0.5
+            repeat
+                if tool.Activated then break end
+                if LP.Character and Combat.CheckBusy(LP.Character) then break end
+                t_wait()
+            until t_now() - start > 0.8
             while LP.Character and Combat.CheckBusy(LP.Character) do t_wait() end
-            t_wait(0.02)
+            t_wait(0.04 + MCXC.State.Ping * 0.3)
             nextStep()
         else nextStep() end
     end
@@ -342,12 +400,19 @@ end
 function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
     if not HasCombatAccess() or MCXC.State.CurrentCombo then return end
     MCXC.State.CurrentCombo = comboId; MCXC.State.ComboCancelRequested = false
+    Logger:Add("Combo " .. comboId .. " started: " .. comboStr)
     CameraLock.Enable()
     Utils.Tween(strUI, {Thickness = 2.5, Color = Theme.Text}, 0.05)
     t_spawn(function()
         ExecuteStep(comboId, comboStr, strUI, function(success, reason)
-            if not success then MCXC.State.Status = "FAIL: " .. reason; Utils.Tween(strUI, {Thickness = 2.5, Color = Theme.Danger}, 0.1); t_delay(0.3, function() Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end)
-            else MCXC.State.Status = "DONE: " .. comboId; Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end
+            if not success then
+                Logger:Add("Combo " .. comboId .. " FAILED: " .. reason)
+                Utils.Tween(strUI, {Thickness = 2.5, Color = Theme.Danger}, 0.1)
+                t_delay(0.3, function() Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end)
+            else
+                Logger:Add("Combo " .. comboId .. " DONE")
+                Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2)
+            end
             MCXC.State.CurrentCombo = nil
             if onEnd then onEnd() end
             if MCXC.State.ComboQueue then ProcessQueue() end
@@ -406,22 +471,21 @@ function MaruUI:CreateWindow(title)
     MCXC.Cache.ESPFolder = Services.CoreGui:FindFirstChild(fName) or I_new("Folder", Services.CoreGui); MCXC.Cache.ESPFolder.Name = fName
 
     local StatF = I_new("Frame", gui)
-    StatF.Size, StatF.Position, StatF.BackgroundTransparency, StatF.Visible = U2(0,160,0,65), U2(0,10,0,40), 1, MCXC.Config.ShowStats
-    local fL = I_new("TextLabel", StatF); fL.Size, fL.BackgroundTransparency, fL.Font, fL.TextSize, fL.TextColor3, fL.Text = U2(1,0,0,20), 1, Theme.FontBlack, 13, Theme.Text, ""
-    local pL = I_new("TextLabel", StatF); pL.Size, pL.Position, pL.BackgroundTransparency, pL.Font, pL.TextSize, pL.TextColor3, pL.Text = U2(1,0,0,20), U2(0,0,0,20), 1, Theme.FontBlack, 13, Theme.Text, ""
-    local sL = I_new("TextLabel", StatF); sL.Size, sL.Position, sL.BackgroundTransparency, sL.Font, sL.TextSize, sL.TextColor3, sL.Text = U2(1,0,0,20), U2(0,0,0,40), 1, Theme.FontBold, 12, Theme.Accent, ""
-    MCXC.Cache.FPSLbl, MCXC.Cache.PingLbl, MCXC.Cache.StatusLbl, MCXC.Cache.StatFrame = fL, pL, sL, StatF
+    StatF.Size, StatF.Position, StatF.BackgroundTransparency, StatF.Visible = U2(0,160,0,24), U2(0,6,0,6), 1, MCXC.Config.ShowStats
+    local fL = I_new("TextLabel", StatF); fL.Size, fL.Position, fL.BackgroundTransparency, fL.Font, fL.TextSize, fL.TextColor3, fL.TextXAlignment, fL.Text = U2(0,70,1,0), U2(0,0,0,0), 1, Theme.FontBlack, 12, Theme.Text, Enum.TextXAlignment.Left, "FPS: 60"
+    local pL = I_new("TextLabel", StatF); pL.Size, pL.Position, pL.BackgroundTransparency, pL.Font, pL.TextSize, pL.TextColor3, pL.TextXAlignment, pL.Text = U2(0,80,1,0), U2(0,70,0,0), 1, Theme.FontBlack, 12, Theme.Text, Enum.TextXAlignment.Left, "PING: 0ms"
+    MCXC.Cache.FPSLbl, MCXC.Cache.PingLbl, MCXC.Cache.StatFrame = fL, pL, StatF
 
     local Tgl = I_new("ImageButton", gui)
     Tgl.Size, Tgl.Position, Tgl.Image, Tgl.BackgroundColor3, Tgl.BackgroundTransparency = U2(0,45,0,45), U2(0.5,-22,0,15), "rbxthumb://type=Asset&id=8073107254&w=150&h=150", Theme.BG, MCXC.Config.UITrans
     I_new("UICorner", Tgl).CornerRadius = UD(0.2,0); I_new("UIStroke", Tgl).Color, I_new("UIStroke", Tgl).Thickness = Theme.Accent, 2
 
     local Main = I_new("Frame", gui)
-    Main.Size, Main.Position, Main.BackgroundColor3, Main.BackgroundTransparency, Main.ClipsDescendants, Main.Visible = U2(0,420,0,360), U2(0.5,-210,0.5,-180), Theme.BG, MCXC.Config.UITrans, true, false
+    Main.Size, Main.Position, Main.BackgroundColor3, Main.BackgroundTransparency, Main.ClipsDescendants, Main.Visible = U2(0,380,0,320), U2(0.5,-190,0.5,-160), Theme.BG, MCXC.Config.UITrans, true, false
     I_new("UICorner", Main).CornerRadius = UD(0,10); I_new("UIStroke", Main).Color = C3(40,40,45)
-    local Sidebar = I_new("Frame", Main); Sidebar.Size, Sidebar.BackgroundColor3, Sidebar.BackgroundTransparency = U2(0,140,1,0), Theme.Sidebar, MCXC.Config.UITrans
+    local Sidebar = I_new("Frame", Main); Sidebar.Size, Sidebar.BackgroundColor3, Sidebar.BackgroundTransparency = U2(0,120,1,0), Theme.Sidebar, MCXC.Config.UITrans
     local Title = I_new("TextLabel", Sidebar); Title.Size, Title.BackgroundTransparency, Title.Text, Title.TextColor3, Title.Font, Title.TextSize = U2(1,0,0,50), 1, title, Theme.Accent, Theme.FontBold, 14
-    local Content = I_new("Frame", Main); Content.Size, Content.Position, Content.BackgroundTransparency = U2(1,-140,1,0), U2(0,140,0,0), 1
+    local Content = I_new("Frame", Main); Content.Size, Content.Position, Content.BackgroundTransparency = U2(1,-120,1,0), U2(0,120,0,0), 1
     table.insert(MCXC.Cache.UIElements, Main); table.insert(MCXC.Cache.UIElements, Sidebar)
 
     Tgl.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; Main.Visible = MCXC.State.MenuOpen end)
@@ -472,7 +536,7 @@ function MaruUI:CreateWindow(title)
                 I_new("UICorner", tr).CornerRadius = UD(1,0)
                 local val = MCXC.Config.Hold_[key] or MCXC.Config[key] or min
                 local fill = I_new("Frame", tr); fill.Size, fill.BackgroundColor3 = U2((val-min)/(max-min),0,1,0), Theme.Accent
-                I_new("UICorner", fill).CornerRadius = UD(1,0)
+                local fillCorner = I_new("UICorner", fill); fillCorner.CornerRadius = UD(1,0)
                 local tB = I_new("TextButton", c); tB.Size, tB.BackgroundTransparency, tB.Text = U2(1,0,1,0), 1, ""
                 local drag = false
                 local function upd(i)
@@ -485,6 +549,7 @@ function MaruUI:CreateWindow(title)
                     if key == "BtnSizeC2" and MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Size = U2(0,newVal,0,newVal) end
                     if key == "BtnSizeX" and MCXC.Cache.BtnX then MCXC.Cache.BtnX.Size = U2(0,newVal,0,newVal) end
                     if key == "UITrans" then for _, el in ipairs(MCXC.Cache.UIElements) do el.BackgroundTransparency = newVal end; Tgl.BackgroundTransparency = newVal end
+                    fillCorner.CornerRadius = UD(1,0)
                 end
                 tB.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then drag = true; upd(i) end end)
                 Services.UserInputService.InputEnded:Connect(function() drag = false; SaveConfig() end)
@@ -539,7 +604,49 @@ function MaruUI:CreateWindow(title)
 end
 
 local Win, Gui = MaruUI:CreateWindow("MayChemXeoCan")
-local TabV, TabS = Win:CreateTab("Visuals"), Win:CreateTab("Settings")
+local TabV, TabS, TabStatus = Win:CreateTab("Visuals"), Win:CreateTab("Settings"), Win:CreateTab("Status")
+
+local StatusFrame = TabStatus.Frame
+local LogContainer = I_new("Frame", StatusFrame)
+LogContainer.Size = U2(1, 0, 1, -50)
+LogContainer.BackgroundTransparency = 1
+local LogBox = I_new("TextBox", LogContainer)
+LogBox.Size = U2(1, -8, 1, -8)
+LogBox.Position = U2(0, 4, 0, 4)
+LogBox.BackgroundColor3 = C3(20,20,22)
+LogBox.TextColor3 = Theme.Text
+LogBox.Font = Enum.Font.Code
+LogBox.TextSize = 11
+LogBox.ClearTextOnFocus = false
+LogBox.MultiLine = true
+LogBox.TextXAlignment = Enum.TextXAlignment.Left
+LogBox.TextYAlignment = Enum.TextYAlignment.Top
+LogBox.Text = ""
+I_new("UICorner", LogBox).CornerRadius = UD(0,6)
+MCXC.Cache.StatusLog = LogBox
+local CopyBtn = I_new("TextButton", StatusFrame)
+CopyBtn.Size = U2(1, -16, 0, 32)
+CopyBtn.Position = U2(0, 8, 1, -40)
+CopyBtn.BackgroundColor3 = Theme.Accent
+CopyBtn.Text = "COPY LOGS"
+CopyBtn.TextColor3 = Theme.Text
+CopyBtn.Font = Theme.FontBold
+CopyBtn.TextSize = 13
+I_new("UICorner", CopyBtn).CornerRadius = UD(0,6)
+CopyBtn.MouseButton1Click:Connect(function()
+    local logs = Logger:GetText()
+    if logs ~= "" then pcall(function() setclipboard(logs) end) end
+end)
+local ClearBtn = I_new("TextButton", StatusFrame)
+ClearBtn.Size = U2(1, -16, 0, 32)
+ClearBtn.Position = U2(0, 8, 1, -80)
+ClearBtn.BackgroundColor3 = Theme.ElementBG
+ClearBtn.Text = "CLEAR LOGS"
+ClearBtn.TextColor3 = Theme.TextDark
+ClearBtn.Font = Theme.FontBold
+ClearBtn.TextSize = 13
+I_new("UICorner", ClearBtn).CornerRadius = UD(0,6)
+ClearBtn.MouseButton1Click:Connect(function() Logger:Clear() end)
 
 if HasCombatAccess() then
     local TabC = Win:CreateTab("Combat")
@@ -608,13 +715,15 @@ if HasCombatAccess() then
         if MCXC.State.CurrentCombo then
             if MCXC.State.CurrentCombo == id then
                 if MCXC.Config.CancelOnTap then
-                    MCXC.State.Status = "CANCEL: MANUAL"; MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
+                    MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
+                    Logger:Add("Combo " .. id .. " cancelled manually")
                     CameraLock.ForceRestore()
                     if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
                     if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
                 end
             else
                 MCXC.State.ComboQueue = {id = id, str = str, strUI = strUI, col = col}
+                Logger:Add("Combo " .. id .. " queued")
                 Utils.Tween(strUI, {Thickness = 3, Color = Theme.Target}, 0.1)
             end
         else
@@ -624,7 +733,8 @@ if HasCombatAccess() then
     MCXC.Cache.BtnC.MouseButton1Click:Connect(function() HandleCombo("C", MCXC.Config.ComboC, MCXC.Cache.StrC, Theme.Danger) end)
     MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
     MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
-        MCXC.State.Status = "CANCEL: X"; MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
+        MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
+        Logger:Add("Combo cancelled via X button")
         CameraLock.ForceRestore()
         if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
         if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
@@ -717,7 +827,6 @@ Services.RunService.RenderStepped:Connect(function()
         if MCXC.Cache.FPSLbl then MCXC.Cache.FPSLbl.Text = "FPS: " .. fps end
         if MCXC.Cache.PingLbl then MCXC.Cache.PingLbl.Text = "PING: " .. m_floor(MCXC.State.Ping * 1000) .. "ms" end
     end
-    if MCXC.Cache.StatusLbl then MCXC.Cache.StatusLbl.Text = s_upper(MCXC.State.Status) end
     if not MCXC.State.ComboQueue and not MCXC.State.CurrentCombo then
         if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
         if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
@@ -739,4 +848,4 @@ Services.RunService.RenderStepped:Connect(function()
     CameraLock.Update()
 end)
 
-MCXC.State.Status = "IDLE"
+Logger:Add("Status tab ready. Logging enabled.")
