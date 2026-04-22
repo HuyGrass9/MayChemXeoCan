@@ -18,6 +18,14 @@ local m_floor, m_clamp, m_max, m_huge = math.floor, math.clamp, math.max, math.h
 local s_lower, s_upper, s_sub, s_find, s_match = string.lower, string.upper, string.sub, string.find, string.match
 local I_new = Instance.new
 
+local function getTimestamp()
+    local t = t_now()
+    local hours = m_floor(t / 3600) % 24
+    local minutes = m_floor(t / 60) % 60
+    local seconds = m_floor(t) % 60
+    return string.format("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
 local OLD_GUI_NAME = "MayChemXeoCan_V2"
 for _, gui in ipairs(Services.CoreGui:GetChildren()) do
     if gui.Name == OLD_GUI_NAME and gui:IsA("ScreenGui") then pcall(function() gui:Destroy() end) end
@@ -32,13 +40,12 @@ end
 
 local Logger = { entries = {}, maxEntries = 200 }
 function Logger:Add(msg)
-    local timestamp = os.date("%H:%M:%S")
+    local timestamp = getTimestamp()
     local entry = string.format("[%s] %s", timestamp, msg)
     table.insert(self.entries, entry)
     if #self.entries > self.maxEntries then table.remove(self.entries, 1) end
     if MCXC.Cache.StatusLog then
         MCXC.Cache.StatusLog.Text = table.concat(self.entries, "\n")
-        MCXC.Cache.StatusLog:ClearAllChildren()
     end
 end
 function Logger:Clear() self.entries = {}; if MCXC.Cache.StatusLog then MCXC.Cache.StatusLog.Text = "" end end
