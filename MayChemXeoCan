@@ -35,7 +35,7 @@ local MCXC = {
         ComboC = "3XZ1CZ2ZX", ComboC2 = "2C1XZ", RenderDist = 1500, TracerRange = 500,
         ESP = false, ViewTracer = false, EnableFOV = false, FOVValue = 90,
         BtnSizeC = 80, BtnSizeC2 = 80, BtnSizeX = 80, ShowC = false, ShowC2 = false, ShowX = false,
-        Macro = true, UnlockFPS = false, UITrans = 0.3,
+        Macro = true, UnlockFPS = false, UITrans = 0.25,
         ShowStats = true, CancelOnTap = true,
         BtnPosC = {0.88, -90, 0.35, 0}, BtnPosC2 = {0.88, -90, 0.52, 0}, BtnPosX = {0.88, -90, 0.69, 0},
         HoldEnabled = false, HoldSetup = "", Hold_ = {},
@@ -56,7 +56,7 @@ local MCXC = {
 
 local Theme = {
     BG = C3(15, 15, 18), Sidebar = C3(10, 10, 12), ElementBG = C3(22, 22, 26),
-    Accent = C3(0, 170, 255), Text = C3(255, 255, 255), TextDark = C3(160, 160, 170),
+    Accent = C3(0, 230, 255), Text = C3(255, 255, 255), TextDark = C3(160, 160, 170),
     Danger = C3(255, 50, 70), Target = C3(255, 210, 0), Ally = C3(0, 255, 120), Bounty = C3(180, 0, 255),
     Font = Enum.Font.GothamMedium, FontBold = Enum.Font.GothamBold, FontBlack = Enum.Font.GothamBlack
 }
@@ -214,16 +214,19 @@ function InputAdapter.EquipToolBySlot(slot)
 end
 
 local ToolManager = {}
+local FRUIT_KEYWORDS = {"fruit","kitsune","dough","leopard","buddha","rubber","quake","dark","light","magma","ice","sand","flame","string","barrier","revive","door","love","gravity","paw","phoenix","portal","rumble","shadow","spirit","venom","control","dragon","soul","chop","spin","bomb","smoke","spike","spring","kilo","sound"}
 function ToolManager.GetToolType(tool)
     if not tool then return nil end
     if MCXC.Cache.ToolTypes[tool] then return MCXC.Cache.ToolTypes[tool] end
     local n = s_lower(tool.Name); local t = nil
     if s_find(n, "art") or s_find(n, "claw") or s_find(n, "step") or s_find(n, "talon") or s_find(n, "melee") then t = "1"
-    elseif s_find(n, "fruit") or s_find(n, "kitsune") or s_find(n, "dough") or s_find(n, "leopard") or s_find(n, "buddha") then t = "2"
     elseif s_find(n, "sword") or s_find(n, "katana") or s_find(n, "blade") or s_find(n, "tushita") or s_find(n, "yama") or s_find(n, "cdk") or s_find(n, "trident") or s_find(n, "lamp") or s_find(n, "heart") or s_find(n, "anchor") then t = "3"
     elseif s_find(n, "gun") or s_find(n, "rifle") or s_find(n, "kabucha") or s_find(n, "serpent") or s_find(n, "guitar") then t = "4"
+    else
+        for _, kw in ipairs(FRUIT_KEYWORDS) do if s_find(n, kw) then t = "2" break end end
     end
-    if t then MCXC.Cache.ToolTypes[tool] = t end
+    if not t then t = "2" end
+    MCXC.Cache.ToolTypes[tool] = t
     return t
 end
 function ToolManager.GetCurrentToolType()
@@ -242,13 +245,15 @@ function ToolManager.SwitchToTool(key)
     repeat
         if ToolManager.GetCurrentToolType() == key then t_wait(0.05); return true end
         t_wait()
-    until t_now() - start > 0.8
-    InputAdapter.EquipToolBySlot(tonumber(key))
-    start = t_now()
-    repeat
-        if ToolManager.GetCurrentToolType() == key then t_wait(0.05); return true end
-        t_wait()
-    until t_now() - start > 0.8
+    until t_now() - start > 1.0
+    for retry = 1, 3 do
+        InputAdapter.EquipToolBySlot(tonumber(key))
+        start = t_now()
+        repeat
+            if ToolManager.GetCurrentToolType() == key then t_wait(0.05); return true end
+            t_wait()
+        until t_now() - start > 1.0
+    end
     return false
 end
 
@@ -318,7 +323,7 @@ local function ExecuteStep(comboId, sequence, uiElement, onFinish)
         local key = s_sub(steps, index, index); index = index + 1
         if s_match(key, "[1-4]") then
             if not ToolManager.SwitchToTool(key) then onFinish(false, "TOOL SWITCH FAIL"); return end
-            t_wait(0.03)
+            t_wait(0.05)
             nextStep()
         elseif s_match(key, "[ZXCVF]") then
             local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
@@ -409,14 +414,14 @@ function MaruUI:CreateWindow(title)
 
     local Tgl = I_new("ImageButton", gui)
     Tgl.Size, Tgl.Position, Tgl.Image, Tgl.BackgroundColor3, Tgl.BackgroundTransparency = U2(0,45,0,45), U2(0.5,-22,0,15), "rbxthumb://type=Asset&id=8073107254&w=150&h=150", Theme.BG, MCXC.Config.UITrans
-    I_new("UICorner", Tgl).CornerRadius = UD(1,0); I_new("UIStroke", Tgl).Color, I_new("UIStroke", Tgl).Thickness = Theme.Accent, 2
+    I_new("UICorner", Tgl).CornerRadius = UD(0.2,0); I_new("UIStroke", Tgl).Color, I_new("UIStroke", Tgl).Thickness = Theme.Accent, 2
 
     local Main = I_new("Frame", gui)
-    Main.Size, Main.Position, Main.BackgroundColor3, Main.BackgroundTransparency, Main.ClipsDescendants, Main.Visible = U2(0,380,0,320), U2(0.5,-190,0.5,-160), Theme.BG, MCXC.Config.UITrans, true, false
-    I_new("UICorner", Main).CornerRadius = UD(0,8); I_new("UIStroke", Main).Color = C3(40,40,45)
-    local Sidebar = I_new("Frame", Main); Sidebar.Size, Sidebar.BackgroundColor3, Sidebar.BackgroundTransparency = U2(0,130,1,0), Theme.Sidebar, MCXC.Config.UITrans
-    local Title = I_new("TextLabel", Sidebar); Title.Size, Title.BackgroundTransparency, Title.Text, Title.TextColor3, Title.Font, Title.TextSize = U2(1,0,0,50), 1, title, Theme.Accent, Theme.FontBold, 13
-    local Content = I_new("Frame", Main); Content.Size, Content.Position, Content.BackgroundTransparency = U2(1,-130,1,0), U2(0,130,0,0), 1
+    Main.Size, Main.Position, Main.BackgroundColor3, Main.BackgroundTransparency, Main.ClipsDescendants, Main.Visible = U2(0,420,0,360), U2(0.5,-210,0.5,-180), Theme.BG, MCXC.Config.UITrans, true, false
+    I_new("UICorner", Main).CornerRadius = UD(0,10); I_new("UIStroke", Main).Color = C3(40,40,45)
+    local Sidebar = I_new("Frame", Main); Sidebar.Size, Sidebar.BackgroundColor3, Sidebar.BackgroundTransparency = U2(0,140,1,0), Theme.Sidebar, MCXC.Config.UITrans
+    local Title = I_new("TextLabel", Sidebar); Title.Size, Title.BackgroundTransparency, Title.Text, Title.TextColor3, Title.Font, Title.TextSize = U2(1,0,0,50), 1, title, Theme.Accent, Theme.FontBold, 14
+    local Content = I_new("Frame", Main); Content.Size, Content.Position, Content.BackgroundTransparency = U2(1,-140,1,0), U2(0,140,0,0), 1
     table.insert(MCXC.Cache.UIElements, Main); table.insert(MCXC.Cache.UIElements, Sidebar)
 
     Tgl.MouseButton1Click:Connect(function() MCXC.State.MenuOpen = not MCXC.State.MenuOpen; Main.Visible = MCXC.State.MenuOpen end)
@@ -425,43 +430,43 @@ function MaruUI:CreateWindow(title)
     local Window = {Tabs = {}, Container = Content, Sidebar = Sidebar}
     function Window:CreateTab(name)
         local btn = I_new("TextButton", Sidebar)
-        btn.Size, btn.Position, btn.BackgroundTransparency, btn.Text, btn.TextColor3, btn.Font, btn.TextSize = U2(1,0,0,38), U2(0,0,0,60 + (#self.Tabs * 38)), 1, "  " .. name, Theme.TextDark, Theme.FontBold, 12
-        local ind = I_new("Frame", btn); ind.Size, ind.Position, ind.BackgroundColor3, ind.AnchorPoint = U2(0,3,0,0), U2(0,0,0.5,0), Theme.Accent, V2(0,0.5)
+        btn.Size, btn.Position, btn.BackgroundTransparency, btn.Text, btn.TextColor3, btn.Font, btn.TextSize = U2(1,0,0,40), U2(0,0,0,60 + (#self.Tabs * 40)), 1, "  " .. name, Theme.TextDark, Theme.FontBold, 13
+        local ind = I_new("Frame", btn); ind.Size, ind.Position, ind.BackgroundColor3, ind.AnchorPoint = U2(0,4,0,0), U2(0,0,0.5,0), Theme.Accent, V2(0,0.5)
         local frm = I_new("ScrollingFrame", Content)
         frm.Size, frm.Position, frm.BackgroundTransparency, frm.Visible, frm.ScrollBarThickness, frm.AutomaticCanvasSize, frm.CanvasSize = U2(1,-16,1,-16), U2(0,8,0,8), 1, false, 2, Enum.AutomaticSize.Y, U2(0,0,0,0)
         I_new("UIListLayout", frm).Padding = UD(0,8)
         local tab = {Btn = btn, Ind = ind, Frm = frm}; table.insert(self.Tabs, tab)
         btn.MouseButton1Click:Connect(function()
-            for _, t in ipairs(self.Tabs) do t.Frm.Visible = (t == tab); t.Btn.TextColor3 = (t == tab) and Theme.Text or Theme.TextDark; t.Ind.Size = (t == tab) and U2(0,3,0,20) or U2(0,3,0,0) end
+            for _, t in ipairs(self.Tabs) do t.Frm.Visible = (t == tab); t.Btn.TextColor3 = (t == tab) and Theme.Text or Theme.TextDark; t.Ind.Size = (t == tab) and U2(0,4,0,24) or U2(0,4,0,0) end
         end)
-        if #self.Tabs == 1 then frm.Visible, btn.TextColor3, ind.Size = true, Theme.Text, U2(0,3,0,20) end
+        if #self.Tabs == 1 then frm.Visible, btn.TextColor3, ind.Size = true, Theme.Text, U2(0,4,0,24) end
         return {
             Frame = frm, LIdx = 0,
             CreateToggle = function(s, text, key, cb)
                 s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,40), Theme.ElementBG, s.LIdx
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(1,-60,1,0), U2(0,10,0,0), 1, text, MCXC.Config[key] and Theme.Text or Theme.TextDark, Theme.Font, 12
-                local swBG = I_new("Frame", c); swBG.Size, swBG.Position, swBG.BackgroundColor3 = U2(0,34,0,18), U2(1,-44,0.5,-9), MCXC.Config[key] and Theme.Accent or C3(50,50,55)
+                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,42), Theme.ElementBG, s.LIdx
+                I_new("UICorner", c).CornerRadius = UD(0,8)
+                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(1,-60,1,0), U2(0,10,0,0), 1, text, MCXC.Config[key] and Theme.Text or Theme.TextDark, Theme.Font, 13
+                local swBG = I_new("Frame", c); swBG.Size, swBG.Position, swBG.BackgroundColor3 = U2(0,36,0,20), U2(1,-46,0.5,-10), MCXC.Config[key] and Theme.Accent or C3(50,50,55)
                 I_new("UICorner", swBG).CornerRadius = UD(1,0)
-                local swDot = I_new("Frame", swBG); swDot.Size, swDot.Position, swDot.BackgroundColor3 = U2(0,14,0,14), MCXC.Config[key] and U2(1,-17,0.5,-7) or U2(0,3,0.5,-7), Theme.Text
+                local swDot = I_new("Frame", swBG); swDot.Size, swDot.Position, swDot.BackgroundColor3 = U2(0,16,0,16), MCXC.Config[key] and U2(1,-18,0.5,-8) or U2(0,2,0.5,-8), Theme.Text
                 I_new("UICorner", swDot).CornerRadius = UD(1,0)
                 local b = I_new("TextButton", c); b.Size, b.BackgroundTransparency, b.Text = U2(1,0,1,0), 1, ""
                 b.MouseButton1Click:Connect(function()
                     MCXC.Config[key] = not MCXC.Config[key]
                     Utils.Tween(l, {TextColor3 = MCXC.Config[key] and Theme.Text or Theme.TextDark}, 0.2)
                     Utils.Tween(swBG, {BackgroundColor3 = MCXC.Config[key] and Theme.Accent or C3(50,50,55)}, 0.2)
-                    Utils.Tween(swDot, {Position = MCXC.Config[key] and U2(1,-17,0.5,-7) or U2(0,3,0.5,-7)}, 0.2)
+                    Utils.Tween(swDot, {Position = MCXC.Config[key] and U2(1,-18,0.5,-8) or U2(0,2,0.5,-8)}, 0.2)
                     SaveConfig(); if cb then cb(MCXC.Config[key]) end
                 end)
                 return c
             end,
             CreateSlider = function(s, text, min, max, key, isInt, visible)
                 s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder, c.Visible = U2(1,0,0,50), Theme.ElementBG, s.LIdx, visible==true
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(1,-20,0,25), U2(0,10,0,5), 1, text, Theme.TextDark, Theme.Font, 12
-                local vL = I_new("TextLabel", c); vL.Size, vL.Position, vL.BackgroundTransparency, vL.TextColor3, vL.Font, vL.TextSize, vL.ZIndex = U2(0.3,0,0,25), U2(0.7,-10,0,5), 1, Theme.Accent, Theme.FontBold, 12, 5
+                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder, c.Visible = U2(1,0,0,55), Theme.ElementBG, s.LIdx, visible==true
+                I_new("UICorner", c).CornerRadius = UD(0,8)
+                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(1,-20,0,25), U2(0,10,0,5), 1, text, Theme.TextDark, Theme.Font, 13
+                local vL = I_new("TextLabel", c); vL.Size, vL.Position, vL.BackgroundTransparency, vL.TextColor3, vL.Font, vL.TextSize, vL.ZIndex = U2(0.3,0,0,25), U2(0.7,-10,0,5), 1, Theme.Accent, Theme.FontBold, 13, 5
                 vL.Text = tostring(MCXC.Config.Hold_[key] or MCXC.Config[key] or min)
                 local tr = I_new("Frame", c); tr.Size, tr.Position, tr.BackgroundColor3 = U2(1,-20,0,6), U2(0,10,0,35), C3(40,40,45)
                 I_new("UICorner", tr).CornerRadius = UD(1,0)
@@ -488,30 +493,30 @@ function MaruUI:CreateWindow(title)
             end,
             CreateInput = function(s, text, key, cb)
                 s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,45), Theme.ElementBG, s.LIdx
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(0,10,0,0), 1, text, Theme.TextDark, Theme.Font, 12
-                local b = I_new("TextBox", c); b.Size, b.Position, b.BackgroundColor3, b.TextColor3, b.Font, b.TextSize, b.Text, b.ClearTextOnFocus = U2(0.55,-10,0,30), U2(0.45,0,0.5,-15), C3(20,20,22), Theme.Accent, Theme.FontBold, 12, tostring(MCXC.Config[key] or ""), false
-                I_new("UICorner", b).CornerRadius = UD(0,4); I_new("UIStroke", b).Color = C3(50,50,55)
+                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,46), Theme.ElementBG, s.LIdx
+                I_new("UICorner", c).CornerRadius = UD(0,8)
+                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(0,10,0,0), 1, text, Theme.TextDark, Theme.Font, 13
+                local b = I_new("TextBox", c); b.Size, b.Position, b.BackgroundColor3, b.TextColor3, b.Font, b.TextSize, b.Text, b.ClearTextOnFocus = U2(0.55,-10,0,32), U2(0.45,0,0.5,-16), C3(20,20,22), Theme.Accent, Theme.FontBold, 13, tostring(MCXC.Config[key] or ""), false
+                I_new("UICorner", b).CornerRadius = UD(0,6); I_new("UIStroke", b).Color = C3(50,50,55)
                 b.FocusLost:Connect(function() MCXC.Config[key] = b.Text; SaveConfig(); if cb then cb(b.Text) end end)
                 return c
             end,
             CreateDropdown = function(s, text, options, key, callback)
                 s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,45), Theme.ElementBG, s.LIdx
-                I_new("UICorner", c).CornerRadius = UD(0,6)
-                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(0,10,0,0), 1, text, Theme.TextDark, Theme.Font, 12
-                local dd = I_new("TextButton", c); dd.Size, dd.Position, dd.BackgroundColor3, dd.TextColor3, dd.Font, dd.TextSize, dd.Text = U2(0.55,-10,0,30), U2(0.45,0,0.5,-15), C3(20,20,22), Theme.Accent, Theme.FontBold, 12, options[1] or "-- Select --"
-                I_new("UICorner", dd).CornerRadius = UD(0,4); I_new("UIStroke", dd).Color = C3(50,50,55)
-                local opts = I_new("Frame", c); opts.Size, opts.Position, opts.BackgroundColor3, opts.Visible = U2(0.55,-10,0,#options*26), U2(0.45,0,0.5,15), C3(20,20,22), false
-                I_new("UICorner", opts).CornerRadius = UD(0,4)
+                local c = I_new("Frame", frm); c.Size, c.BackgroundColor3, c.LayoutOrder = U2(1,0,0,46), Theme.ElementBG, s.LIdx
+                I_new("UICorner", c).CornerRadius = UD(0,8)
+                local l = I_new("TextLabel", c); l.Size, l.Position, l.BackgroundTransparency, l.Text, l.TextColor3, l.Font, l.TextSize = U2(0.4,0,1,0), U2(0,10,0,0), 1, text, Theme.TextDark, Theme.Font, 13
+                local dd = I_new("TextButton", c); dd.Size, dd.Position, dd.BackgroundColor3, dd.TextColor3, dd.Font, dd.TextSize, dd.Text = U2(0.55,-10,0,32), U2(0.45,0,0.5,-16), C3(20,20,22), Theme.Accent, Theme.FontBold, 13, options[1] or "-- Select --"
+                I_new("UICorner", dd).CornerRadius = UD(0,6); I_new("UIStroke", dd).Color = C3(50,50,55)
+                local opts = I_new("Frame", c); opts.Size, opts.Position, opts.BackgroundColor3, opts.Visible = U2(0.55,-10,0,#options*28), U2(0.45,0,0.5,16), C3(20,20,22), false
+                I_new("UICorner", opts).CornerRadius = UD(0,6)
                 local function rebuildOpts(newOptions)
                     for _, ch in ipairs(opts:GetChildren()) do if ch:IsA("TextButton") then ch:Destroy() end end
                     for i, opt in ipairs(newOptions) do
-                        local btn = I_new("TextButton", opts); btn.Size, btn.Position, btn.BackgroundColor3, btn.TextColor3, btn.Font, btn.TextSize, btn.Text = U2(1,0,0,26), U2(0,0,0,(i-1)*26), C3(20,20,22), Theme.Text, Theme.Font, 12, opt
+                        local btn = I_new("TextButton", opts); btn.Size, btn.Position, btn.BackgroundColor3, btn.TextColor3, btn.Font, btn.TextSize, btn.Text = U2(1,0,0,28), U2(0,0,0,(i-1)*28), C3(20,20,22), Theme.Text, Theme.Font, 13, opt
                         btn.MouseButton1Click:Connect(function() dd.Text = opt; opts.Visible = false; if callback then callback(opt) end end)
                     end
-                    opts.Size = U2(0.55,-10,0,#newOptions*26)
+                    opts.Size = U2(0.55,-10,0,#newOptions*28)
                 end
                 rebuildOpts(options)
                 dd.MouseButton1Click:Connect(function() opts.Visible = not opts.Visible end)
@@ -519,11 +524,11 @@ function MaruUI:CreateWindow(title)
             end,
             CreateDoubleButton = function(s, t1, c1, cb1, t2, c2, cb2)
                 s.LIdx = s.LIdx + 1
-                local c = I_new("Frame", frm); c.Size, c.BackgroundTransparency, c.LayoutOrder = U2(1,0,0,40), 1, s.LIdx
-                local b1 = I_new("TextButton", c); b1.Size, b1.BackgroundColor3, b1.Text, b1.TextColor3, b1.Font, b1.TextSize = U2(0.48,0,1,0), Theme.ElementBG, t1, c1, Theme.FontBold, 12
-                I_new("UICorner", b1).CornerRadius = UD(0,6); I_new("UIStroke", b1).Color, I_new("UIStroke", b1).Transparency = c1, 0.5
-                local b2 = I_new("TextButton", c); b2.Size, b2.Position, b2.BackgroundColor3, b2.Text, b2.TextColor3, b2.Font, b2.TextSize = U2(0.48,0,1,0), U2(0.52,0,0,0), Theme.ElementBG, t2, c2, Theme.FontBold, 12
-                I_new("UICorner", b2).CornerRadius = UD(0,6); I_new("UIStroke", b2).Color, I_new("UIStroke", b2).Transparency = c2, 0.5
+                local c = I_new("Frame", frm); c.Size, c.BackgroundTransparency, c.LayoutOrder = U2(1,0,0,42), 1, s.LIdx
+                local b1 = I_new("TextButton", c); b1.Size, b1.BackgroundColor3, b1.Text, b1.TextColor3, b1.Font, b1.TextSize = U2(0.48,0,1,0), Theme.ElementBG, t1, c1, Theme.FontBold, 13
+                I_new("UICorner", b1).CornerRadius = UD(0,8); I_new("UIStroke", b1).Color, I_new("UIStroke", b1).Transparency = c1, 0.5
+                local b2 = I_new("TextButton", c); b2.Size, b2.Position, b2.BackgroundColor3, b2.Text, b2.TextColor3, b2.Font, b2.TextSize = U2(0.48,0,1,0), U2(0.52,0,0,0), Theme.ElementBG, t2, c2, Theme.FontBold, 13
+                I_new("UICorner", b2).CornerRadius = UD(0,8); I_new("UIStroke", b2).Color, I_new("UIStroke", b2).Transparency = c2, 0.5
                 b1.MouseButton1Click:Connect(function() if cb1 then cb1() end end)
                 b2.MouseButton1Click:Connect(function() if cb2 then cb2() end end)
                 return c
@@ -538,21 +543,21 @@ local TabV, TabS = Win:CreateTab("Visuals"), Win:CreateTab("Settings")
 
 if HasCombatAccess() then
     local TabC = Win:CreateTab("Combat")
-    TabC:CreateToggle("Fast Skill (Manual)", "Macro")
+    TabC:CreateToggle("Fast Skill", "Macro")
     TabC:CreateInput("Combo C", "ComboC")
     local sC, sC2, sX
-    TabC:CreateToggle("Show Button C", "ShowC", function(v) if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = v end; if sC then sC.Visible = v end end)
+    TabC:CreateToggle("Show C", "ShowC", function(v) if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = v end; if sC then sC.Visible = v end end)
     sC = TabC:CreateSlider("Size C", 50, 120, "BtnSizeC", true, MCXC.Config.ShowC)
     TabC:CreateInput("Combo C2", "ComboC2")
-    TabC:CreateToggle("Show Button C2", "ShowC2", function(v) if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible = v end; if sC2 then sC2.Visible = v end end)
+    TabC:CreateToggle("Show C2", "ShowC2", function(v) if MCXC.Cache.BtnC2 then MCXC.Cache.BtnC2.Visible = v end; if sC2 then sC2.Visible = v end end)
     sC2 = TabC:CreateSlider("Size C2", 50, 120, "BtnSizeC2", true, MCXC.Config.ShowC2)
-    TabC:CreateToggle("Show Button X", "ShowX", function(v) if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = v end; if sX then sX.Visible = v end end)
+    TabC:CreateToggle("Show X", "ShowX", function(v) if MCXC.Cache.BtnX then MCXC.Cache.BtnX.Visible = v end; if sX then sX.Visible = v end end)
     sX = TabC:CreateSlider("Size X", 50, 120, "BtnSizeX", true, MCXC.Config.ShowX)
     TabC:CreateToggle("Cancel on Tap", "CancelOnTap")
     TabC:CreateToggle("Camera Lock", "CameraLockEnabled", function(v) MCXC.Config.CameraLockEnabled = v; SaveConfig() end)
 
-    TabC:CreateToggle("Enable Hold Skills", "HoldEnabled")
-    TabC:CreateInput("Hold Setup (e.g 3C2Z)", "HoldSetup", function(val) MCXC.Config.HoldSetup = val; RefreshHoldSliders(val); SaveConfig() end)
+    TabC:CreateToggle("Hold Skills", "HoldEnabled")
+    TabC:CreateInput("Hold Setup", "HoldSetup", function(val) MCXC.Config.HoldSetup = val; RefreshHoldSliders(val); SaveConfig() end)
     local HoldContainer = I_new("Frame", TabC.Frame); HoldContainer.Size, HoldContainer.BackgroundTransparency, HoldContainer.AutomaticSize = U2(1,0,0,0), 1, Enum.AutomaticSize.Y; HoldContainer.LayoutOrder = 9999
     I_new("UIListLayout", HoldContainer).Padding = UD(0,8)
     local holdSliders = {}
@@ -573,7 +578,7 @@ if HasCombatAccess() then
     local function CrBtn(name, pos, color, skey, zkey)
         local b = I_new("TextButton", Gui)
         b.Size = U2(0, MCXC.Config[zkey], 0, MCXC.Config[zkey])
-        b.BackgroundColor3 = C3(15, 15, 15)
+        b.BackgroundColor3 = C3(20,20,25)
         b.BackgroundTransparency = MCXC.Config.UITrans
         b.Text = name
         b.TextColor3 = color
@@ -582,8 +587,10 @@ if HasCombatAccess() then
         b.Visible = MCXC.Config[skey]
         b.ZIndex = 25
         pcall(function() b.Position = U2(unpack(pos)) end)
-        I_new("UICorner", b).CornerRadius = UD(0.5, 0)
-        local s = I_new("UIStroke", b); s.Color = color; s.Thickness = 2.5; s.Transparency = 0.2
+        I_new("UICorner", b).CornerRadius = UD(0.15,0)
+        local shadow = I_new("ImageLabel", b)
+        shadow.Size, shadow.Position, shadow.BackgroundTransparency, shadow.Image, shadow.ImageColor3, shadow.ImageTransparency, shadow.ZIndex = U2(1,6,1,6), U2(0,-3,0,-3), 1, "rbxassetid://6015897843", C3(0,0,0), 0.4, 24
+        local s = I_new("UIStroke", b); s.Color = color; s.Thickness = 2; s.Transparency = 0.1; s.ZIndex = 26
         return b, s
     end
     MCXC.Cache.BtnC, MCXC.Cache.StrC = CrBtn("C", MCXC.Config.BtnPosC, Theme.Danger, "ShowC", "BtnSizeC")
@@ -666,7 +673,7 @@ TabS:CreateToggle("Setup UI (Drag)", "SetupMode", function(v)
     end
 end)
 TabS:CreateSlider("UI Transparency", 0, 1, "UITrans", false)
-TabS:CreateToggle("Show FPS, Ping", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
+TabS:CreateToggle("Show Stats", "ShowStats", function(v) if MCXC.Cache.StatFrame then MCXC.Cache.StatFrame.Visible = v end end)
 TabS:CreateToggle("Ultra FPS", "UnlockFPS", function(v) Utils.ApplyUltraFPS(v); SaveConfig() end)
 TabS:CreateDoubleButton("Fix Lag PvP", Theme.Accent, function()
     MCXC.State.LagFixed = true; Utils.ApplyPvPLighting()
