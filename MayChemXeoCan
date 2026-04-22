@@ -14,17 +14,9 @@ local LP = Services.Players.LocalPlayer
 local V3, V2, U2, UD = Vector3.new, Vector2.new, UDim2.new, UDim.new
 local C3, CS, NS = Color3.fromRGB, ColorSequence.new, NumberSequence.new
 local t_now, t_spawn, t_wait, t_delay = tick, task.spawn, task.wait, task.delay
-local m_floor, m_clamp, m_max, m_huge = math.floor, math.clamp, math.max, math.huge
+local m_floor, m_clamp, m_max, m_huge, m_random = math.floor, math.clamp, math.max, math.huge, math.random
 local s_lower, s_upper, s_sub, s_find, s_match = string.lower, string.upper, string.sub, string.find, string.match
 local I_new = Instance.new
-
-local function getTimestamp()
-    local t = t_now()
-    local hours = m_floor(t / 3600) % 24
-    local minutes = m_floor(t / 60) % 60
-    local seconds = m_floor(t) % 60
-    return string.format("%02d:%02d:%02d", hours, minutes, seconds)
-end
 
 local OLD_GUI_NAME = "MayChemXeoCan_V2"
 for _, gui in ipairs(Services.CoreGui:GetChildren()) do
@@ -40,16 +32,12 @@ end
 
 local Logger = { entries = {}, maxEntries = 200 }
 function Logger:Add(msg)
-    local timestamp = getTimestamp()
-    local entry = string.format("[%s] %s", timestamp, msg)
+    local entry = "[" .. os.date("%H:%M:%S") .. "] " .. msg
     table.insert(self.entries, entry)
     if #self.entries > self.maxEntries then table.remove(self.entries, 1) end
-    if MCXC.Cache.StatusLog then
-        MCXC.Cache.StatusLog.Text = table.concat(self.entries, "\n")
-    end
+    if MCXC.Cache.StatusLog then MCXC.Cache.StatusLog.Text = table.concat(self.entries, "\n") end
 end
 function Logger:Clear() self.entries = {}; if MCXC.Cache.StatusLog then MCXC.Cache.StatusLog.Text = "" end end
-function Logger:GetText() return table.concat(self.entries, "\n") end
 
 local MCXC = {
     Config = {
@@ -63,14 +51,17 @@ local MCXC = {
         FragmentRequired = 2000000,
         AllyList = {},
         AllyMarines = false,
-        CameraLockEnabled = false
+        CameraLockEnabled = false,
+        AntiApproachEnabled = false,
+        AntiApproachRadius = 300,
+        AntiApproachIntensity = 50
     },
     State = {
         SessionID = Services.HttpService:GenerateGUID(false):gsub("-", ""), MenuOpen = false,
         LastTick = t_now(), SetupMode = false, CurrentTarget = nil, Ping = 0.05, FPS = 60,
         LagFixed = false, CurrentCombo = nil, ComboQueue = nil, ActivePlayers = {}, PlrData = {},
         CameraLockActive = false, RestoreCamera = false, TargetCameraCFrame = nil,
-        ComboCancelRequested = false
+        ComboCancelRequested = false, AntiApproachActive = false
     },
     Cache = {ESP = {}, TracerLine = nil, UIElements = {}, ToolTypes = {}, EnemyHighlights = {}, Connections = {}, StatusLog = nil}
 }
@@ -241,8 +232,68 @@ function LagFixer.ProcessObject(v)
 end
 function Utils.ApplyPvPLagFix(v) if MCXC.State.LagFixed then LagFixer.ProcessObject(v) end end
 
-Logger:Add("Macro initialized. Session: " .. MCXC.State.SessionID)
-Logger:Add("Fragment: " .. GetFragment() .. " / " .. MCXC.Config.FragmentRequired)
+local AntiApproach = {}
+function AntiApproach.Start()
+    if MCXC.State.AntiApproachActive then return end
+    MCXC.State.AntiApproachActive = true
+    Logger:Add("Anti-Approach started. Radius: " .. MCXC.Config.AntiApproachRadius .. ", Intensity: " .. MCXC.Config.AntiApproachIntensity)
+    local intensity = MCXC.Config.AntiApproachIntensity
+    local partCount = m_floor(intensity * 0.8)
+    local remoteSpam = m_floor(intensity * 0.2)
+    for i = 1, partCount do
+        t_spawn(function()
+            while MCXC.State.AntiApproachActive do
+                local myPos = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character.HumanoidRootPart.Position
+                if myPos then
+                    for _, target in pairs(MCXC.State.ActivePlayers) do
+                        if target ~= LP and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                            local targetPos = target.Character.HumanoidRootPart.Position
+                            if (targetPos - myPos).Magnitude <= MCXC.Config.AntiApproachRadius then
+                                local part = I_new("Part")
+                                part.Size = V3(0.3, 0.3, 0.3)
+                                part.Transparency = 1
+                                part.Anchored = false
+                                part.CanCollide = true
+                                part.Position = targetPos + V3(m_random(-5,5), m_random(0,5), m_random(-5,5))
+                                part.Parent = workspace
+                                t_delay(0.3, function() part:Destroy() end)
+                            end
+                        end
+                    end
+                end
+                t_wait(0.05)
+            end
+        end)
+    end
+    for i = 1, remoteSpam do
+        t_spawn(function()
+            while MCXC.State.AntiApproachActive do
+                local myPos = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character.HumanoidRootPart.Position
+                if myPos then
+                    for _, target in pairs(MCXC.State.ActivePlayers) do
+                        if target ~= LP and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                            local targetPos = target.Character.HumanoidRootPart.Position
+                            if (targetPos - myPos).Magnitude <= MCXC.Config.AntiApproachRadius then
+                                pcall(function()
+                                    local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+                                    if remotes then remotes:FireServer("StressTest", "Data") end
+                                end)
+                            end
+                        end
+                    end
+                end
+                t_wait(0.1)
+            end
+        end)
+    end
+end
+function AntiApproach.Stop()
+    MCXC.State.AntiApproachActive = false
+    Logger:Add("Anti-Approach stopped")
+end
+function AntiApproach.Toggle(enabled)
+    if enabled then AntiApproach.Start() else AntiApproach.Stop() end
+end
 
 local InputAdapter = {}
 function InputAdapter.ActivateTool(tool) pcall(function() tool:Activate() end) end
@@ -252,7 +303,7 @@ function InputAdapter.EquipToolBySlot(slot)
 end
 
 local ToolManager = {}
-local FRUIT_KEYWORDS = {"fruit","kitsune","dough","leopard","buddha","rubber","quake","dark","light","magma","ice","sand","flame","string","barrier","revive","door","love","gravity","paw","phoenix","portal","rumble","shadow","spirit","venom","control","dragon","soul","chop","spin","bomb","smoke","spike","spring","kilo","sound","blade","diamond","barrier","quake","ruby","paw","love","quake","bomb","spike","door","revive","rubber","dark","light","magma","ice","sand","flame","string","barrier","gravity","phoenix","portal","rumble","shadow","spirit","venom","control","dragon","soul","kitsune","dough","leopard","buddha"}
+local FRUIT_KEYWORDS = {"fruit","kitsune","dough","leopard","buddha","rubber","quake","dark","light","magma","ice","sand","flame","string","barrier","revive","door","love","gravity","paw","phoenix","portal","rumble","shadow","spirit","venom","control","dragon","soul","chop","spin","bomb","smoke","spike","spring","kilo","sound","blade","diamond","barrier","quake","ruby"}
 function ToolManager.GetToolType(tool)
     if not tool then return nil end
     if MCXC.Cache.ToolTypes[tool] then return MCXC.Cache.ToolTypes[tool] end
@@ -273,36 +324,26 @@ function ToolManager.GetCurrentToolType()
     return ToolManager.GetToolType(tool)
 end
 function ToolManager.SwitchToTool(key)
-    local startTime = t_now()
-    if ToolManager.GetCurrentToolType() == key then Logger:Add("Tool already " .. key .. " (0.00s)"); return true end
+    if ToolManager.GetCurrentToolType() == key then return true end
     local targetTool = nil
     for _, v in ipairs(LP.Backpack:GetChildren()) do if v:IsA("Tool") and ToolManager.GetToolType(v) == key then targetTool = v; break end end
-    if not targetTool then Logger:Add("Tool " .. key .. " not found in backpack"); return false end
+    if not targetTool then return false end
     local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
-    if not hum then Logger:Add("Humanoid missing"); return false end
+    if not hum then return false end
     for retry = 1, 5 do
         pcall(function() hum:EquipTool(targetTool) end)
         local start = t_now()
         repeat
-            if ToolManager.GetCurrentToolType() == key then
-                local elapsed = m_floor((t_now() - startTime) * 1000) .. "ms"
-                Logger:Add("Switched to tool " .. key .. " (" .. elapsed .. ")")
-                t_wait(0.1); return true
-            end
+            if ToolManager.GetCurrentToolType() == key then t_wait(0.1); return true end
             t_wait()
         until t_now() - start > 0.8
         InputAdapter.EquipToolBySlot(tonumber(key))
         start = t_now()
         repeat
-            if ToolManager.GetCurrentToolType() == key then
-                local elapsed = m_floor((t_now() - startTime) * 1000) .. "ms"
-                Logger:Add("Switched to tool " .. key .. " via key (" .. elapsed .. ")")
-                t_wait(0.1); return true
-            end
+            if ToolManager.GetCurrentToolType() == key then t_wait(0.1); return true end
             t_wait()
         until t_now() - start > 0.8
     end
-    Logger:Add("FAILED to switch to tool " .. key)
     return false
 end
 
@@ -324,23 +365,12 @@ function CameraLock.GetNearestEnemy()
     end
     return nearest
 end
-function CameraLock.Enable()
-    if MCXC.Config.CameraLockEnabled then
-        local target = CameraLock.GetNearestEnemy()
-        if target then
-            MCXC.State.CameraLockActive = true
-            Logger:Add("Camera locked to " .. target.Name)
-        else
-            Logger:Add("Camera lock skipped: no target")
-        end
-    end
-end
+function CameraLock.Enable() if MCXC.Config.CameraLockEnabled and CameraLock.GetNearestEnemy() then MCXC.State.CameraLockActive = true end end
 function CameraLock.Disable() MCXC.State.CameraLockActive = false; MCXC.State.RestoreCamera = true end
 function CameraLock.ForceRestore()
     local cam = workspace.CurrentCamera
     if cam then cam.CameraType = Enum.CameraType.Custom; cam.CameraSubject = LP.Character and LP.Character:FindFirstChild("Humanoid") end
     MCXC.State.CameraLockActive = false; MCXC.State.RestoreCamera = false
-    Logger:Add("Camera restored")
 end
 function CameraLock.Update()
     local cam = workspace.CurrentCamera; if not cam then return end
@@ -388,7 +418,6 @@ local function ExecuteStep(comboId, sequence, uiElement, onFinish)
         elseif s_match(key, "[ZXCVF]") then
             local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
             if not tool then onFinish(false, "NO TOOL"); return end
-            Logger:Add("Activating skill " .. key .. " on " .. tool.Name)
             InputAdapter.ActivateTool(tool)
             local start = t_now()
             repeat
@@ -407,19 +436,12 @@ end
 function Combat.ExecuteCombo(comboId, comboStr, strUI, col, onEnd)
     if not HasCombatAccess() or MCXC.State.CurrentCombo then return end
     MCXC.State.CurrentCombo = comboId; MCXC.State.ComboCancelRequested = false
-    Logger:Add("Combo " .. comboId .. " started: " .. comboStr)
     CameraLock.Enable()
     Utils.Tween(strUI, {Thickness = 2.5, Color = Theme.Text}, 0.05)
     t_spawn(function()
         ExecuteStep(comboId, comboStr, strUI, function(success, reason)
-            if not success then
-                Logger:Add("Combo " .. comboId .. " FAILED: " .. reason)
-                Utils.Tween(strUI, {Thickness = 2.5, Color = Theme.Danger}, 0.1)
-                t_delay(0.3, function() Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end)
-            else
-                Logger:Add("Combo " .. comboId .. " DONE")
-                Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2)
-            end
+            if not success then Utils.Tween(strUI, {Thickness = 2.5, Color = Theme.Danger}, 0.1); t_delay(0.3, function() Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end)
+            else Utils.Tween(strUI, {Thickness = 1.5, Color = col}, 0.2) end
             MCXC.State.CurrentCombo = nil
             if onEnd then onEnd() end
             if MCXC.State.ComboQueue then ProcessQueue() end
@@ -659,7 +681,7 @@ if HasCombatAccess() then
     local TabC = Win:CreateTab("Combat")
     TabC:CreateToggle("Fast Skill", "Macro")
     TabC:CreateInput("Combo C", "ComboC")
-    local sC, sC2, sX
+    local sC, sC2, sX, sRadius, sIntensity
     TabC:CreateToggle("Show C", "ShowC", function(v) if MCXC.Cache.BtnC then MCXC.Cache.BtnC.Visible = v end; if sC then sC.Visible = v end end)
     sC = TabC:CreateSlider("Size C", 50, 120, "BtnSizeC", true, MCXC.Config.ShowC)
     TabC:CreateInput("Combo C2", "ComboC2")
@@ -669,6 +691,15 @@ if HasCombatAccess() then
     sX = TabC:CreateSlider("Size X", 50, 120, "BtnSizeX", true, MCXC.Config.ShowX)
     TabC:CreateToggle("Cancel on Tap", "CancelOnTap")
     TabC:CreateToggle("Camera Lock", "CameraLockEnabled", function(v) MCXC.Config.CameraLockEnabled = v; SaveConfig() end)
+
+    TabC:CreateToggle("Anti-Approach Lag", "AntiApproachEnabled", function(v)
+        AntiApproach.Toggle(v)
+        if sRadius then sRadius.Visible = v end
+        if sIntensity then sIntensity.Visible = v end
+        SaveConfig()
+    end)
+    sRadius = TabC:CreateSlider("Radius", 100, 800, "AntiApproachRadius", true, MCXC.Config.AntiApproachEnabled)
+    sIntensity = TabC:CreateSlider("Intensity", 10, 200, "AntiApproachIntensity", true, MCXC.Config.AntiApproachEnabled)
 
     TabC:CreateToggle("Hold Skills", "HoldEnabled")
     TabC:CreateInput("Hold Setup", "HoldSetup", function(val) MCXC.Config.HoldSetup = val; RefreshHoldSliders(val); SaveConfig() end)
@@ -723,14 +754,12 @@ if HasCombatAccess() then
             if MCXC.State.CurrentCombo == id then
                 if MCXC.Config.CancelOnTap then
                     MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
-                    Logger:Add("Combo " .. id .. " cancelled manually")
                     CameraLock.ForceRestore()
                     if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
                     if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
                 end
             else
                 MCXC.State.ComboQueue = {id = id, str = str, strUI = strUI, col = col}
-                Logger:Add("Combo " .. id .. " queued")
                 Utils.Tween(strUI, {Thickness = 3, Color = Theme.Target}, 0.1)
             end
         else
@@ -741,7 +770,6 @@ if HasCombatAccess() then
     MCXC.Cache.BtnC2.MouseButton1Click:Connect(function() HandleCombo("C2", MCXC.Config.ComboC2, MCXC.Cache.StrC2, Theme.Accent) end)
     MCXC.Cache.BtnX.MouseButton1Click:Connect(function()
         MCXC.State.ComboQueue = nil; MCXC.State.ComboCancelRequested = true
-        Logger:Add("Combo cancelled via X button")
         CameraLock.ForceRestore()
         if MCXC.Cache.StrC then Utils.Tween(MCXC.Cache.StrC, {Thickness = 1.5, Color = Theme.Danger}, 0.1) end
         if MCXC.Cache.StrC2 then Utils.Tween(MCXC.Cache.StrC2, {Thickness = 1.5, Color = Theme.Accent}, 0.1) end
@@ -855,4 +883,4 @@ Services.RunService.RenderStepped:Connect(function()
     CameraLock.Update()
 end)
 
-Logger:Add("Status tab ready. Logging enabled.")
+Logger:Add("Macro initialized. Anti-Approach ready.")
